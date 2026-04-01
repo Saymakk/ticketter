@@ -1,11 +1,11 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { phoneToEmail } from "@/lib/auth/phone";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -15,9 +15,6 @@ export default function LoginPage() {
   const [errorText, setErrorText] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const reason = searchParams.get("reason");
-  const isIdleLogout = reason === "idle";
-
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErrorText("");
@@ -26,11 +23,7 @@ export default function LoginPage() {
     try {
       const email = phoneToEmail(phone);
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         setErrorText("Неверный телефон или пароль");
         return;
@@ -57,7 +50,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Если нас сюда привел proxy с защищенного маршрута — возвращаем обратно
       const nextPath = searchParams.get("next");
       if (nextPath && nextPath.startsWith("/")) {
         router.push(nextPath);
@@ -81,13 +73,7 @@ export default function LoginPage() {
       <main style={{ maxWidth: 420, margin: "40px auto", padding: 16 }}>
         <h1>Вход в inspire-workspace</h1>
 
-        {isIdleLogout && (
-            <p style={{ color: "#9a6700", background: "#fff8c5", padding: 8, borderRadius: 6 }}>
-              Сессия завершена из-за неактивности более 30 минут. Войдите снова.
-            </p>
-        )}
-
-        <form onSubmit={onSubmit} style={{ display: "grid", gap: 12, marginTop: 12 }}>
+        <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
           <label>
             Телефон
             <input
@@ -118,5 +104,13 @@ export default function LoginPage() {
 
         {errorText && <p style={{ color: "crimson", marginTop: 12 }}>{errorText}</p>}
       </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+      <Suspense fallback={<main style={{ padding: 16 }}>Загрузка...</main>}>
+        <LoginForm />
+      </Suspense>
   );
 }
