@@ -71,7 +71,7 @@ function LoginForm() {
 
   return (
       <main style={{ maxWidth: 420, margin: "40px auto", padding: 16 }}>
-        <h1>Вход в inspire-workspace</h1>
+        <h1>Вход в ticketter</h1>
 
         <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
           <label>

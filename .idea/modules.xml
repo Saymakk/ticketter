@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/inspire-workspace.iml" filepath="$PROJECT_DIR$/.idea/inspire-workspace.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/ticketter-workspace.iml" filepath="$PROJECT_DIR$/.idea/ticketter-workspace.iml" />
     </modules>
   </component>
 </project>

@@ -8,7 +8,7 @@ export function normalizePhone(input: string) {
   
   export function phoneToEmail(phoneInput: string) {
     const p = normalizePhone(phoneInput);
-    return `phone_${p}@inspire.local`;
+    return `phone_${p}@ticketter.local`;
   }
   
   export function last6FromPhone(phoneInput: string) {
