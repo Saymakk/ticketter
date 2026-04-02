@@ -1,8 +1,30 @@
+import Link from "next/link";
+import {
+  AppCard,
+  AppShell,
+  linkClass,
+} from "@/components/ui/app-shell";
+
 export default function AdminPage() {
-    return (
-      <main style={{ padding: 16 }}>
-        <h1>Admin dashboard</h1>
-        <p>Логин сработал. Дальше добавим роли и доступы.</p>
-      </main>
-    );
-  }
+  return (
+    <AppShell>
+      <AppCard
+        title="Панель администратора"
+        subtitle="Работа с назначенными мероприятиями и билетами."
+      >
+        <ul className="space-y-3 text-sm">
+          <li>
+            <Link href="/admin/events" className={linkClass}>
+              Мои мероприятия →
+            </Link>
+          </li>
+          <li>
+            <Link href="/scanner" className={linkClass}>
+              Сканер билетов →
+            </Link>
+          </li>
+        </ul>
+      </AppCard>
+    </AppShell>
+  );
+}

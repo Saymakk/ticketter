@@ -3,14 +3,22 @@
 import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { phoneToEmail } from "@/lib/auth/phone";
+import { resolveAuthEmail } from "@/lib/auth/login";
+import {
+  AppCard,
+  AppShellCenter,
+  btnPrimary,
+  FormStack,
+  inputClass,
+  labelClass,
+} from "@/components/ui/app-shell";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
 
-  const [phone, setPhone] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [errorText, setErrorText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,11 +29,15 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const email = phoneToEmail(phone);
+      const { email } = resolveAuthEmail(login);
 
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
       if (error) {
-        setErrorText("Неверный телефон или пароль");
+        setErrorText("Неверный логин или пароль");
         return;
       }
 
@@ -40,10 +52,10 @@ function LoginForm() {
       }
 
       const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
 
       if (profileError || !profile) {
         setErrorText("Профиль пользователя не найден");
@@ -63,54 +75,70 @@ function LoginForm() {
 
       router.push("/admin");
     } catch {
-      setErrorText("Проверь формат телефона. Пример: +7 701 123 45 67");
+      setErrorText("Проверь формат: телефон (+7 …) или корректный email.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-      <main style={{ maxWidth: 420, margin: "40px auto", padding: 16 }}>
-        <h1>Вход в ticketter</h1>
-
-        <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
-          <label>
-            Телефон
-            <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+7 701 123 45 67"
-                autoComplete="tel"
+    <AppShellCenter>
+      <AppCard
+        title="Вход"
+        subtitle="Телефон или email и пароль, выданные администратором."
+      >
+        <form onSubmit={onSubmit}>
+          <FormStack>
+            <label className={labelClass}>
+              Телефон или email
+              <input
+                className={inputClass}
+                value={login}
+                onChange={(e) => setLogin(e.target.value)}
+                placeholder="+7 701 123 45 67 или name@company.com"
+                autoComplete="username"
                 required
-            />
-          </label>
+              />
+            </label>
 
-          <label>
-            Пароль (последние 6 цифр номера)
-            <input
+            <label className={labelClass}>
+              Пароль
+              <input
+                className={inputClass}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="123456"
                 type="password"
-                maxLength={6}
+                autoComplete="current-password"
                 required
-            />
-          </label>
+              />
+            </label>
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Входим..." : "Войти"}
-          </button>
+            <button type="submit" disabled={loading} className={`${btnPrimary} w-full`}>
+              {loading ? "Входим…" : "Войти"}
+            </button>
+          </FormStack>
         </form>
 
-        {errorText && <p style={{ color: "crimson", marginTop: 12 }}>{errorText}</p>}
-      </main>
+        {errorText && (
+          <p className="mt-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-800">
+            {errorText}
+          </p>
+        )}
+      </AppCard>
+    </AppShellCenter>
   );
 }
 
 export default function LoginPage() {
   return (
-      <Suspense fallback={<main style={{ padding: 16 }}>Загрузка...</main>}>
-        <LoginForm />
-      </Suspense>
+    <Suspense
+      fallback={
+        <AppShellCenter>
+          <p className="text-center text-sm text-slate-600">Загрузка…</p>
+        </AppShellCenter>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

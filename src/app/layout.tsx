@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import IdleTracker from "@/components/idle-tracker";
+import LogoutBar from "@/components/logout-bar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,22 +15,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ticketter-workspace",
-  description: "Ticket management workspace",
+  title: "Ticketter",
+  description: "Учёт билетов и сканирование QR",
 };
 
 export default function RootLayout({
-                                     children,
-                                   }: Readonly<{ children: React.ReactNode }>) {
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-      <html
-          lang="en"
-          className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      >
-      <body className="min-h-full flex flex-col">
-      <IdleTracker />
-      {children}
+    <html
+      lang="ru"
+      className={`${geistSans.variable} ${geistMono.variable} h-full`}
+    >
+      <body className="min-h-full font-sans antialiased">
+        <IdleTracker />
+        <LogoutBar />
+        {children}
       </body>
-      </html>
+    </html>
   );
 }
