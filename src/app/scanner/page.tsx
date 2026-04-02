@@ -23,6 +23,12 @@ type Ticket = {
     custom_data: Record<string, unknown>;
 };
 
+type CheckedInItem = {
+    uuid: string;
+    buyer_name: string | null;
+    checked_in_at: string | null;
+};
+
 type ApiError = { error?: string };
 
 async function safeReadJson<T>(res: Response): Promise<T | null> {
@@ -38,16 +44,23 @@ async function safeReadJson<T>(res: Response): Promise<T | null> {
 export default function ScannerPage() {
     const [events, setEvents] = useState<EventItem[]>([]);
     const [selectedEventId, setSelectedEventId] = useState("");
-    const [ticket, setTicket] = useState<Ticket | null>(null);
     const [message, setMessage] = useState("");
+
     const [loadingEvents, setLoadingEvents] = useState(false);
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [checkingIn, setCheckingIn] = useState(false);
+
+    const [modalOpen, setModalOpen] = useState(false);
+    const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
+
+    const [checkedInTickets, setCheckedInTickets] = useState<CheckedInItem[]>([]);
+    const [loadingCheckedIn, setLoadingCheckedIn] = useState(false);
 
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const controlsRef = useRef<IScannerControls | null>(null);
     const readerRef = useRef<BrowserMultiFormatReader | null>(null);
 
-    // Anti-spam refs, чтобы не дергать API слишком часто
+    // Анти-спам сканов
     const lastUuidRef = useRef("");
     const lastScanAtRef = useRef(0);
 
@@ -57,112 +70,180 @@ export default function ScannerPage() {
     );
 
     useEffect(() => {
-        async function loadEvents() {
-            setLoadingEvents(true);
-            setMessage("");
-
-            try {
-                const res = await fetch("/api/scanner/events", { cache: "no-store" });
-                const json = (await safeReadJson<{ events?: EventItem[] } & ApiError>(res)) ?? {};
-
-                if (!res.ok) {
-                    setEvents([]);
-                    setMessage(json.error ?? `Ошибка загрузки мероприятий (HTTP ${res.status})`);
-                    return;
-                }
-
-                const list = json.events ?? [];
-                setEvents(list);
-
-                if (list.length === 1) {
-                    setSelectedEventId(list[0].id);
-                }
-            } catch {
-                setMessage("Сетевая ошибка при загрузке мероприятий");
-            } finally {
-                setLoadingEvents(false);
-            }
-        }
-
         loadEvents();
+
+        return () => {
+            stopScanner();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
-        if (!selectedEventId || !videoRef.current) return;
+        // При смене мероприятия:
+        // - закрыть сканер
+        // - очистить текущий найденный билет
+        // - загрузить уже пробитые билеты
+        stopScanner();
+        setActiveTicket(null);
+        setModalOpen(false);
+        setMessage("");
+        lastUuidRef.current = "";
+        lastScanAtRef.current = 0;
 
-        let isStopped = false;
-
-        async function startScanner() {
-            try {
-                const reader = new BrowserMultiFormatReader();
-                readerRef.current = reader;
-
-                const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-                const deviceId = devices[0]?.deviceId;
-
-                if (!deviceId) {
-                    setMessage("Камера не найдена");
-                    return;
-                }
-
-                const controls = await reader.decodeFromVideoDevice(
-                    deviceId,
-                    videoRef.current!,
-                    async (result) => {
-                        if (isStopped || !result) return;
-
-                        const now = Date.now();
-                        if (now - lastScanAtRef.current < 700) return;
-                        lastScanAtRef.current = now;
-
-                        const uuid = result.getText().trim();
-                        if (!uuid) return;
-                        if (uuid === lastUuidRef.current) return;
-
-                        lastUuidRef.current = uuid;
-
-                        const res = await fetch(
-                            `/api/scanner/tickets/by-uuid?uuid=${encodeURIComponent(uuid)}&eventId=${encodeURIComponent(selectedEventId)}`,
-                            { cache: "no-store" }
-                        );
-
-                        const json = (await safeReadJson<{ ticket?: Ticket } & ApiError>(res)) ?? {};
-
-                        if (!res.ok || !json.ticket) {
-                            setTicket(null);
-                            setMessage(json.error ?? "Билет не найден в выбранном мероприятии");
-                            return;
-                        }
-
-                        setTicket(json.ticket);
-                        setMessage(
-                            json.ticket.status === "checked_in"
-                                ? "Билет уже пробит"
-                                : "Билет найден, можно пробить"
-                        );
-                    }
-                );
-
-                controlsRef.current = controls;
-            } catch {
-                setMessage("Не удалось запустить сканер. Проверь доступ к камере.");
-            }
+        if (selectedEventId) {
+            void loadCheckedInTickets(selectedEventId);
+        } else {
+            setCheckedInTickets([]);
         }
-
-        startScanner();
-
-        return () => {
-            isStopped = true;
-            controlsRef.current?.stop();
-            controlsRef.current = null;
-            readerRef.current = null;
-            lastUuidRef.current = "";
-            lastScanAtRef.current = 0;
-        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedEventId]);
 
+    async function loadEvents() {
+        setLoadingEvents(true);
+        setMessage("");
+
+        try {
+            const res = await fetch("/api/scanner/events", { cache: "no-store" });
+            const json = (await safeReadJson<{ events?: EventItem[] } & ApiError>(res)) ?? {};
+
+            if (!res.ok) {
+                setEvents([]);
+                setMessage(json.error ?? `Ошибка загрузки мероприятий (HTTP ${res.status})`);
+                return;
+            }
+
+            const list = json.events ?? [];
+            setEvents(list);
+
+            if (list.length === 1) {
+                setSelectedEventId(list[0].id);
+            }
+        } catch {
+            setMessage("Сетевая ошибка при загрузке мероприятий");
+        } finally {
+            setLoadingEvents(false);
+        }
+    }
+
+    async function loadCheckedInTickets(eventId: string) {
+        setLoadingCheckedIn(true);
+        try {
+            const res = await fetch(`/api/scanner/events/${eventId}/checked-in`, {
+                cache: "no-store",
+            });
+            const json = (await safeReadJson<{ tickets?: CheckedInItem[] } & ApiError>(res)) ?? {};
+
+            if (!res.ok) {
+                setCheckedInTickets([]);
+                setMessage(json.error ?? `Ошибка загрузки пробитых билетов (HTTP ${res.status})`);
+                return;
+            }
+
+            setCheckedInTickets(json.tickets ?? []);
+        } catch {
+            setMessage("Сетевая ошибка при загрузке пробитых билетов");
+        } finally {
+            setLoadingCheckedIn(false);
+        }
+    }
+
+    async function startScanner() {
+        if (!selectedEventId) {
+            setMessage("Сначала выбери мероприятие");
+            return;
+        }
+        if (!videoRef.current) {
+            setMessage("Видео-элемент недоступен");
+            return;
+        }
+        if (isScannerOpen) {
+            return;
+        }
+
+        setMessage("");
+        setIsScannerOpen(true);
+
+        try {
+            const reader = new BrowserMultiFormatReader();
+            readerRef.current = reader;
+
+            const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+            const deviceId = devices[0]?.deviceId;
+
+            if (!deviceId) {
+                setMessage("Камера не найдена");
+                setIsScannerOpen(false);
+                return;
+            }
+
+            const controls = await reader.decodeFromVideoDevice(
+                deviceId,
+                videoRef.current,
+                async (result) => {
+                    if (!result) return;
+
+                    const now = Date.now();
+                    if (now - lastScanAtRef.current < 700) return;
+                    lastScanAtRef.current = now;
+
+                    const uuid = result.getText().trim();
+                    if (!uuid) return;
+                    if (uuid === lastUuidRef.current) return;
+
+                    lastUuidRef.current = uuid;
+
+                    // Как только нашли билет — сразу закрываем камеру
+                    stopScanner();
+
+                    await openTicketModalByUuid(uuid);
+                }
+            );
+
+            controlsRef.current = controls;
+        } catch {
+            setMessage("Не удалось запустить сканер. Проверь доступ к камере.");
+            setIsScannerOpen(false);
+        }
+    }
+
+    function stopScanner() {
+        controlsRef.current?.stop();
+        controlsRef.current = null;
+        readerRef.current = null;
+        setIsScannerOpen(false);
+    }
+
+    async function openTicketModalByUuid(uuid: string) {
+        if (!selectedEventId) return;
+
+        try {
+            const res = await fetch(
+                `/api/scanner/tickets/by-uuid?uuid=${encodeURIComponent(uuid)}&eventId=${encodeURIComponent(selectedEventId)}`,
+                { cache: "no-store" }
+            );
+
+            const json = (await safeReadJson<{ ticket?: Ticket } & ApiError>(res)) ?? {};
+
+            if (!res.ok || !json.ticket) {
+                setActiveTicket(null);
+                setMessage(json.error ?? "Билет не найден в выбранном мероприятии");
+                return;
+            }
+
+            setActiveTicket(json.ticket);
+            setModalOpen(true);
+            setMessage(
+                json.ticket.status === "checked_in"
+                    ? "Билет уже пробит"
+                    : "Билет найден, можно пробить"
+            );
+        } catch {
+            setMessage("Сетевая ошибка при загрузке билета");
+        }
+    }
+
     async function handleCheckIn() {
-        if (!ticket || !selectedEventId) return;
+        if (!activeTicket || !selectedEventId) return;
 
         setCheckingIn(true);
         setMessage("Пробиваем билет...");
@@ -171,10 +252,11 @@ export default function ScannerPage() {
             const res = await fetch("/api/scanner/check-in", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ uuid: ticket.uuid, eventId: selectedEventId }),
+                body: JSON.stringify({ uuid: activeTicket.uuid, eventId: selectedEventId }),
             });
 
-            const json = (await safeReadJson<{ success?: boolean; message?: string } & ApiError>(res)) ?? {};
+            const json =
+                (await safeReadJson<{ success?: boolean; message?: string } & ApiError>(res)) ?? {};
 
             if (!res.ok) {
                 setMessage(json.error ?? `Ошибка пробивки (HTTP ${res.status})`);
@@ -184,7 +266,9 @@ export default function ScannerPage() {
             setMessage(json.message ?? "Операция выполнена");
 
             if (json.success) {
-                setTicket({ ...ticket, status: "checked_in" });
+                const updated: Ticket = { ...activeTicket, status: "checked_in" };
+                setActiveTicket(updated);
+                await loadCheckedInTickets(selectedEventId);
             }
         } catch {
             setMessage("Сетевая ошибка при пробивке");
@@ -194,7 +278,7 @@ export default function ScannerPage() {
     }
 
     return (
-        <main style={{ maxWidth: 760, margin: "20px auto", padding: 16 }}>
+        <main style={{ maxWidth: 820, margin: "20px auto", padding: 16 }}>
             <h1>Сканер билетов</h1>
 
             <section style={{ marginTop: 12 }}>
@@ -206,13 +290,7 @@ export default function ScannerPage() {
                 ) : (
                     <select
                         value={selectedEventId}
-                        onChange={(e) => {
-                            setSelectedEventId(e.target.value);
-                            setTicket(null);
-                            setMessage("");
-                            lastUuidRef.current = "";
-                            lastScanAtRef.current = 0;
-                        }}
+                        onChange={(e) => setSelectedEventId(e.target.value)}
                     >
                         <option value="">Выбери мероприятие</option>
                         {events.map((ev) => (
@@ -224,50 +302,140 @@ export default function ScannerPage() {
                 )}
             </section>
 
-            <section style={{ marginTop: 16 }}>
-                <h3>2) Сканирование QR</h3>
-                <video
-                    ref={videoRef}
-                    style={{
-                        width: "100%",
-                        maxWidth: 440,
-                        borderRadius: 8,
-                        border: "1px solid #ddd",
-                        background: "#000",
-                    }}
-                />
-            </section>
-
             {selectedEvent && (
                 <p style={{ marginTop: 10 }}>
                     Выбрано: <b>{selectedEvent.title}</b> ({selectedEvent.city}, {selectedEvent.event_date})
                 </p>
             )}
 
-            {ticket && (
-                <section style={{ marginTop: 14, padding: 12, border: "1px solid #eee", borderRadius: 8 }}>
-                    <h3>Информация о билете</h3>
-                    <p>ID: {ticket.uuid}</p>
-                    <p>Кто купил: {ticket.buyer_name ?? "-"}</p>
-                    <p>Телефон: {ticket.phone ?? "-"}</p>
-                    <p>Тип: {ticket.ticket_type ?? "-"}</p>
-                    <p>Город/регион: {ticket.region ?? "-"}</p>
-                    <p>Дата: {new Date(ticket.created_at).toLocaleString()}</p>
-                    <p>Статус: {ticket.status}</p>
+            <section style={{ marginTop: 16 }}>
+                <h3>2) Сканирование QR</h3>
+
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                    <button
+                        type="button"
+                        onClick={startScanner}
+                        disabled={!selectedEventId || isScannerOpen}
+                    >
+                        {isScannerOpen ? "Сканер открыт..." : "Сканировать"}
+                    </button>
 
                     <button
                         type="button"
-                        onClick={handleCheckIn}
-                        disabled={checkingIn || ticket.status === "checked_in"}
+                        onClick={stopScanner}
+                        disabled={!isScannerOpen}
                     >
-                        {checkingIn ? "Пробиваем..." : "Пробить билет"}
+                        Остановить камеру
                     </button>
+                </div>
 
-                    {ticket.status === "checked_in" && <p>Билет уже пробит</p>}
-                </section>
-            )}
+                <video
+                    ref={videoRef}
+                    style={{
+                        display: isScannerOpen ? "block" : "none",
+                        width: "100%",
+                        maxWidth: 460,
+                        borderRadius: 8,
+                        border: "1px solid #ddd",
+                        background: "#000",
+                    }}
+                />
+
+                {!isScannerOpen && (
+                    <p style={{ color: "#666" }}>
+                        Камера выключена. Нажми кнопку «Сканировать», чтобы открыть ее.
+                    </p>
+                )}
+            </section>
+
+            <section style={{ marginTop: 18 }}>
+                <h3>Уже пробитые билеты</h3>
+                {loadingCheckedIn ? (
+                    <p>Загрузка...</p>
+                ) : checkedInTickets.length === 0 ? (
+                    <p>Пока нет пробитых билетов</p>
+                ) : (
+                    <ul style={{ display: "grid", gap: 6, paddingLeft: 18 }}>
+                        {checkedInTickets.map((t) => (
+                            <li key={t.uuid}>
+                                <button
+                                    type="button"
+                                    onClick={() => openTicketModalByUuid(t.uuid)}
+                                    style={{
+                                        border: "none",
+                                        background: "transparent",
+                                        color: "#0b57d0",
+                                        textDecoration: "underline",
+                                        cursor: "pointer",
+                                        padding: 0,
+                                    }}
+                                >
+                                    {t.uuid}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </section>
 
             {message && <p style={{ marginTop: 12 }}>{message}</p>}
+
+            {modalOpen && activeTicket && (
+                <div
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        background: "rgba(0,0,0,0.45)",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        justifyContent: "center",
+                        paddingTop: "8vh",
+                        zIndex: 1000,
+                    }}
+                >
+                    <div
+                        style={{
+                            width: "min(560px, calc(100vw - 24px))",
+                            background: "#fff",
+                            borderRadius: 10,
+                            padding: 16,
+                            boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+                        }}
+                    >
+                        <h3 style={{ marginTop: 0 }}>
+                            {activeTicket.status === "checked_in" ? "Билет уже пробит" : "Билет найден"}
+                        </h3>
+
+                        <p><b>UUID:</b> {activeTicket.uuid}</p>
+                        <p><b>ФИО:</b> {activeTicket.buyer_name ?? "-"}</p>
+                        <p><b>Телефон:</b> {activeTicket.phone ?? "-"}</p>
+                        <p><b>Тип билета:</b> {activeTicket.ticket_type ?? "-"}</p>
+                        <p><b>Город/регион:</b> {activeTicket.region ?? "-"}</p>
+                        <p><b>Дата:</b> {new Date(activeTicket.created_at).toLocaleString()}</p>
+                        <p><b>Статус:</b> {activeTicket.status}</p>
+
+                        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                            <button
+                                type="button"
+                                onClick={handleCheckIn}
+                                disabled={checkingIn || activeTicket.status === "checked_in"}
+                            >
+                                {checkingIn ? "Пробиваем..." : "Пробить билет"}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setModalOpen(false);
+                                    setActiveTicket(null);
+                                }}
+                            >
+                                Закрыть
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }

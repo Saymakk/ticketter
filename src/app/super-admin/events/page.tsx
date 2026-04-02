@@ -14,7 +14,7 @@ type UserItem = {
   id: string;
   full_name: string | null;
   phone: string | null;
-  role: "super_admin" | "admin" | "scanner";
+  role: "super_admin" | "admin";
   region: string | null;
 };
 
