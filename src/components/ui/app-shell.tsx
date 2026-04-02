@@ -45,10 +45,10 @@ export function AppCard({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm ring-1 ring-slate-900/5 sm:p-8 ${className}`}
+      className={`rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm ring-1 ring-slate-900/5 sm:p-6 ${className}`}
     >
       {(title || subtitle) && (
-        <header className="mb-6 border-b border-slate-100 pb-5">
+        <header className="mb-5 border-b border-slate-100 pb-4">
           {title && (
             <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
               {title}
@@ -77,7 +77,7 @@ export function AppSection({
       <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-teal-800/90">
         {title}
       </h2>
-      <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 sm:p-5">
+      <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3.5 sm:p-4">
         {children}
       </div>
     </section>
@@ -85,26 +85,44 @@ export function AppSection({
 }
 
 export const inputClass =
-  "mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20";
+  "mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20";
 
 export const labelClass = "block text-sm font-medium text-slate-700";
 
 export const selectClass = inputClass;
 
 export const btnPrimary =
-  "inline-flex items-center justify-center rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex shrink-0 items-center justify-center rounded-lg bg-teal-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
 export const btnSecondary =
-  "inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-50";
 
 export const btnDanger =
-  "inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-200";
+  "inline-flex shrink-0 items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-200";
 
 export const linkClass =
   "font-medium text-teal-700 underline decoration-teal-700/30 underline-offset-2 transition hover:text-teal-800 hover:decoration-teal-800";
 
-export function FormStack({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col gap-4">{children}</div>;
+/**
+ * Колонка формы: ограниченная ширина, кнопки по ширине контента (не на всю строку).
+ * fullWidth — на всю ширину карточки (редко).
+ */
+export function FormStack({
+  children,
+  className = "",
+  fullWidth = false,
+}: {
+  children: ReactNode;
+  className?: string;
+  fullWidth?: boolean;
+}) {
+  return (
+    <div
+      className={`flex flex-col gap-3.5 [&_button]:self-start ${fullWidth ? "w-full" : "w-full max-w-md"} ${className}`}
+    >
+      {children}
+    </div>
+  );
 }
 
 /** Явная ссылка на родительский экран (предпочтительнее history.back). */
@@ -119,7 +137,7 @@ export function BackNav({
     <nav className="mb-5">
       <Link
         href={href}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
       >
         <span aria-hidden>←</span>
         {children}

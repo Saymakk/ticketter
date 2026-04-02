@@ -18,11 +18,11 @@ export async function GET(_: Request, { params }: Params) {
         .eq("id", user.id)
         .single();
 
-    if (!profile || !["admin", "super_admin"].includes(profile.role)) {
+    if (!profile || !["user", "admin", "super_admin"].includes(profile.role)) {
         return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
     }
 
-    if (profile.role === "admin") {
+    if (profile.role === "user") {
         const { data: access } = await supabase
             .from("user_event_access")
             .select("id")

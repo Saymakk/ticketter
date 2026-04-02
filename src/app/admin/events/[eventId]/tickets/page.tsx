@@ -177,8 +177,8 @@ export default function TicketsPage() {
         title="Билеты мероприятия"
         subtitle="Редактирование, удаление, массовая выгрузка QR."
       >
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex max-w-full flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={toggleSelectAll}
@@ -199,7 +199,7 @@ export default function TicketsPage() {
           </div>
           <Link
             href={`/admin/events/${eventId}/tickets/new`}
-            className="inline-flex justify-center rounded-lg bg-teal-600 px-4 py-2 text-center text-sm font-medium text-white shadow-sm hover:bg-teal-700"
+            className={`${btnPrimary} no-underline`}
           >
             Новый билет
           </Link>

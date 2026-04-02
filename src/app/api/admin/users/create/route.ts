@@ -2,36 +2,27 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { normalizePhone } from "@/lib/auth/phone";
 import { resolveAuthEmail } from "@/lib/auth/login";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { getAuthedProfile } from "@/lib/auth/api-guards";
+import { isEventManagerRole } from "@/lib/auth/roles";
 
 const bodySchema = z.object({
   fullName: z.string().min(2),
   login: z.string().min(3),
   password: z.string().min(8),
-  role: z.enum(["admin", "super_admin"]),
+  role: z.enum(["user", "admin"]),
   region: z.string().nullable().optional(),
 });
 
 export async function POST(request: Request) {
   try {
-    const serverSupabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await serverSupabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    const auth = await getAuthedProfile();
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    const { data: profile, error: profileError } = await serverSupabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-    if (profileError || profile?.role !== "super_admin") {
+    const callerRole = auth.ctx.profile.role;
+    if (!isEventManagerRole(callerRole)) {
       return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
     }
 
@@ -42,21 +33,27 @@ export async function POST(request: Request) {
     }
 
     const { fullName, login, password, role, region } = parsed.data;
-    const { email, mode } = resolveAuthEmail(login);
 
+    if (callerRole === "admin" && role !== "user") {
+      return NextResponse.json(
+        { error: "Администратор может создавать только учётные записи с ролью «пользователь»." },
+        { status: 403 }
+      );
+    }
+
+    const { email, mode } = resolveAuthEmail(login);
     const adminSupabase = createAdminSupabaseClient();
 
-    const { data: created, error: createUserError } =
-        await adminSupabase.auth.admin.createUser({
-          email,
-          password,
-          email_confirm: true,
-        });
+    const { data: created, error: createUserError } = await adminSupabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
 
     if (createUserError || !created.user) {
       return NextResponse.json(
-          { error: createUserError?.message ?? "Ошибка создания пользователя" },
-          { status: 400 }
+        { error: createUserError?.message ?? "Ошибка создания пользователя" },
+        { status: 400 }
       );
     }
 

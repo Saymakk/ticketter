@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { requireEventManager } from "@/lib/auth/api-guards";
 
 const bodySchema = z.object({
   title: z.string().min(2),
@@ -9,33 +9,8 @@ const bodySchema = z.object({
   eventDate: z.string().min(10), // формат YYYY-MM-DD
 });
 
-async function ensureSuperAdmin() {
-  const supabase = await createServerSupabaseClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return { ok: false as const, status: 401, error: "Не авторизован" };
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profileError || profile?.role !== "super_admin") {
-    return { ok: false as const, status: 403, error: "Доступ запрещен" };
-  }
-
-  return { ok: true as const };
-}
-
 export async function POST(request: Request) {
-  const check = await ensureSuperAdmin();
+  const check = await requireEventManager();
   if (!check.ok) {
     return NextResponse.json({ error: check.error }, { status: check.status });
   }

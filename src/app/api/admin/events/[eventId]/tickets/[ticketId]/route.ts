@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { isEventManagerRole } from "@/lib/auth/roles";
 
 const patchSchema = z.object({
     buyerName: z.string().nullable().optional(),
@@ -19,7 +20,7 @@ async function ensureAccess(eventId: string) {
     if (!user) return { ok: false as const, status: 401, error: "Не авторизован" };
 
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-    if (profile?.role === "super_admin") return { ok: true as const };
+    if (isEventManagerRole(profile?.role)) return { ok: true as const };
 
     const { data: access } = await supabase
         .from("user_event_access")

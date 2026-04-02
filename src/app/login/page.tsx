@@ -73,7 +73,12 @@ function LoginForm() {
         return;
       }
 
-      router.push("/admin");
+      if (profile.role === "admin" || profile.role === "user") {
+        router.push("/admin");
+        return;
+      }
+
+      setErrorText("Неизвестная роль в профиле. Обратитесь к администратору.");
     } catch {
       setErrorText("Проверь формат: телефон (+7 …) или корректный email.");
     } finally {

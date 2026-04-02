@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { isEventManagerRole } from "@/lib/auth/roles";
 
 const createTicketSchema = z.object({
     buyerName: z.string().optional().nullable(),
@@ -22,6 +23,11 @@ async function ensureAccess(eventId: string) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) return { ok: false as const, status: 401, error: "Не авторизован" };
+
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    if (isEventManagerRole(profile?.role)) {
+        return { ok: true as const, userId: user.id };
+    }
 
     const { data: access } = await supabase
         .from("user_event_access")

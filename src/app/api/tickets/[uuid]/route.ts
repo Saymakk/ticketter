@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { isEventManagerRole } from "@/lib/auth/roles";
 
 type Params = { params: Promise<{ uuid: string }> };
 
@@ -32,7 +33,7 @@ export async function GET(_: Request, { params }: Params) {
         .eq("id", user.id)
         .single();
 
-    const isSuper = profile?.role === "super_admin";
+    const isManager = isEventManagerRole(profile?.role);
 
     const { data: access } = await supabase
         .from("user_event_access")
@@ -41,7 +42,7 @@ export async function GET(_: Request, { params }: Params) {
         .eq("event_id", ticket.event_id)
         .maybeSingle();
 
-    if (!access && !isSuper) {
+    if (!access && !isManager) {
         return NextResponse.json({ error: "Нет доступа к билету" }, { status: 403 });
     }
 

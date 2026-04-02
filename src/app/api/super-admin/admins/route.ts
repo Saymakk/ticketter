@@ -1,22 +1,24 @@
 import { NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { requireEventManager } from "@/lib/auth/api-guards";
+import { requireSuperAdmin } from "@/lib/auth/api-guards";
 
+/** Список администраторов (без суперадминов). */
 export async function GET() {
-  const check = await requireEventManager();
+  const check = await requireSuperAdmin();
   if (!check.ok) {
     return NextResponse.json({ error: check.error }, { status: check.status });
   }
 
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
-    .from("events")
-    .select("id,title,city,event_date,is_active,created_at")
+    .from("profiles")
+    .select("id,full_name,phone,role,region,created_at")
+    .eq("role", "admin")
     .order("created_at", { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json({ events: data ?? [] });
+  return NextResponse.json({ admins: data ?? [] });
 }

@@ -28,6 +28,7 @@ export async function POST(request: Request) {
 
     const { uuid, eventId } = parsed.data;
 
+    // В Supabase убедитесь, что RPC check_in_ticket_scoped разрешает роль «user» (не только admin).
     const { data, error } = await supabase.rpc("check_in_ticket_scoped", {
         p_ticket_uuid: uuid,
         p_event_id: eventId,

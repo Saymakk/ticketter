@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { isEventManagerRole, isStaffRole, isSuperAdminRole } from "@/lib/auth/roles";
 
 const IDLE_MS = 30 * 60 * 1000;
 
@@ -103,23 +104,32 @@ export async function proxy(request: NextRequest) {
 
     const role = profile?.role;
 
-    if (pathname.startsWith("/super-admin") && role !== "super_admin") {
+    if (pathname.startsWith("/super-admin") && !isSuperAdminRole(role)) {
       const url = request.nextUrl.clone();
       url.pathname = "/admin";
       return NextResponse.redirect(url);
     }
 
-    // scanner доступен admin + super_admin
-    if (pathname.startsWith("/scanner") && role !== "admin" && role !== "super_admin") {
+    // сканер: пользователь, админ, суперадмин
+    if (pathname.startsWith("/scanner") && !isStaffRole(role)) {
       const url = request.nextUrl.clone();
       url.pathname = "/admin";
       return NextResponse.redirect(url);
     }
 
-    if (pathname.startsWith("/admin") && role !== "admin" && role !== "super_admin") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      return NextResponse.redirect(url);
+    if (pathname.startsWith("/admin")) {
+      if (!isStaffRole(role)) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/login";
+        return NextResponse.redirect(url);
+      }
+      const needsManager =
+        pathname.startsWith("/admin/manage") || pathname.startsWith("/admin/users");
+      if (needsManager && !isEventManagerRole(role)) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/admin";
+        return NextResponse.redirect(url);
+      }
     }
   }
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { requireEventManager } from "@/lib/auth/api-guards";
 
 const patchFieldSchema = z.object({
   fieldKey: z.string().min(1).regex(/^[a-z0-9_]+$/).optional(),
@@ -12,30 +12,10 @@ const patchFieldSchema = z.object({
   sortOrder: z.number().int().min(0).optional(),
 });
 
-async function ensureSuperAdmin() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return { ok: false as const, status: 401, error: "Не авторизован" };
-  }
-
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-
-  if (profile?.role !== "super_admin") {
-    return { ok: false as const, status: 403, error: "Доступ запрещен" };
-  }
-
-  return { ok: true as const };
-}
-
 type Params = { params: Promise<{ eventId: string; fieldId: string }> };
 
 export async function PATCH(request: Request, { params }: Params) {
-  const check = await ensureSuperAdmin();
+  const check = await requireEventManager();
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
   const { eventId, fieldId } = await params;
@@ -83,7 +63,7 @@ export async function PATCH(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_: Request, { params }: Params) {
-  const check = await ensureSuperAdmin();
+  const check = await requireEventManager();
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
   const { eventId, fieldId } = await params;

@@ -19,12 +19,12 @@ export async function GET() {
         .eq("id", user.id)
         .single();
 
-    if (!profile || !["admin", "super_admin"].includes(profile.role)) {
+    if (!profile || !["user", "admin", "super_admin"].includes(profile.role)) {
         return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
     }
 
     // Авто-деактивация через дату: event_date >= today
-    if (profile.role === "super_admin") {
+    if (profile.role === "admin" || profile.role === "super_admin") {
         const { data, error } = await supabase
             .from("events")
             .select("id,title,city,event_date")

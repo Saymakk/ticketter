@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { isEventManagerRole } from "@/lib/auth/roles";
 
 type Params = { params: Promise<{ uuid: string }> };
 
@@ -33,16 +34,15 @@ async function ensureTicketReadable(ticketUuid: string) {
         .eq("event_id", ticket.event_id)
         .maybeSingle();
 
-    // super_admin может всё
     const { data: profile } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", user.id)
         .single();
 
-    const isSuper = profile?.role === "super_admin";
+    const isManager = isEventManagerRole(profile?.role);
 
-    if (!access && !isSuper) {
+    if (!access && !isManager) {
         return { ok: false as const, status: 403, error: "Нет доступа к билету" };
     }
 
