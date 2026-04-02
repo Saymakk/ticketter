@@ -156,52 +156,101 @@ export default function ScannerPage() {
             setMessage("Видео-элемент недоступен");
             return;
         }
-        if (isScannerOpen) {
-            return;
-        }
+        if (isScannerOpen) return;
 
         setMessage("");
         setIsScannerOpen(true);
 
         try {
-            const reader = new BrowserMultiFormatReader();
-            readerRef.current = reader;
+            // 1) Без secure context камера часто недоступна (особенно с телефона по http://IP)
+            const isLocalhost =
+                typeof window !== "undefined" &&
+                (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+            const isSecure =
+                typeof window !== "undefined" &&
+                (window.isSecureContext || isLocalhost);
 
-            const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-            const deviceId = devices[0]?.deviceId;
-
-            if (!deviceId) {
-                setMessage("Камера не найдена");
+            if (!isSecure) {
+                setMessage(
+                    "Открой сайт по HTTPS (например деплой на Vercel или туннель ngrok/cloudflared). По http:// с телефона камера часто блокируется."
+                );
                 setIsScannerOpen(false);
                 return;
             }
 
-            const controls = await reader.decodeFromVideoDevice(
-                deviceId,
-                videoRef.current,
-                async (result) => {
-                    if (!result) return;
+            if (!navigator.mediaDevices?.getUserMedia) {
+                setMessage("Браузер не поддерживает доступ к камере.");
+                setIsScannerOpen(false);
+                return;
+            }
 
-                    const now = Date.now();
-                    if (now - lastScanAtRef.current < 700) return;
-                    lastScanAtRef.current = now;
+            const reader = new BrowserMultiFormatReader();
+            readerRef.current = reader;
 
-                    const uuid = result.getText().trim();
-                    if (!uuid) return;
-                    if (uuid === lastUuidRef.current) return;
+            // 2) Сначала запрашиваем разрешение — иначе listVideoInputDevices() может быть пустым
+            try {
+                const pre = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: "environment" } },
+                });
+                pre.getTracks().forEach((t) => t.stop());
+            } catch {
+                // пользователь отказал или нет камеры
+            }
 
-                    lastUuidRef.current = uuid;
+            let controls: IScannerControls;
 
-                    // Как только нашли билет — сразу закрываем камеру
-                    stopScanner();
+            // 3) Предпочтительно: задняя камера без привязки к deviceId
+            try {
+                controls = await reader.decodeFromConstraints(
+                    { video: { facingMode: { ideal: "environment" } } },
+                    videoRef.current,
+                    async (result) => {
+                        if (!result) return;
+                        const now = Date.now();
+                        if (now - lastScanAtRef.current < 700) return;
+                        lastScanAtRef.current = now;
 
-                    await openTicketModalByUuid(uuid);
+                        const uuid = result.getText().trim();
+                        if (!uuid) return;
+                        if (uuid === lastUuidRef.current) return;
+
+                        lastUuidRef.current = uuid;
+                        stopScanner();
+                        await openTicketModalByUuid(uuid);
+                    }
+                );
+            } catch {
+                const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+                const deviceId = devices[0]?.deviceId;
+                if (!deviceId) {
+                    setMessage("Камера не найдена. Разреши доступ к камере в настройках браузера и открой сайт по HTTPS.");
+                    setIsScannerOpen(false);
+                    return;
                 }
-            );
+
+                controls = await reader.decodeFromVideoDevice(
+                    deviceId,
+                    videoRef.current,
+                    async (result) => {
+                        if (!result) return;
+                        const now = Date.now();
+                        if (now - lastScanAtRef.current < 700) return;
+                        lastScanAtRef.current = now;
+
+                        const uuid = result.getText().trim();
+                        if (!uuid) return;
+                        if (uuid === lastUuidRef.current) return;
+
+                        lastUuidRef.current = uuid;
+                        stopScanner();
+                        await openTicketModalByUuid(uuid);
+                    }
+                );
+            }
 
             controlsRef.current = controls;
         } catch {
-            setMessage("Не удалось запустить сканер. Проверь доступ к камере.");
+            setMessage("Не удалось запустить сканер. Проверь HTTPS и разрешение на камеру.");
             setIsScannerOpen(false);
         }
     }
