@@ -81,11 +81,18 @@ export default function AdminPage() {
             </>
           )}
           {role === "super_admin" && (
-            <HomeNavTile
-              href="/super-admin/admins"
-              title={t("admin.home.tileAdminsTitle")}
-              description={t("admin.home.tileAdminsDesc")}
-            />
+            <>
+              <HomeNavTile
+                href="/super-admin/admins"
+                title={t("admin.home.tileAdminsTitle")}
+                description={t("admin.home.tileAdminsDesc")}
+              />
+              <HomeNavTile
+                href="/super-admin/audit-logs"
+                title={t("admin.home.tileAuditTitle")}
+                description={t("admin.home.tileAuditDesc")}
+              />
+            </>
           )}
         </ul>
       </AppCard>

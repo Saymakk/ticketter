@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import brandMark from "@/app/apple-icon.png";
 import AccountSettingsButton from "@/components/account-settings-button";
 import LanguageSwitcher from "@/components/language-switcher";
+import UserIdentityBar from "@/components/user-identity-bar";
 import { useLocaleContext } from "@/components/locale-provider";
 
 export default function LogoutBar() {
@@ -31,17 +32,20 @@ export default function LogoutBar() {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 px-4 py-3 shadow-sm backdrop-blur-md sm:px-6">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
-        <span className="flex items-center gap-2 text-sm font-semibold tracking-tight text-slate-800">
-          <Image
-            src={brandMark}
-            alt=""
-            width={32}
-            height={32}
-            className="h-8 w-8 shrink-0 object-contain"
-            priority
-          />
-          {t("logoutBar.brand")}
-        </span>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
+          <span className="flex shrink-0 items-center gap-2 text-sm font-semibold tracking-tight text-slate-800">
+            <Image
+              src={brandMark}
+              alt=""
+              width={32}
+              height={32}
+              className="h-8 w-8 shrink-0 object-contain"
+              priority
+            />
+            {t("logoutBar.brand")}
+          </span>
+          <UserIdentityBar className="min-w-0 flex-1 basis-full text-left sm:basis-[min(100%,20rem)] sm:text-right" />
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <LanguageSwitcher />
           <AccountSettingsButton />

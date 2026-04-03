@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { EVENT_TICKETS_LOCKED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
 import { ensureEventAccess } from "@/lib/auth/event-access";
+import { writeAuditLog } from "@/lib/audit";
 
 const ticketTypeValue = z.union([z.enum(["vip", "standard", "vip+"]), z.null()]);
 
@@ -42,10 +43,20 @@ export async function PATCH(req: Request, { params }: Params) {
     const { error } = await adminGuard.from("tickets").update(payload).eq("id", Number(ticketId)).eq("event_id", eventId);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
+    void writeAuditLog({
+        actorId: check.userId,
+        action: "ticket.update",
+        resourceType: "ticket",
+        resourceId: ticketId,
+        request: req,
+        method: "PATCH",
+        metadata: { eventId },
+    });
+
     return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(_: Request, { params }: Params) {
+export async function DELETE(req: Request, { params }: Params) {
     const { eventId, ticketId } = await params;
     const check = await ensureEventAccess(eventId);
     if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
@@ -59,6 +70,16 @@ export async function DELETE(_: Request, { params }: Params) {
 
     const { error } = await admin.from("tickets").delete().eq("id", Number(ticketId)).eq("event_id", eventId);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    void writeAuditLog({
+        actorId: check.userId,
+        action: "ticket.delete",
+        resourceType: "ticket",
+        resourceId: ticketId,
+        request: req,
+        method: "DELETE",
+        metadata: { eventId },
+    });
 
     return NextResponse.json({ ok: true });
 }

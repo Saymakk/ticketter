@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { EVENT_ENDED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
 import { ensureEventAccess } from "@/lib/auth/event-access";
+import { writeAuditLog } from "@/lib/audit";
 
 const createTicketSchema = z.object({
     buyerName: z.string().optional().nullable(),
@@ -23,7 +24,7 @@ export async function GET(_: Request, { params }: Params) {
 
     const { data: ev, error: evErr } = await admin
         .from("events")
-        .select("title,city,event_date")
+        .select("title,city,event_date,event_time")
         .eq("id", eventId)
         .single();
 
@@ -47,6 +48,7 @@ export async function GET(_: Request, { params }: Params) {
             title: ev.title,
             city: ev.city,
             event_date: ev.event_date,
+            event_time: ev.event_time ?? null,
             isPast: isEventPastByDateString(ev.event_date),
         },
         stats: { total: tickets.length, checkedIn },
@@ -90,6 +92,16 @@ export async function POST(request: Request, { params }: Params) {
         .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    void writeAuditLog({
+        actorId: check.userId,
+        action: "ticket.create",
+        resourceType: "ticket",
+        resourceId: String(data.id),
+        request,
+        method: "POST",
+        metadata: { eventId, uuid: data.uuid },
+    });
 
     return NextResponse.json({ ok: true, ticket: data });
 }

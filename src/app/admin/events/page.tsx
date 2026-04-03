@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLocaleContext } from "@/components/locale-provider";
-import { isEventPastByDateString } from "@/lib/event-date";
+import { formatEventDateTimeLine, isEventPastByDateString } from "@/lib/event-date";
 import {
   AppCard,
   AppShell,
@@ -17,6 +17,7 @@ type EventItem = {
   title: string;
   city: string;
   event_date: string;
+  event_time?: string | null;
   is_active: boolean;
 };
 
@@ -72,7 +73,7 @@ export default function AdminEventsPage() {
                   <p className="font-medium text-slate-900">{ev.title}</p>
                   <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
                     <span>
-                      {ev.city} · {ev.event_date}
+                      {ev.city} · {formatEventDateTimeLine(ev.event_date, ev.event_time)}
                     </span>
                     {isEventPastByDateString(ev.event_date) ? (
                       <span className="rounded-full bg-slate-200/90 px-2 py-0.5 text-xs font-medium text-slate-700">

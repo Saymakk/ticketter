@@ -28,3 +28,19 @@ export function isEventPastByDateString(eventDate: string | null | undefined): b
   const todayUtc = new Date().toISOString().slice(0, 10);
   return d < todayUtc;
 }
+
+/** Дата и опциональное время (HH:MM) в одной строке */
+export function formatEventDateTimeLine(
+  eventDate: string | null | undefined,
+  eventTime: string | null | undefined
+): string {
+  const d = eventDate?.slice(0, 10) ?? "";
+  const t = eventTime?.trim();
+  if (!t) return d;
+  return d ? `${d} ${t}` : t;
+}
+
+export function isValidOptionalEventTime(s: string | null | undefined): boolean {
+  if (s == null || s === "") return true;
+  return /^\d{2}:\d{2}$/.test(s.trim());
+}

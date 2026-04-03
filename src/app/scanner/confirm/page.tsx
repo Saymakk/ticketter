@@ -8,6 +8,7 @@ import {
   scannerListHref,
   SCANNER_FROM_PANEL_PARAM,
 } from "@/lib/scanner/from-panel";
+import { ticketStatusLabel } from "@/lib/ticket-status-label";
 import {
   AppCard,
   AppShell,
@@ -192,7 +193,7 @@ function ConfirmContent() {
       {row(t("admin.ticketCard.rowPhone"), ticket.phone ?? "—")}
       {ticket.ticket_type ? row(t("admin.ticketCard.rowType"), ticket.ticket_type) : null}
       {row(t("admin.ticketCard.rowRegion"), ticket.region ?? "—")}
-      {row(t("admin.ticketCard.rowStatus"), ticket.status)}
+      {row(t("admin.ticketCard.rowStatus"), ticketStatusLabel(ticket.status, t))}
       {row(t("scanner.confirm.rowDate"), new Date(ticket.created_at).toLocaleString())}
     </div>
   );

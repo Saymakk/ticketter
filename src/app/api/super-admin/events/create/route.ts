@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireEventManager } from "@/lib/auth/api-guards";
+import { writeAuditLog } from "@/lib/audit";
+import { isValidOptionalEventTime } from "@/lib/event-date";
 
 const fieldDraftSchema = z
   .object({
@@ -25,6 +27,7 @@ const bodySchema = z.object({
   title: z.string().min(2),
   city: z.string().min(2),
   eventDate: z.string().min(10),
+  eventTime: z.string().optional().nullable(),
   fields: z.array(fieldDraftSchema).optional(),
 });
 
@@ -44,7 +47,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const { title, city, eventDate, fields: fieldDrafts } = parsed.data;
+  const { title, city, eventDate, eventTime, fields: fieldDrafts } = parsed.data;
+  const timeTrim = typeof eventTime === "string" ? eventTime.trim() : "";
+  if (timeTrim && !isValidOptionalEventTime(timeTrim)) {
+    return NextResponse.json({ error: "Время: формат HH:MM" }, { status: 400 });
+  }
 
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
@@ -53,10 +60,11 @@ export async function POST(request: Request) {
       title,
       city,
       event_date: eventDate,
+      event_time: timeTrim || null,
       is_active: true,
       created_by: check.ctx.user.id,
     })
-    .select("id,title,city,event_date,is_active")
+    .select("id,title,city,event_date,event_time,is_active")
     .single();
 
   if (error) {
@@ -81,6 +89,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: fieldsError.message }, { status: 400 });
     }
   }
+
+  void writeAuditLog({
+    actorId: check.ctx.user.id,
+    action: "event.create",
+    resourceType: "event",
+    resourceId: data.id,
+    request,
+    method: "POST",
+    metadata: { title: data.title, city: data.city, event_date: data.event_date },
+  });
 
   return NextResponse.json({ ok: true, event: data });
 }

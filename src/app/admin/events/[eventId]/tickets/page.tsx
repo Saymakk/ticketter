@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useLocaleContext } from "@/components/locale-provider";
+import { formatEventDateTimeLine } from "@/lib/event-date";
+import { ticketStatusLabel } from "@/lib/ticket-status-label";
 import {
   AppCard,
   AppShell,
@@ -21,10 +23,26 @@ type EventHead = {
   title: string;
   city: string;
   event_date: string;
+  event_time?: string | null;
   isPast: boolean;
 };
 
 type TicketStats = { total: number; checkedIn: number };
+
+function filenameFromContentDisposition(cd: string | null): string | null {
+  if (!cd) return null;
+  const star = /filename\*=(?:UTF-8''|utf-8'')([^;\s]+)/i.exec(cd);
+  if (star?.[1]) {
+    try {
+      return decodeURIComponent(star[1].replace(/^["']|["']$/g, ""));
+    } catch {
+      /* ignore */
+    }
+  }
+  const quoted = /filename="([^"]+)"/i.exec(cd);
+  if (quoted?.[1]) return quoted[1];
+  return null;
+}
 
 type TicketItem = {
   id: number;
@@ -50,6 +68,9 @@ export default function TicketsPage() {
   const [dupCopies, setDupCopies] = useState(1);
   const [dupLoading, setDupLoading] = useState(false);
   const [deleteBulkLoading, setDeleteBulkLoading] = useState(false);
+  const [exporting, setExporting] = useState<"" | "csv" | "xlsx">("");
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   const [successMsg, setSuccessMsg] = useState("");
   const [eventHead, setEventHead] = useState<EventHead | null>(null);
   const [ticketStats, setTicketStats] = useState<TicketStats | null>(null);
@@ -64,6 +85,24 @@ export default function TicketsPage() {
   useEffect(() => {
     if (eventId) loadTickets();
   }, [eventId]);
+
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExportMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [exportMenuOpen]);
 
   async function loadTickets() {
     setListLoading(true);
@@ -287,6 +326,35 @@ export default function TicketsPage() {
     }
   }
 
+  async function downloadExport(format: "csv" | "xlsx") {
+    setExporting(format);
+    setError("");
+    try {
+      const res = await fetch(
+        `/api/admin/events/${eventId}/tickets/export?format=${format}`,
+        { cache: "no-store" }
+      );
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setError(String((j as { error?: string }).error ?? t("admin.tickets.exportError")));
+        return;
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get("Content-Disposition");
+      const filename = filenameFromContentDisposition(cd) ?? `tickets.${format}`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError(t("admin.tickets.exportError"));
+    } finally {
+      setExporting("");
+    }
+  }
+
   return (
     <AppShell maxWidth="max-w-4xl">
       <BackNav href="/admin/events">{t("admin.tickets.backEvents")}</BackNav>
@@ -296,7 +364,7 @@ export default function TicketsPage() {
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span className="font-medium text-slate-900">{eventHead.title}</span>
               <span className="text-sm text-slate-600">
-                {eventHead.city} · {eventHead.event_date}
+                {eventHead.city} · {formatEventDateTimeLine(eventHead.event_date, eventHead.event_time)}
               </span>
               {eventPast ? (
                 <span className="rounded-full bg-slate-200/90 px-2.5 py-0.5 text-xs font-medium text-slate-700">
@@ -355,6 +423,59 @@ export default function TicketsPage() {
                 t("admin.tickets.deleteSelected")
               )}
             </button>
+            <div className="relative inline-block" ref={exportMenuRef}>
+              <button
+                type="button"
+                onClick={() => setExportMenuOpen((o) => !o)}
+                disabled={!!exporting}
+                className={`${btnSecondary} inline-flex items-center gap-1.5`}
+                aria-expanded={exportMenuOpen}
+                aria-haspopup="menu"
+              >
+                {exporting ? (
+                  <>
+                    <CircularProgress size="sm" />
+                    {t("admin.tickets.exporting")}
+                  </>
+                ) : (
+                  <>
+                    {t("admin.tickets.exportReport")}
+                    <span className="text-slate-500" aria-hidden>
+                      ▾
+                    </span>
+                  </>
+                )}
+              </button>
+              {exportMenuOpen && !exporting ? (
+                <div
+                  role="menu"
+                  className="absolute left-0 top-full z-20 mt-1 min-w-[11rem] rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="block w-full px-3 py-2 text-left text-sm text-slate-800 hover:bg-slate-50"
+                    onClick={() => {
+                      setExportMenuOpen(false);
+                      void downloadExport("xlsx");
+                    }}
+                  >
+                    {t("admin.tickets.exportXlsx")}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="block w-full px-3 py-2 text-left text-sm text-slate-800 hover:bg-slate-50"
+                    onClick={() => {
+                      setExportMenuOpen(false);
+                      void downloadExport("csv");
+                    }}
+                  >
+                    {t("admin.tickets.exportCsv")}
+                  </button>
+                </div>
+              ) : null}
+            </div>
             <div className="flex flex-wrap items-center gap-1.5 sm:border-l sm:border-slate-200 sm:pl-2">
               <span className="text-sm text-slate-600">{t("admin.tickets.duplicateCopiesShort")}</span>
               <input
@@ -490,7 +611,7 @@ export default function TicketsPage() {
                               ticket.status === "checked_in" ? "text-teal-700" : "text-slate-500"
                             }
                           >
-                            {ticket.status}
+                            {ticketStatusLabel(ticket.status, t)}
                           </span>
                         </p>
                       </div>

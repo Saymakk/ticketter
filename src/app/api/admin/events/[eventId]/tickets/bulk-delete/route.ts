@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { EVENT_TICKETS_LOCKED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
 import { ensureEventAccess } from "@/lib/auth/event-access";
+import { writeAuditLog } from "@/lib/audit";
 
 const bodySchema = z.object({
   ticketIds: z.array(z.number().int().positive()).min(1).max(200),
@@ -49,6 +50,16 @@ export async function POST(request: Request, { params }: Params) {
   if (delErr) {
     return NextResponse.json({ error: delErr.message }, { status: 400 });
   }
+
+  void writeAuditLog({
+    actorId: check.userId,
+    action: "ticket.bulk_delete",
+    resourceType: "event",
+    resourceId: eventId,
+    request,
+    method: "POST",
+    metadata: { ticketIds: uniqueIds },
+  });
 
   return NextResponse.json({ ok: true, deleted: uniqueIds.length });
 }

@@ -6,6 +6,7 @@ import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser"
 import type { Result } from "@zxing/library";
 import AccountSettingsButton from "@/components/account-settings-button";
 import LanguageSwitcher from "@/components/language-switcher";
+import UserIdentityBar from "@/components/user-identity-bar";
 import PwaInstallPrompt from "@/components/pwa-install-prompt";
 import { useLocaleContext } from "@/components/locale-provider";
 import {
@@ -22,12 +23,14 @@ import {
   scannerConfirmHref,
   SCANNER_FROM_PANEL_PARAM,
 } from "@/lib/scanner/from-panel";
+import { formatEventDateTimeLine } from "@/lib/event-date";
 
 type EventItem = {
   id: string;
   title: string;
   city: string;
   event_date: string;
+  event_time?: string | null;
 };
 
 type CheckedInItem = {
@@ -259,9 +262,12 @@ function ScannerPageContent() {
 
   return (
     <AppShell maxWidth="max-w-2xl">
-      <div className="mx-auto -mt-5 mb-1 flex max-w-2xl items-center justify-end gap-3 px-4 sm:-mt-6 sm:px-6">
-        <LanguageSwitcher />
-        <AccountSettingsButton />
+      <div className="mx-auto -mt-5 mb-1 flex max-w-2xl flex-wrap items-center justify-between gap-3 px-4 sm:-mt-6 sm:px-6">
+        <UserIdentityBar className="min-w-0 flex-1 basis-full sm:basis-0 sm:text-right" />
+        <div className="flex shrink-0 items-center gap-3 sm:ml-auto">
+          <LanguageSwitcher />
+          <AccountSettingsButton />
+        </div>
       </div>
       {fromPanel ? <BackNav href="/admin">{t("scanner.backPanel")}</BackNav> : null}
       <AppCard title={t("scanner.title")} subtitle={t("scanner.subtitle")}>
@@ -284,7 +290,8 @@ function ScannerPageContent() {
                 <option value="">{t("scanner.pickEvent")}</option>
                 {events.map((ev) => (
                   <option key={ev.id} value={ev.id}>
-                    {ev.title} / {ev.city} / {ev.event_date}
+                    {ev.title} / {ev.city} /{" "}
+                    {formatEventDateTimeLine(ev.event_date, ev.event_time)}
                   </option>
                 ))}
               </select>
@@ -294,7 +301,8 @@ function ScannerPageContent() {
                 <span className="font-medium text-slate-900">{selectedEvent.title}</span>
                 <span className="text-slate-600">
                   {" "}
-                  · {selectedEvent.city} · {selectedEvent.event_date}
+                  · {selectedEvent.city} ·{" "}
+                  {formatEventDateTimeLine(selectedEvent.event_date, selectedEvent.event_time)}
                 </span>
               </p>
             )}

@@ -33,7 +33,7 @@ export async function GET() {
       if (visibleEventIds.length === 0) return NextResponse.json({ events: [] });
       const { data, error } = await admin
         .from("events")
-        .select("id,title,city,event_date,is_active")
+        .select("id,title,city,event_date,event_time,is_active")
         .in("id", visibleEventIds)
         .order("event_date", { ascending: false });
 
@@ -45,7 +45,7 @@ export async function GET() {
 
     const { data, error } = await admin
       .from("events")
-      .select("id,title,city,event_date,is_active")
+      .select("id,title,city,event_date,event_time,is_active")
       .order("event_date", { ascending: false });
 
     if (error) {
@@ -56,7 +56,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("user_event_access")
-    .select("event:events(id,title,city,event_date,is_active)")
+    .select("event:events(id,title,city,event_date,event_time,is_active)")
     .eq("user_id", user.id);
 
   if (error) {

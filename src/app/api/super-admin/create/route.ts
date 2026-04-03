@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireEventManager } from "@/lib/auth/api-guards";
+import { isValidOptionalEventTime } from "@/lib/event-date";
 
 const bodySchema = z.object({
   title: z.string().min(2),
   city: z.string().min(2),
   eventDate: z.string().min(10), // формат YYYY-MM-DD
+  eventTime: z.string().optional().nullable(),
 });
 
 export async function POST(request: Request) {
@@ -22,7 +24,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Некорректные данные" }, { status: 400 });
   }
 
-  const { title, city, eventDate } = parsed.data;
+  const { title, city, eventDate, eventTime } = parsed.data;
+  const timeTrim = typeof eventTime === "string" ? eventTime.trim() : "";
+  if (timeTrim && !isValidOptionalEventTime(timeTrim)) {
+    return NextResponse.json({ error: "Время: формат HH:MM" }, { status: 400 });
+  }
 
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
@@ -31,9 +37,10 @@ export async function POST(request: Request) {
       title,
       city,
       event_date: eventDate,
+      event_time: timeTrim || null,
       is_active: true,
     })
-    .select("id,title,city,event_date,is_active")
+    .select("id,title,city,event_date,event_time,is_active")
     .single();
 
   if (error) {

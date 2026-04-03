@@ -4,6 +4,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireEventManager } from "@/lib/auth/api-guards";
 import { EVENT_ENDED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
 import { canAdminAccessEvent } from "@/lib/auth/event-access";
+import { writeAuditLog } from "@/lib/audit";
 
 const createFieldSchema = z
   .object({
@@ -106,6 +107,16 @@ export async function POST(request: Request, { params }: Params) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  void writeAuditLog({
+    actorId: check.ctx.user.id,
+    action: "event_field.create",
+    resourceType: "event_field",
+    resourceId: String(data.id),
+    request,
+    method: "POST",
+    metadata: { eventId, fieldKey: data.field_key },
+  });
 
   return NextResponse.json({ field: data });
 }

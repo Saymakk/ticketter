@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { EVENT_ENDED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
 import { ensureEventAccess } from "@/lib/auth/event-access";
+import { writeAuditLog } from "@/lib/audit";
 
 const bodySchema = z.object({
   sourceUuids: z.array(z.string().uuid()).min(1).max(50),
@@ -77,6 +78,16 @@ export async function POST(request: Request, { params }: Params) {
   if (insertError) {
     return NextResponse.json({ error: insertError.message }, { status: 400 });
   }
+
+  void writeAuditLog({
+    actorId: check.userId,
+    action: "ticket.duplicate",
+    resourceType: "event",
+    resourceId: eventId,
+    request,
+    method: "POST",
+    metadata: { created: rows.length, copies, sourceCount: sourceUuids.length },
+  });
 
   return NextResponse.json({ ok: true, created: rows.length });
 }

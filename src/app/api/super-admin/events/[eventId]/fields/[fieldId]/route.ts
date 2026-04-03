@@ -4,6 +4,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireEventManager } from "@/lib/auth/api-guards";
 import { EVENT_ENDED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
 import { canAdminAccessEvent } from "@/lib/auth/event-access";
+import { writeAuditLog } from "@/lib/audit";
 
 async function blockIfEventEnded(eventId: string): Promise<NextResponse | null> {
   const admin = createAdminSupabaseClient();
@@ -78,10 +79,20 @@ export async function PATCH(request: Request, { params }: Params) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   if (!data) return NextResponse.json({ error: "Поле не найдено" }, { status: 404 });
 
+  void writeAuditLog({
+    actorId: check.ctx.user.id,
+    action: "event_field.update",
+    resourceType: "event_field",
+    resourceId: fieldId,
+    request,
+    method: "PATCH",
+    metadata: { eventId },
+  });
+
   return NextResponse.json({ field: data });
 }
 
-export async function DELETE(_: Request, { params }: Params) {
+export async function DELETE(request: Request, { params }: Params) {
   const check = await requireEventManager();
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
@@ -98,6 +109,16 @@ export async function DELETE(_: Request, { params }: Params) {
   const { error } = await admin.from("event_fields").delete().eq("id", fieldId).eq("event_id", eventId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  void writeAuditLog({
+    actorId: check.ctx.user.id,
+    action: "event_field.delete",
+    resourceType: "event_field",
+    resourceId: fieldId,
+    request,
+    method: "DELETE",
+    metadata: { eventId },
+  });
 
   return NextResponse.json({ ok: true });
 }

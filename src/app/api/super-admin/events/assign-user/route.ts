@@ -4,10 +4,11 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireEventManager } from "@/lib/auth/api-guards";
 import { canAdminAccessEvent } from "@/lib/auth/event-access";
 import { isEventPastByDateString, EVENT_ASSIGNMENTS_LOCKED_MESSAGE } from "@/lib/event-date";
+import { writeAuditLog } from "@/lib/audit";
 
 const bodySchema = z.object({
-  userId: z.string().uuid(),
   eventId: z.string().uuid(),
+  userIds: z.array(z.string().uuid()).min(1).max(100),
 });
 
 export async function POST(request: Request) {
@@ -23,7 +24,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Некорректные данные" }, { status: 400 });
   }
 
-  const { userId, eventId } = parsed.data;
+  const { eventId, userIds } = parsed.data;
+  const uniqueIds = [...new Set(userIds)];
 
   const admin = createAdminSupabaseClient();
   const actorRole = check.ctx.profile.role;
@@ -44,46 +46,79 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: EVENT_ASSIGNMENTS_LOCKED_MESSAGE }, { status: 403 });
   }
 
-  const { data: targetProfile } = await admin
-    .from("profiles")
-    .select("role")
-    .eq("id", userId)
-    .maybeSingle();
+  let assigned = 0;
+  let duplicate = 0;
+  const failures: { userId: string; error: string }[] = [];
 
-  if (!targetProfile || (targetProfile.role !== "user" && targetProfile.role !== "admin")) {
+  for (const userId of uniqueIds) {
+    const { data: targetProfile } = await admin
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (!targetProfile || (targetProfile.role !== "user" && targetProfile.role !== "admin")) {
+      failures.push({
+        userId,
+        error: "Назначать на мероприятие можно только пользователей или администраторов.",
+      });
+      continue;
+    }
+
+    if (targetProfile.role === "admin" && actorRole !== "super_admin" && userId === actorId) {
+      failures.push({ userId, error: "Нельзя выдавать доступ самому себе" });
+      continue;
+    }
+
+    const { error } =
+      targetProfile.role === "admin"
+        ? await admin.from("admin_event_access").insert({
+            admin_id: userId,
+            event_id: eventId,
+            granted_by: actorId,
+          })
+        : await admin.from("user_event_access").insert({
+            user_id: userId,
+            event_id: eventId,
+          });
+
+    if (error) {
+      if (error.code === "23505") {
+        duplicate += 1;
+        continue;
+      }
+      failures.push({ userId, error: error.message });
+      continue;
+    }
+
+    assigned += 1;
+    void writeAuditLog({
+      actorId,
+      action: "event.assign_access",
+      resourceType: "event",
+      resourceId: eventId,
+      request,
+      method: "POST",
+      metadata: { targetUserId: userId, targetRole: targetProfile.role },
+    });
+  }
+
+  if (assigned === 0 && duplicate === 0 && failures.length === uniqueIds.length) {
     return NextResponse.json(
       {
-        error: "Назначать на мероприятие можно только пользователей или администраторов.",
+        error: "Не удалось назначить доступ",
+        assigned: 0,
+        duplicate: 0,
+        failures,
       },
       { status: 400 }
     );
   }
 
-  if (targetProfile.role === "admin" && actorRole !== "super_admin" && userId === actorId) {
-    return NextResponse.json({ error: "Нельзя выдавать доступ самому себе" }, { status: 400 });
-  }
-
-  const { error } =
-    targetProfile.role === "admin"
-      ? await admin.from("admin_event_access").insert({
-          admin_id: userId,
-          event_id: eventId,
-          granted_by: actorId,
-        })
-      : await admin.from("user_event_access").insert({
-          user_id: userId,
-          event_id: eventId,
-        });
-
-  if (error) {
-    if (error.code === "23505") {
-      return NextResponse.json(
-        { error: "Доступ уже назначен" },
-        { status: 409 }
-      );
-    }
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    assigned,
+    duplicate,
+    failures,
+  });
 }

@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useLocaleContext } from "@/components/locale-provider";
+import { ticketStatusLabel } from "@/lib/ticket-status-label";
 import {
   AppCard,
   AppShell,
@@ -139,7 +140,7 @@ export default function TicketCardPage() {
             ? row(t("admin.ticketCard.rowType"), ticket.ticket_type)
             : null}
           {row(t("admin.ticketCard.rowRegion"), ticket.region ?? "—")}
-          {row(t("admin.ticketCard.rowStatus"), ticket.status)}
+          {row(t("admin.ticketCard.rowStatus"), ticketStatusLabel(ticket.status, t))}
           {row(t("admin.ticketCard.rowCreated"), new Date(ticket.created_at).toLocaleString())}
           {customEntries.map(([k, v]) => (
             <Fragment key={k}>{row(k, String(v ?? "—"))}</Fragment>

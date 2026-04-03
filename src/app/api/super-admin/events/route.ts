@@ -15,7 +15,7 @@ export async function GET() {
     if (visibleEventIds.length === 0) return NextResponse.json({ events: [] });
     const { data, error } = await admin
       .from("events")
-      .select("id,title,city,event_date,is_active,created_at")
+      .select("id,title,city,event_date,event_time,is_active,created_at")
       .in("id", visibleEventIds)
       .order("created_at", { ascending: false });
 
@@ -27,7 +27,7 @@ export async function GET() {
 
   const { data, error } = await admin
     .from("events")
-    .select("id,title,city,event_date,is_active,created_at")
+    .select("id,title,city,event_date,event_time,is_active,created_at")
     .order("created_at", { ascending: false });
 
   if (error) {

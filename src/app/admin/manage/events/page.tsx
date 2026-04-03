@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocaleContext } from "@/components/locale-provider";
-import { isEventPastByDateString } from "@/lib/event-date";
+import { formatEventDateTimeLine, isEventPastByDateString } from "@/lib/event-date";
 import {
   AppCard,
   AppSection,
@@ -23,6 +23,7 @@ type EventItem = {
   title: string;
   city: string;
   event_date: string;
+  event_time?: string | null;
   is_active: boolean;
 };
 
@@ -68,14 +69,23 @@ export default function ManageEventsPage() {
   const [title, setTitle] = useState("");
   const [city, setCity] = useState("");
   const [eventDate, setEventDate] = useState("");
+  const [eventTime, setEventTime] = useState("");
 
   const [selectedEventId, setSelectedEventId] = useState("");
-  const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [eventAccess, setEventAccess] = useState<{
+    creatorId: string | null;
+    assignedProfileIds: string[];
+    revokableProfileIds: string[];
+  } | null>(null);
+  const [eventAccessLoading, setEventAccessLoading] = useState(false);
+  const [revokingUserId, setRevokingUserId] = useState<string | null>(null);
 
   const [editEventId, setEditEventId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editCity, setEditCity] = useState("");
   const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("");
   const [editIsActive, setEditIsActive] = useState(true);
 
   const [draftFields, setDraftFields] = useState<DraftField[]>([]);
@@ -155,6 +165,64 @@ export default function ManageEventsPage() {
     return ev ? isEventPastByDateString(ev.event_date) : false;
   }, [events, selectedEventId]);
 
+  const assignedIdSet = useMemo(
+    () => new Set(eventAccess?.assignedProfileIds ?? []),
+    [eventAccess?.assignedProfileIds]
+  );
+
+  const revokableIdSet = useMemo(
+    () => new Set(eventAccess?.revokableProfileIds ?? []),
+    [eventAccess?.revokableProfileIds]
+  );
+
+  const assignAllSelectedAlreadyAssigned = useMemo(
+    () =>
+      selectedUserIds.length > 0 &&
+      selectedUserIds.every((id) => assignedIdSet.has(id)),
+    [selectedUserIds, assignedIdSet]
+  );
+
+  const pullEventAccess = useCallback(async (eventId: string) => {
+    try {
+      const res = await fetch(
+        `/api/super-admin/events/${encodeURIComponent(eventId)}/access-holders`,
+        { cache: "no-store" }
+      );
+      const json =
+        (await safeReadJson<{
+          creatorId?: string | null;
+          assignedProfileIds?: string[];
+          revokableProfileIds?: string[];
+        }>(res)) ?? {};
+      if (!res.ok) return null;
+      return {
+        creatorId: json.creatorId ?? null,
+        assignedProfileIds: json.assignedProfileIds ?? [],
+        revokableProfileIds: json.revokableProfileIds ?? [],
+      };
+    } catch {
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!selectedEventId) {
+      setEventAccess(null);
+      setEventAccessLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setEventAccessLoading(true);
+    void pullEventAccess(selectedEventId).then((data) => {
+      if (cancelled) return;
+      setEventAccess(data);
+      setEventAccessLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEventId, pullEventAccess]);
+
   function addDraftField() {
     setDraftFields((prev) => [
       ...prev,
@@ -229,6 +297,7 @@ export default function ManageEventsPage() {
           title,
           city,
           eventDate,
+          ...(eventTime.trim() ? { eventTime: eventTime.trim() } : {}),
           ...(fieldsPayload.length ? { fields: fieldsPayload } : {}),
         }),
       });
@@ -248,6 +317,7 @@ export default function ManageEventsPage() {
       setTitle("");
       setCity("");
       setEventDate("");
+      setEventTime("");
       setDraftFields([]);
       await loadData();
     } catch {
@@ -255,9 +325,15 @@ export default function ManageEventsPage() {
     }
   }
 
+  function toggleAssignee(id: string) {
+    setSelectedUserIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
   async function onAssign(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!selectedEventId || !selectedUserId) {
+    if (!selectedEventId || selectedUserIds.length === 0) {
       setResult(t("admin.manage.errorApi", { detail: t("admin.manage.assignPickRequired") }));
       return;
     }
@@ -273,12 +349,19 @@ export default function ManageEventsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: selectedUserId,
+          userIds: selectedUserIds,
           eventId: selectedEventId,
         }),
       });
 
-      const json = (await safeReadJson<ApiError>(res)) ?? {};
+      const json =
+        (await safeReadJson<
+          ApiError & {
+            assigned?: number;
+            duplicate?: number;
+            failures?: { userId: string; error: string }[];
+          }
+        >(res)) ?? {};
 
       if (!res.ok) {
         setResult(
@@ -289,9 +372,102 @@ export default function ManageEventsPage() {
         return;
       }
 
-      setResult(t("admin.manage.resultAssigned"));
+      const assigned = json.assigned ?? 0;
+      const dup = json.duplicate ?? 0;
+      const fails = json.failures ?? [];
+
+      const parts: string[] = [];
+      if (assigned > 0) {
+        parts.push(t("admin.manage.resultAssignedCount", { count: assigned }));
+      }
+      if (dup > 0) {
+        parts.push(t("admin.manage.assignSkippedDup", { count: dup }));
+      }
+      if (fails.length > 0) {
+        const detail = [...new Set(fails.map((f) => f.error))].join("; ");
+        parts.push(
+          t("admin.manage.assignPartialFailures", {
+            count: fails.length,
+            detail,
+          })
+        );
+      }
+      if (parts.length === 0) {
+        parts.push(t("admin.manage.resultAssigned"));
+      }
+      setResult(parts.join(" "));
+      const refreshed = await pullEventAccess(selectedEventId);
+      if (refreshed) setEventAccess(refreshed);
+      if (assigned > 0 && fails.length === 0) {
+        setSelectedUserIds([]);
+      }
     } catch {
       setResult(t("admin.manage.networkAssign"));
+    }
+  }
+
+  async function onRevokeAccess(targetUserId: string) {
+    if (!selectedEventId) return;
+    const evForRevoke = events.find((e) => e.id === selectedEventId);
+    if (evForRevoke && isEventPastByDateString(evForRevoke.event_date)) {
+      setResult(t("admin.manage.errorApi", { detail: t("admin.manage.assignPastBlocked") }));
+      return;
+    }
+    setRevokingUserId(targetUserId);
+    setResult(t("admin.manage.resultRevoking"));
+    try {
+      const res = await fetch("/api/super-admin/events/revoke-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: selectedEventId,
+          userIds: [targetUserId],
+        }),
+      });
+
+      const json =
+        (await safeReadJson<
+          ApiError & {
+            revoked?: number;
+            failures?: { userId: string; error: string }[];
+          }
+        >(res)) ?? {};
+
+      if (!res.ok) {
+        setResult(
+          t("admin.manage.errorApi", {
+            detail: String(json.error ?? `HTTP ${res.status}`),
+          })
+        );
+        return;
+      }
+
+      const revoked = json.revoked ?? 0;
+      const fails = json.failures ?? [];
+      const parts: string[] = [];
+      if (revoked > 0) {
+        parts.push(t("admin.manage.resultRevokedCount", { count: revoked }));
+      }
+      if (fails.length > 0) {
+        const detail = [...new Set(fails.map((f) => f.error))].join("; ");
+        parts.push(
+          t("admin.manage.revokePartialFailures", {
+            count: fails.length,
+            detail,
+          })
+        );
+      }
+      if (parts.length === 0) {
+        parts.push(t("admin.manage.resultRevoked"));
+      }
+      setResult(parts.join(" "));
+      const refreshed = await pullEventAccess(selectedEventId);
+      if (refreshed) setEventAccess(refreshed);
+      setSelectedUserIds((prev) => prev.filter((id) => id !== targetUserId));
+    } catch {
+      setResult(t("admin.manage.networkRevoke"));
+    } finally {
+      setRevokingUserId(null);
     }
   }
 
@@ -301,6 +477,7 @@ export default function ManageEventsPage() {
     setEditTitle(ev.title);
     setEditCity(ev.city);
     setEditDate(ev.event_date);
+    setEditTime(ev.event_time?.trim() ?? "");
     setEditIsActive(ev.is_active);
   }
 
@@ -309,6 +486,7 @@ export default function ManageEventsPage() {
     setEditTitle("");
     setEditCity("");
     setEditDate("");
+    setEditTime("");
     setEditIsActive(true);
   }
 
@@ -323,6 +501,7 @@ export default function ManageEventsPage() {
         title: editTitle,
         city: editCity,
         eventDate: editDate,
+        eventTime: editTime.trim() ? editTime.trim() : null,
         isActive: editIsActive,
       }),
     });
@@ -421,6 +600,14 @@ export default function ManageEventsPage() {
                     onChange={(e) => setEventDate(e.target.value)}
                     required
                   />
+                  <input
+                    type="time"
+                    className={inputClass}
+                    value={eventTime}
+                    onChange={(e) => setEventTime(e.target.value)}
+                    title={t("admin.manage.placeholderEventTime")}
+                  />
+                  <p className="text-xs text-slate-500">{t("admin.manage.eventTimeHint")}</p>
                   <button type="submit" disabled={loading} className={btnPrimary}>
                     {t("admin.manage.submitCreate")}
                   </button>
@@ -513,7 +700,8 @@ export default function ManageEventsPage() {
                         const past = isEventPastByDateString(ev.event_date);
                         return (
                           <option key={ev.id} value={ev.id} disabled={past}>
-                            {ev.title} / {ev.city} / {ev.event_date}
+                            {ev.title} / {ev.city} /{" "}
+                            {formatEventDateTimeLine(ev.event_date, ev.event_time)}
                             {past ? ` · ${t("admin.events.eventPastBadge")}` : ""}
                           </option>
                         );
@@ -525,28 +713,48 @@ export default function ManageEventsPage() {
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-teal-800/90">
                       {t("admin.manage.assigneeListLabel")}
                     </p>
+                    {selectedEventId && eventAccessLoading ? (
+                      <p className="mb-2 text-xs text-slate-500">{t("admin.manage.assignAccessLoading")}</p>
+                    ) : null}
                     <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/60 p-2">
                       {assignees.length === 0 ? (
                         <p className="px-2 py-3 text-sm text-slate-600">{t("admin.manage.assignNoAssignees")}</p>
                       ) : (
-                        assignees.map((u) => (
-                          <label
+                        assignees.map((u) => {
+                          const selected = selectedUserIds.includes(u.id);
+                          const isExplicitlyAssigned = assignedIdSet.has(u.id);
+                          const isEventCreator = eventAccess?.creatorId === u.id;
+                          const canRevokeRow =
+                            isExplicitlyAssigned && revokableIdSet.has(u.id);
+                          return (
+                          <div
                             key={u.id}
-                            className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 text-sm transition ${
-                              selectedUserId === u.id
+                            className={`flex items-start gap-3 rounded-lg border px-3 py-2.5 text-sm transition ${
+                              selected
                                 ? "border-teal-500 bg-white shadow-sm"
                                 : "border-transparent bg-white/70 hover:border-slate-200 hover:bg-white"
+                            } ${
+                              isExplicitlyAssigned
+                                ? "ring-1 ring-inset ring-emerald-300/80"
+                                : isEventCreator
+                                  ? "ring-1 ring-inset ring-amber-200/90"
+                                  : ""
                             }`}
                           >
                             <input
-                              type="radio"
-                              name="assignee"
-                              value={u.id}
-                              checked={selectedUserId === u.id}
-                              onChange={() => setSelectedUserId(u.id)}
-                              className="mt-0.5 h-4 w-4 shrink-0 border-slate-300 text-teal-600 focus:ring-teal-500"
+                              type="checkbox"
+                              id={`assignee-${u.id}`}
+                              checked={selected}
+                              onChange={() => toggleAssignee(u.id)}
+                              aria-label={t("admin.manage.assigneeCheckboxAria", {
+                                name: u.full_name ?? t("admin.manage.noUserName"),
+                              })}
+                              className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                             />
-                            <span className="min-w-0 flex-1">
+                            <label
+                              htmlFor={`assignee-${u.id}`}
+                              className="min-w-0 flex-1 cursor-pointer"
+                            >
                               <span className="flex flex-wrap items-center gap-2">
                                 <span className="font-medium text-slate-900">
                                   {u.full_name ?? t("admin.manage.noUserName")}
@@ -562,19 +770,48 @@ export default function ManageEventsPage() {
                                     ? t("admin.manage.assigneeBadgeAdmin")
                                     : t("admin.manage.assigneeBadgeUser")}
                                 </span>
+                                {isExplicitlyAssigned ? (
+                                  <span className="inline-flex shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-900">
+                                    {t("admin.manage.assigneeBadgeAlreadyAssigned")}
+                                  </span>
+                                ) : isEventCreator ? (
+                                  <span className="inline-flex shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-950 ring-1 ring-amber-200/90">
+                                    {t("admin.manage.assigneeBadgeEventCreator")}
+                                  </span>
+                                ) : null}
                               </span>
                               {u.phone ? (
                                 <span className="mt-0.5 block text-xs text-slate-600">{u.phone}</span>
                               ) : null}
-                            </span>
-                          </label>
-                        ))
+                            </label>
+                            {canRevokeRow ? (
+                              <button
+                                type="button"
+                                disabled={revokingUserId !== null || assignSelectedEventPast}
+                                onClick={() => void onRevokeAccess(u.id)}
+                                className={`shrink-0 rounded-lg border border-rose-200 bg-white px-2.5 py-1 text-xs font-medium text-rose-800 shadow-sm transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-500/25 disabled:opacity-50`}
+                              >
+                                {revokingUserId === u.id
+                                  ? t("admin.manage.revokeInProgressButton")
+                                  : t("admin.manage.revokeAccessButton")}
+                              </button>
+                            ) : null}
+                          </div>
+                          );
+                        })
                       )}
                     </div>
                   </div>
                   <button
                     type="submit"
-                    disabled={loading || assignSelectedEventPast || !selectedEventId || !selectedUserId}
+                    disabled={
+                      loading ||
+                      assignSelectedEventPast ||
+                      !selectedEventId ||
+                      selectedUserIds.length === 0 ||
+                      assignAllSelectedAlreadyAssigned ||
+                      eventAccessLoading
+                    }
                     className={btnPrimary}
                   >
                     {t("admin.manage.assignSubmit")}
@@ -621,6 +858,13 @@ export default function ManageEventsPage() {
                             value={editDate}
                             onChange={(e) => setEditDate(e.target.value)}
                           />
+                          <input
+                            type="time"
+                            className={inputClass}
+                            value={editTime}
+                            onChange={(e) => setEditTime(e.target.value)}
+                            title={t("admin.manage.placeholderEventTime")}
+                          />
                           <label className="flex items-center gap-2 text-sm text-slate-700">
                             <input
                               type="checkbox"
@@ -645,7 +889,7 @@ export default function ManageEventsPage() {
                             <p className="font-medium text-slate-900">{ev.title}</p>
                             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
                               <span>
-                                {ev.city} · {ev.event_date} ·{" "}
+                                {ev.city} · {formatEventDateTimeLine(ev.event_date, ev.event_time)} ·{" "}
                                 <span
                                   className={ev.is_active ? "text-teal-700" : "text-slate-400"}
                                 >

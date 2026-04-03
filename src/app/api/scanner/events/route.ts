@@ -28,7 +28,7 @@ export async function GET() {
     if (profile.role === "super_admin") {
         const { data, error } = await supabase
             .from("events")
-            .select("id,title,city,event_date")
+            .select("id,title,city,event_date,event_time")
             .gte("event_date", new Date().toISOString().slice(0, 10))
             .order("event_date", { ascending: true });
 
@@ -41,7 +41,7 @@ export async function GET() {
         if (visibleEventIds.length === 0) return NextResponse.json({ events: [] });
         const { data, error } = await supabase
             .from("events")
-            .select("id,title,city,event_date")
+            .select("id,title,city,event_date,event_time")
             .in("id", visibleEventIds)
             .gte("event_date", new Date().toISOString().slice(0, 10))
             .order("event_date", { ascending: true });
@@ -52,7 +52,7 @@ export async function GET() {
 
     const { data, error } = await supabase
         .from("user_event_access")
-        .select("event:events(id,title,city,event_date)")
+        .select("event:events(id,title,city,event_date,event_time)")
         .eq("user_id", user.id)
         .gte("event.event_date", new Date().toISOString().slice(0, 10));
 

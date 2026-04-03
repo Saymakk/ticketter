@@ -1,7 +1,43 @@
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { isSuperAdminRole } from "@/lib/auth/roles";
 
 type StaffRole = "user" | "admin" | "super_admin";
+
+/** Снятие user_event_access: у создателя мероприятия — только суперадмин; иначе суперадмин или админ с правом на мероприятие. */
+export function canRevokeExplicitUserAccess(params: {
+  actorRole: string;
+  eventCreatorId: string | null;
+  targetProfileId: string;
+  actorCanManageEvent: boolean;
+}): boolean {
+  const { actorRole, eventCreatorId, targetProfileId, actorCanManageEvent } = params;
+
+  if (eventCreatorId && targetProfileId === eventCreatorId) {
+    return isSuperAdminRole(actorRole);
+  }
+  if (isSuperAdminRole(actorRole)) return true;
+  return actorRole === "admin" && actorCanManageEvent;
+}
+
+/** Снятие admin_event_access: у создателя мероприятия — только суперадмин; иначе суперадмин, создатель мероприятия или тот, кто выдал доступ (granted_by). */
+export function canRevokeExplicitAdminDelegation(params: {
+  actorRole: string;
+  actorId: string;
+  eventCreatorId: string | null;
+  targetAdminId: string;
+  grantedBy: string | null;
+}): boolean {
+  const { actorRole, actorId, eventCreatorId, targetAdminId, grantedBy } = params;
+
+  if (eventCreatorId && targetAdminId === eventCreatorId) {
+    return isSuperAdminRole(actorRole);
+  }
+  if (isSuperAdminRole(actorRole)) return true;
+  if (eventCreatorId && actorId === eventCreatorId) return true;
+  if (grantedBy && grantedBy === actorId) return true;
+  return false;
+}
 
 export async function getAuthedStaff() {
   const supabase = await createServerSupabaseClient();

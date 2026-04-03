@@ -13,7 +13,7 @@ export async function GET(_: Request, { params }: Params) {
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("events")
-    .select("id,title,city,event_date,is_active")
+    .select("id,title,city,event_date,event_time,is_active")
     .eq("id", eventId)
     .single();
 

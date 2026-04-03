@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { isEventPastByDateString, SCAN_EVENT_ENDED_TICKET_INVALID } from "@/lib/event-date";
 import { ensureEventAccess } from "@/lib/auth/event-access";
+import { writeAuditLog } from "@/lib/audit";
 
 const schema = z.object({
     uuid: z.string().uuid(),
@@ -52,8 +53,20 @@ export async function POST(request: Request) {
     }
 
     const row = data?.[0];
+    const success = !!row?.success;
+    if (success) {
+        void writeAuditLog({
+            actorId: user.id,
+            action: "ticket.check_in",
+            resourceType: "ticket",
+            resourceId: uuid,
+            request,
+            method: "POST",
+            metadata: { eventId },
+        });
+    }
     return NextResponse.json({
-        success: !!row?.success,
+        success,
         message: row?.message ?? "Неизвестный ответ",
     });
 }
