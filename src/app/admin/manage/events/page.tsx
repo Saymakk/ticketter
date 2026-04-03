@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useLocaleContext } from "@/components/locale-provider";
 import { isEventPastByDateString } from "@/lib/event-date";
 import {
@@ -26,11 +26,11 @@ type EventItem = {
   is_active: boolean;
 };
 
-type UserItem = {
+type AssigneeItem = {
   id: string;
   full_name: string | null;
   phone: string | null;
-  role: "user";
+  role: "user" | "admin";
   region: string | null;
 };
 
@@ -61,7 +61,7 @@ export default function ManageEventsPage() {
   const { t } = useLocaleContext();
   const [activeTab, setActiveTab] = useState<ManageTab>("create");
   const [events, setEvents] = useState<EventItem[]>([]);
-  const [users, setUsers] = useState<UserItem[]>([]);
+  const [assignees, setAssignees] = useState<AssigneeItem[]>([]);
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -83,15 +83,18 @@ export default function ManageEventsPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [eventsRes, usersRes] = await Promise.all([
+      const [eventsRes, usersRes, adminsRes] = await Promise.all([
         fetch("/api/super-admin/events", { cache: "no-store" }),
         fetch("/api/admin/users", { cache: "no-store" }),
+        fetch("/api/admin/assignable-admins", { cache: "no-store" }),
       ]);
 
       const eventsJson =
           (await safeReadJson<{ events?: EventItem[] } & ApiError>(eventsRes)) ?? {};
       const usersJson =
-          (await safeReadJson<{ users?: UserItem[] } & ApiError>(usersRes)) ?? {};
+          (await safeReadJson<{ users?: AssigneeItem[] } & ApiError>(usersRes)) ?? {};
+      const adminsJson =
+          (await safeReadJson<{ admins?: AssigneeItem[] } & ApiError>(adminsRes)) ?? {};
 
       if (eventsRes.ok) {
         setEvents(eventsJson.events ?? []);
@@ -105,9 +108,16 @@ export default function ManageEventsPage() {
       }
 
       if (usersRes.ok) {
-        setUsers(usersJson.users ?? []);
+        const users = usersJson.users ?? [];
+        const admins = adminsRes.ok ? adminsJson.admins ?? [] : [];
+        const merged: AssigneeItem[] = [...users, ...admins].map((x) => ({
+          ...x,
+          role: x.role === "admin" ? "admin" : "user",
+        }));
+        const uniq = Array.from(new Map(merged.map((x) => [x.id, x])).values());
+        setAssignees(uniq);
       } else {
-        setUsers([]);
+        setAssignees([]);
         setResult(
           t("admin.manage.loadUsersFailed", {
             detail: String(usersJson.error ?? `HTTP ${usersRes.status}`),
@@ -131,6 +141,19 @@ export default function ManageEventsPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- обновляем списки при входе на вкладку
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!selectedEventId) return;
+    const ev = events.find((e) => e.id === selectedEventId);
+    if (ev && isEventPastByDateString(ev.event_date)) {
+      setSelectedEventId("");
+    }
+  }, [events, selectedEventId]);
+
+  const assignSelectedEventPast = useMemo(() => {
+    const ev = events.find((e) => e.id === selectedEventId);
+    return ev ? isEventPastByDateString(ev.event_date) : false;
+  }, [events, selectedEventId]);
 
   function addDraftField() {
     setDraftFields((prev) => [
@@ -234,6 +257,15 @@ export default function ManageEventsPage() {
 
   async function onAssign(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!selectedEventId || !selectedUserId) {
+      setResult(t("admin.manage.errorApi", { detail: t("admin.manage.assignPickRequired") }));
+      return;
+    }
+    const evForAssign = events.find((e) => e.id === selectedEventId);
+    if (evForAssign && isEventPastByDateString(evForAssign.event_date)) {
+      setResult(t("admin.manage.errorApi", { detail: t("admin.manage.assignPastBlocked") }));
+      return;
+    }
     setResult(t("admin.manage.resultAssigning"));
 
     try {
@@ -469,34 +501,82 @@ export default function ManageEventsPage() {
               <p className="mb-4 text-xs text-slate-600">{t("admin.manage.assignHint")}</p>
               <form onSubmit={onAssign}>
                 <FormStack>
-                  <select
-                    className={selectClass}
-                    value={selectedEventId}
-                    onChange={(e) => setSelectedEventId(e.target.value)}
-                    required
+                  <div>
+                    <select
+                      className={selectClass}
+                      value={selectedEventId}
+                      onChange={(e) => setSelectedEventId(e.target.value)}
+                      required
+                    >
+                      <option value="">{t("admin.manage.selectEvent")}</option>
+                      {events.map((ev) => {
+                        const past = isEventPastByDateString(ev.event_date);
+                        return (
+                          <option key={ev.id} value={ev.id} disabled={past}>
+                            {ev.title} / {ev.city} / {ev.event_date}
+                            {past ? ` · ${t("admin.events.eventPastBadge")}` : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <p className="mt-2 text-xs text-slate-600">{t("admin.manage.assignPastHint")}</p>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-teal-800/90">
+                      {t("admin.manage.assigneeListLabel")}
+                    </p>
+                    <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/60 p-2">
+                      {assignees.length === 0 ? (
+                        <p className="px-2 py-3 text-sm text-slate-600">{t("admin.manage.assignNoAssignees")}</p>
+                      ) : (
+                        assignees.map((u) => (
+                          <label
+                            key={u.id}
+                            className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 text-sm transition ${
+                              selectedUserId === u.id
+                                ? "border-teal-500 bg-white shadow-sm"
+                                : "border-transparent bg-white/70 hover:border-slate-200 hover:bg-white"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="assignee"
+                              value={u.id}
+                              checked={selectedUserId === u.id}
+                              onChange={() => setSelectedUserId(u.id)}
+                              className="mt-0.5 h-4 w-4 shrink-0 border-slate-300 text-teal-600 focus:ring-teal-500"
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="flex flex-wrap items-center gap-2">
+                                <span className="font-medium text-slate-900">
+                                  {u.full_name ?? t("admin.manage.noUserName")}
+                                </span>
+                                <span
+                                  className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
+                                    u.role === "admin"
+                                      ? "bg-amber-100 text-amber-900"
+                                      : "bg-slate-200/90 text-slate-800"
+                                  }`}
+                                >
+                                  {u.role === "admin"
+                                    ? t("admin.manage.assigneeBadgeAdmin")
+                                    : t("admin.manage.assigneeBadgeUser")}
+                                </span>
+                              </span>
+                              {u.phone ? (
+                                <span className="mt-0.5 block text-xs text-slate-600">{u.phone}</span>
+                              ) : null}
+                            </span>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading || assignSelectedEventPast || !selectedEventId || !selectedUserId}
+                    className={btnPrimary}
                   >
-                    <option value="">{t("admin.manage.selectEvent")}</option>
-                    {events.map((ev) => (
-                      <option key={ev.id} value={ev.id}>
-                        {ev.title} / {ev.city} / {ev.event_date}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className={selectClass}
-                    value={selectedUserId}
-                    onChange={(e) => setSelectedUserId(e.target.value)}
-                    required
-                  >
-                    <option value="">{t("admin.manage.selectUser")}</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.full_name ?? t("admin.manage.noUserName")}
-                        {u.phone ? ` / ${u.phone}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <button type="submit" disabled={loading} className={btnPrimary}>
                     {t("admin.manage.assignSubmit")}
                   </button>
                 </FormStack>

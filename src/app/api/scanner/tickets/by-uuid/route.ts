@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { isEventPastByDateString } from "@/lib/event-date";
+import { ensureEventAccess } from "@/lib/auth/event-access";
 
 export async function GET(request: Request) {
     const supabase = await createServerSupabaseClient();
@@ -13,37 +14,8 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "uuid и eventId обязательны" }, { status: 400 });
     }
 
-    const {
-        data: { user },
-        error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-        return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-    if (!profile || !["user", "admin", "super_admin"].includes(profile.role)) {
-        return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
-    }
-
-    if (profile.role === "user") {
-        const { data: access } = await supabase
-            .from("user_event_access")
-            .select("id")
-            .eq("user_id", user.id)
-            .eq("event_id", eventId)
-            .maybeSingle();
-
-        if (!access) {
-            return NextResponse.json({ error: "Нет доступа к мероприятию" }, { status: 403 });
-        }
-    }
+    const check = await ensureEventAccess(eventId);
+    if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
     const { data: ticket, error } = await supabase
         .from("tickets")

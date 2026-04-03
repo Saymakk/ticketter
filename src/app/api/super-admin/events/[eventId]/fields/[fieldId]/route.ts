@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireEventManager } from "@/lib/auth/api-guards";
 import { EVENT_ENDED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
+import { canAdminAccessEvent } from "@/lib/auth/event-access";
 
 async function blockIfEventEnded(eventId: string): Promise<NextResponse | null> {
   const admin = createAdminSupabaseClient();
@@ -30,6 +31,10 @@ export async function PATCH(request: Request, { params }: Params) {
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
   const { eventId, fieldId } = await params;
+  if (check.ctx.profile.role === "admin") {
+    const allowed = await canAdminAccessEvent(check.ctx.user.id, eventId);
+    if (!allowed) return NextResponse.json({ error: "Нет доступа к мероприятию" }, { status: 403 });
+  }
   const blocked = await blockIfEventEnded(eventId);
   if (blocked) return blocked;
 
@@ -81,6 +86,10 @@ export async function DELETE(_: Request, { params }: Params) {
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
   const { eventId, fieldId } = await params;
+  if (check.ctx.profile.role === "admin") {
+    const allowed = await canAdminAccessEvent(check.ctx.user.id, eventId);
+    if (!allowed) return NextResponse.json({ error: "Нет доступа к мероприятию" }, { status: 403 });
+  }
   const blocked = await blockIfEventEnded(eventId);
   if (blocked) return blocked;
 

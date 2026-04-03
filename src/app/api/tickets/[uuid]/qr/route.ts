@@ -3,6 +3,7 @@ import QRCode from "qrcode";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { isEventManagerRole } from "@/lib/auth/roles";
 import { contentDispositionWithUtf8Name, qrImageFileName } from "@/lib/qr-filename";
+import { canAdminAccessEvent } from "@/lib/auth/event-access";
 
 type Params = { params: Promise<{ uuid: string }> };
 
@@ -42,6 +43,10 @@ async function ensureTicketReadable(ticketUuid: string) {
         .single();
 
     const isManager = isEventManagerRole(profile?.role);
+    if (profile?.role === "admin") {
+        const allowed = await canAdminAccessEvent(user.id, ticket.event_id);
+        if (!allowed) return { ok: false as const, status: 403, error: "Нет доступа к билету" };
+    }
 
     if (!access && !isManager) {
         return { ok: false as const, status: 403, error: "Нет доступа к билету" };

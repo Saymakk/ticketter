@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireEventManager } from "@/lib/auth/api-guards";
 import { EVENT_ENDED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
+import { canAdminAccessEvent } from "@/lib/auth/event-access";
 
 const createFieldSchema = z
   .object({
@@ -30,6 +31,10 @@ export async function GET(_: Request, { params }: Params) {
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
   const { eventId } = await params;
+  if (check.ctx.profile.role === "admin") {
+    const allowed = await canAdminAccessEvent(check.ctx.user.id, eventId);
+    if (!allowed) return NextResponse.json({ error: "Нет доступа к мероприятию" }, { status: 403 });
+  }
   const admin = createAdminSupabaseClient();
 
   const { data, error } = await admin
@@ -48,6 +53,10 @@ export async function POST(request: Request, { params }: Params) {
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
   const { eventId } = await params;
+  if (check.ctx.profile.role === "admin") {
+    const allowed = await canAdminAccessEvent(check.ctx.user.id, eventId);
+    if (!allowed) return NextResponse.json({ error: "Нет доступа к мероприятию" }, { status: 403 });
+  }
 
   const adminGuard = createAdminSupabaseClient();
   const { data: evRow } = await adminGuard.from("events").select("event_date").eq("id", eventId).maybeSingle();

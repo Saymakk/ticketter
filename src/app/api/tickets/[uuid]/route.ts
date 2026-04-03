@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { isEventManagerRole } from "@/lib/auth/roles";
+import { canAdminAccessEvent } from "@/lib/auth/event-access";
 
 type Params = { params: Promise<{ uuid: string }> };
 
@@ -34,6 +35,10 @@ export async function GET(_: Request, { params }: Params) {
         .single();
 
     const isManager = isEventManagerRole(profile?.role);
+    if (profile?.role === "admin") {
+        const allowed = await canAdminAccessEvent(user.id, ticket.event_id);
+        if (!allowed) return NextResponse.json({ error: "Нет доступа к билету" }, { status: 403 });
+    }
 
     const { data: access } = await supabase
         .from("user_event_access")

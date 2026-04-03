@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { isEventManagerRole, isStaffRole } from "@/lib/auth/roles";
+import { getAdminVisibleEventIds } from "@/lib/auth/event-access";
 
 export async function GET() {
   const supabase = await createServerSupabaseClient();
@@ -27,6 +28,21 @@ export async function GET() {
 
   if (isEventManagerRole(profile.role)) {
     const admin = createAdminSupabaseClient();
+    if (profile.role === "admin") {
+      const visibleEventIds = await getAdminVisibleEventIds(user.id);
+      if (visibleEventIds.length === 0) return NextResponse.json({ events: [] });
+      const { data, error } = await admin
+        .from("events")
+        .select("id,title,city,event_date,is_active")
+        .in("id", visibleEventIds)
+        .order("event_date", { ascending: false });
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+      return NextResponse.json({ events: data ?? [] });
+    }
+
     const { data, error } = await admin
       .from("events")
       .select("id,title,city,event_date,is_active")

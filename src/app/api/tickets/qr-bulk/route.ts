@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { isEventManagerRole } from "@/lib/auth/roles";
 import { qrImageFileName } from "@/lib/qr-filename";
+import { canAdminAccessEvent } from "@/lib/auth/event-access";
 
 const bodySchema = z.object({
     uuids: z.array(z.string().uuid()).min(1),
@@ -46,8 +47,17 @@ export async function POST(request: Request) {
         .single();
 
     const isManager = isEventManagerRole(profile?.role);
+    const isAdmin = profile?.role === "admin";
 
-    if (!isManager) {
+    if (isAdmin) {
+        const eventIds = [...new Set(tickets.map((t) => t.event_id))];
+        for (const eventId of eventIds) {
+            const allowed = await canAdminAccessEvent(user.id, eventId);
+            if (!allowed) {
+                return NextResponse.json({ error: "Нет доступа к части билетов" }, { status: 403 });
+            }
+        }
+    } else if (!isManager) {
         // Проверяем, что у пользователя есть доступ ко всем event_id
         const eventIds = [...new Set(tickets.map((t) => t.event_id))];
         const { data: access } = await supabase

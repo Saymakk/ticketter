@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireEventManager } from "@/lib/auth/api-guards";
 import { EVENT_MANAGEMENT_LOCKED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
+import { canAdminAccessEvent } from "@/lib/auth/event-access";
 
 const patchSchema = z.object({
     title: z.string().min(2).optional(),
@@ -18,6 +19,10 @@ export async function PATCH(req: Request, { params }: Params) {
     if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
     const { eventId } = await params;
+    if (check.ctx.profile.role === "admin") {
+        const allowed = await canAdminAccessEvent(check.ctx.user.id, eventId);
+        if (!allowed) return NextResponse.json({ error: "Нет доступа к мероприятию" }, { status: 403 });
+    }
     const body = await req.json();
     const parsed = patchSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Некорректные данные" }, { status: 400 });
@@ -47,6 +52,10 @@ export async function DELETE(_: Request, { params }: Params) {
     if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
     const { eventId } = await params;
+    if (check.ctx.profile.role === "admin") {
+        const allowed = await canAdminAccessEvent(check.ctx.user.id, eventId);
+        if (!allowed) return NextResponse.json({ error: "Нет доступа к мероприятию" }, { status: 403 });
+    }
     const admin = createAdminSupabaseClient();
 
     // Сработает clean delete, если в FK стоит ON DELETE CASCADE

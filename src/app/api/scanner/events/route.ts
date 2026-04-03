@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getAdminVisibleEventIds } from "@/lib/auth/event-access";
 
 export async function GET() {
     const supabase = await createServerSupabaseClient();
@@ -24,10 +25,24 @@ export async function GET() {
     }
 
     // Авто-деактивация через дату: event_date >= today
-    if (profile.role === "admin" || profile.role === "super_admin") {
+    if (profile.role === "super_admin") {
         const { data, error } = await supabase
             .from("events")
             .select("id,title,city,event_date")
+            .gte("event_date", new Date().toISOString().slice(0, 10))
+            .order("event_date", { ascending: true });
+
+        if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+        return NextResponse.json({ events: data ?? [] });
+    }
+
+    if (profile.role === "admin") {
+        const visibleEventIds = await getAdminVisibleEventIds(user.id);
+        if (visibleEventIds.length === 0) return NextResponse.json({ events: [] });
+        const { data, error } = await supabase
+            .from("events")
+            .select("id,title,city,event_date")
+            .in("id", visibleEventIds)
             .gte("event_date", new Date().toISOString().slice(0, 10))
             .order("event_date", { ascending: true });
 

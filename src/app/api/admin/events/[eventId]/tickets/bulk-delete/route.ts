@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { isEventManagerRole } from "@/lib/auth/roles";
 import { EVENT_TICKETS_LOCKED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
+import { ensureEventAccess } from "@/lib/auth/event-access";
 
 const bodySchema = z.object({
   ticketIds: z.array(z.number().int().positive()).min(1).max(200),
@@ -11,36 +10,9 @@ const bodySchema = z.object({
 
 type Params = { params: Promise<{ eventId: string }> };
 
-async function ensureAccess(eventId: string) {
-  const supabase = await createServerSupabaseClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) return { ok: false as const, status: 401, error: "Не авторизован" };
-
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  if (isEventManagerRole(profile?.role)) {
-    return { ok: true as const };
-  }
-
-  const { data: access } = await supabase
-    .from("user_event_access")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("event_id", eventId)
-    .maybeSingle();
-
-  if (!access) return { ok: false as const, status: 403, error: "Нет доступа к мероприятию" };
-
-  return { ok: true as const };
-}
-
 export async function POST(request: Request, { params }: Params) {
   const { eventId } = await params;
-  const check = await ensureAccess(eventId);
+  const check = await ensureEventAccess(eventId);
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
   const admin = createAdminSupabaseClient();

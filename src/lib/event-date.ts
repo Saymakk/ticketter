@@ -6,6 +6,10 @@ export const EVENT_ENDED_MESSAGE =
 export const EVENT_MANAGEMENT_LOCKED_MESSAGE =
   "Мероприятие завершено: редактирование недоступно";
 
+/** Назначение / смена доступа к завершённому мероприятию */
+export const EVENT_ASSIGNMENTS_LOCKED_MESSAGE =
+  "Мероприятие завершено: нельзя назначать или менять доступ";
+
 /** Изменение / удаление билетов завершённого мероприятия */
 export const EVENT_TICKETS_LOCKED_MESSAGE =
   "Мероприятие завершено: нельзя изменять или удалять билеты";

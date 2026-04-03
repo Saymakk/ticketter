@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { isEventPastByDateString, SCAN_EVENT_ENDED_TICKET_INVALID } from "@/lib/event-date";
+import { ensureEventAccess } from "@/lib/auth/event-access";
 
 const schema = z.object({
     uuid: z.string().uuid(),
@@ -28,6 +29,8 @@ export async function POST(request: Request) {
     }
 
     const { uuid, eventId } = parsed.data;
+    const access = await ensureEventAccess(eventId);
+    if (!access.ok) return NextResponse.json({ error: access.error, success: false }, { status: access.status });
 
     const { data: evRow } = await supabase.from("events").select("event_date").eq("id", eventId).maybeSingle();
     if (!evRow) {

@@ -54,6 +54,7 @@ export async function POST(request: Request) {
       city,
       event_date: eventDate,
       is_active: true,
+      created_by: check.ctx.user.id,
     })
     .select("id,title,city,event_date,is_active")
     .single();
