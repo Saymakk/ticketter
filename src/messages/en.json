@@ -11,7 +11,20 @@
     "toPanel": "To dashboard",
     "active": "active",
     "inactive": "inactive",
-    "required": "Required"
+    "required": "Required",
+    "passwordPlaceholder": "At least 8 characters"
+  },
+  "account": {
+    "settingsAria": "Account settings",
+    "changePassword": "Change password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "submit": "Save password",
+    "mismatch": "Passwords do not match",
+    "success": "Password updated",
+    "error": "Could not change password",
+    "minLength": "At least 8 characters",
+    "close": "Close"
   },
   "lang": {
     "ru": "Русский",
@@ -28,6 +41,7 @@
     "loginLabel": "Phone or email",
     "loginPlaceholder": "+7 701 123 45 67 or name@company.com",
     "password": "Password",
+    "passwordPlaceholder": "At least 8 characters",
     "submit": "Sign in",
     "submitting": "Signing in…",
     "errorCredentials": "Invalid login or password",
@@ -112,15 +126,18 @@
       "loadEventsFailed": "Failed to load events: {detail}",
       "loadUsersFailed": "Failed to load users: {detail}",
       "errorApi": "Error: {detail}",
-      "noUserName": "No name"
+      "noUserName": "No name",
+      "cannotEditPast": "This event has ended — editing is disabled"
     },
     "users": {
       "title": "Users",
       "subtitle": "Accounts with role “user” — tickets and scanner for assigned events.",
       "sectionNew": "New user",
       "fullName": "Full name",
+      "fullNamePh": "John Smith",
       "login": "Login (phone or email)",
       "password": "Password (min. 8 characters)",
+      "passwordPh": "At least 8 characters",
       "region": "Region (optional field)",
       "regionPh": "Optional",
       "submit": "Create user",
@@ -135,7 +152,12 @@
       "saveError": "Save failed",
       "roleUser": "user",
       "roleAdmin": "administrator",
-      "editRegionPh": "Region"
+      "editRegionPh": "Region",
+      "deleteConfirm": "Delete this user? They will no longer be able to sign in.",
+      "deleteError": "Could not delete user",
+      "deleteSuccess": "User deleted",
+      "newPasswordOptional": "New password (optional)",
+      "newPasswordPh": "At least 8 characters"
     },
     "tickets": {
       "backEvents": "To events",
@@ -172,13 +194,15 @@
       "typeNotSet": "Not set",
       "legacyTypeLabel": "Legacy ticket type (vip / standard / vip+) if needed",
       "statsLine": "Total tickets: {total}, checked in: {checkedIn}",
-      "newTicketDisabledPast": "Event has ended — you cannot create tickets"
+      "newTicketDisabledPast": "Event has ended — you cannot create tickets",
+      "lockedActionsPast": "Event ended — tickets cannot be edited or deleted"
     },
     "ticketNew": {
       "back": "Back to ticket list",
       "title": "New ticket",
       "subtitle": "Fill in the fields and save. Add extra fields (including ticket type) in the event field builder.",
       "buyerName": "Buyer name",
+      "buyerNamePh": "John Smith",
       "phone": "Phone",
       "ticketType": "Ticket type",
       "region": "Region (optional field)",
@@ -243,7 +267,16 @@
       "createError": "Error: {error}",
       "unknownError": "Unknown error",
       "donePhone": "Done. Sign in with phone {loginHint}, password as set when created. Auth email: {authEmail}",
-      "doneEmail": "Done. Sign in with email {loginHint}, password as set when created."
+      "doneEmail": "Done. Sign in with email {loginHint}, password as set when created.",
+      "fullNamePh": "John Smith",
+      "passwordPh": "At least 8 characters",
+      "deleteConfirm": "Delete this administrator?",
+      "deleteSuccess": "Administrator deleted",
+      "deleteError": "Could not delete",
+      "setPassword": "Password",
+      "passwordModalTitle": "New password",
+      "passwordSaved": "Password updated",
+      "passwordError": "Could not set password"
     }
   },
   "scanner": {

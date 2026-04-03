@@ -6,6 +6,7 @@ import {
   AppCard,
   AppShell,
   BackNav,
+  btnDanger,
   btnPrimary,
   btnSecondary,
   FormStack,
@@ -20,6 +21,7 @@ type UserRow = {
   full_name: string | null;
   phone: string | null;
   region: string | null;
+  created_by: string | null;
 };
 
 type ApiOk = {
@@ -45,7 +47,9 @@ export default function AdminUsersPage() {
   const [editName, setEditName] = useState("");
   const [editRegion, setEditRegion] = useState("");
   const [editRole, setEditRole] = useState<"user" | "admin">("user");
+  const [editPassword, setEditPassword] = useState("");
   const [isSuper, setIsSuper] = useState(false);
+  const [myUserId, setMyUserId] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(true);
 
   async function loadUsers() {
@@ -62,13 +66,22 @@ export default function AdminUsersPage() {
   async function loadMe() {
     const res = await fetch("/api/auth/role", { cache: "no-store" });
     const json = await res.json();
-    if (res.ok && json.role === "super_admin") setIsSuper(true);
+    if (res.ok) {
+      if (json.role === "super_admin") setIsSuper(true);
+      if (typeof json.userId === "string") setMyUserId(json.userId);
+    }
   }
 
   useEffect(() => {
     void loadUsers();
     void loadMe();
   }, []);
+
+  function canDeleteUser(u: UserRow): boolean {
+    if (isSuper) return true;
+    if (myUserId && u.created_by === myUserId) return true;
+    return false;
+  }
 
   async function onCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -117,22 +130,29 @@ export default function AdminUsersPage() {
     setEditName(u.full_name ?? "");
     setEditRegion(u.region ?? "");
     setEditRole("user");
+    setEditPassword("");
   }
 
   function cancelEdit() {
     setEditId(null);
+    setEditPassword("");
   }
 
   async function saveEdit() {
     if (!editId) return;
+    const body: Record<string, unknown> = {
+      fullName: editName,
+      region: editRegion || null,
+      ...(isSuper ? { role: editRole } : {}),
+    };
+    if (isSuper && editPassword.trim().length >= 8) {
+      body.password = editPassword.trim();
+    }
+
     const res = await fetch(`/api/admin/users/${editId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fullName: editName,
-        region: editRegion || null,
-        ...(isSuper ? { role: editRole } : {}),
-      }),
+      body: JSON.stringify(body),
     });
     const json = await res.json();
     if (!res.ok) {
@@ -142,6 +162,20 @@ export default function AdminUsersPage() {
     cancelEdit();
     await loadUsers();
     setResultText(t("admin.users.saved"));
+  }
+
+  async function removeUser(userId: string) {
+    const ok = window.confirm(t("admin.users.deleteConfirm"));
+    if (!ok) return;
+    const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+    const json = await res.json();
+    if (!res.ok) {
+      setResultText(json.error ?? t("admin.users.deleteError"));
+      return;
+    }
+    if (editId === userId) cancelEdit();
+    await loadUsers();
+    setResultText(t("admin.users.deleteSuccess"));
   }
 
   return (
@@ -159,6 +193,7 @@ export default function AdminUsersPage() {
                 className={inputClass}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                placeholder={t("admin.users.fullNamePh")}
                 required
               />
             </label>
@@ -178,6 +213,7 @@ export default function AdminUsersPage() {
                 className={inputClass}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder={t("admin.users.passwordPh")}
                 minLength={8}
                 required
               />
@@ -210,58 +246,84 @@ export default function AdminUsersPage() {
           {listLoading ? (
             <ListLoading label={t("common.loading")} className="py-8" />
           ) : (
-          <ul className="space-y-3">
-            {users.map((u) => (
-              <li key={u.id} className="rounded-lg border border-slate-100 bg-slate-50/80 p-3">
-                {editId === u.id ? (
-                  <div className="space-y-2">
-                    <input
-                      className={inputClass}
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                    />
-                    <input
-                      className={inputClass}
-                      value={editRegion}
-                      onChange={(e) => setEditRegion(e.target.value)}
-                      placeholder={t("admin.users.editRegionPh")}
-                    />
-                    {isSuper && (
-                      <select
-                        className={selectClass}
-                        value={editRole}
-                        onChange={(e) => setEditRole(e.target.value as "user" | "admin")}
-                      >
-                        <option value="user">{t("admin.users.roleUser")}</option>
-                        <option value="admin">{t("admin.users.roleAdmin")}</option>
-                      </select>
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" onClick={saveEdit} className={btnPrimary}>
-                        {t("common.save")}
-                      </button>
-                      <button type="button" onClick={cancelEdit} className={btnSecondary}>
-                        {t("common.cancel")}
-                      </button>
+            <ul className="space-y-3">
+              {users.map((u) => (
+                <li key={u.id} className="rounded-lg border border-slate-100 bg-slate-50/80 p-3">
+                  {editId === u.id ? (
+                    <div className="space-y-2">
+                      <input
+                        className={inputClass}
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder={t("admin.users.fullNamePh")}
+                      />
+                      <input
+                        className={inputClass}
+                        value={editRegion}
+                        onChange={(e) => setEditRegion(e.target.value)}
+                        placeholder={t("admin.users.editRegionPh")}
+                      />
+                      {isSuper && (
+                        <>
+                          <select
+                            className={selectClass}
+                            value={editRole}
+                            onChange={(e) => setEditRole(e.target.value as "user" | "admin")}
+                          >
+                            <option value="user">{t("admin.users.roleUser")}</option>
+                            <option value="admin">{t("admin.users.roleAdmin")}</option>
+                          </select>
+                          <label className={labelClass}>
+                            {t("admin.users.newPasswordOptional")}
+                            <input
+                              type="password"
+                              className={inputClass}
+                              value={editPassword}
+                              onChange={(e) => setEditPassword(e.target.value)}
+                              placeholder={t("admin.users.newPasswordPh")}
+                              minLength={8}
+                              autoComplete="new-password"
+                            />
+                          </label>
+                        </>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={saveEdit} className={btnPrimary}>
+                          {t("common.save")}
+                        </button>
+                        <button type="button" onClick={cancelEdit} className={btnSecondary}>
+                          {t("common.cancel")}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-medium text-slate-900">{u.full_name ?? "—"}</p>
-                      <p className="text-sm text-slate-600">
-                        {u.phone ?? "—"}
-                        {u.region ? ` · ${u.region}` : ""}
-                      </p>
+                  ) : (
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="font-medium text-slate-900">{u.full_name ?? "—"}</p>
+                        <p className="text-sm text-slate-600">
+                          {u.phone ?? "—"}
+                          {u.region ? ` · ${u.region}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={() => startEdit(u)} className={btnSecondary}>
+                          {t("admin.users.edit")}
+                        </button>
+                        {canDeleteUser(u) ? (
+                          <button
+                            type="button"
+                            onClick={() => void removeUser(u.id)}
+                            className={btnDanger}
+                          >
+                            {t("common.delete")}
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-                    <button type="button" onClick={() => startEdit(u)} className={btnSecondary}>
-                      {t("admin.users.edit")}
-                    </button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </AppCard>

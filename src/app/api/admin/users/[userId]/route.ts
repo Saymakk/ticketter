@@ -8,6 +8,7 @@ const patchSchema = z.object({
   fullName: z.string().min(2).optional(),
   region: z.string().nullable().optional(),
   role: z.enum(["user", "admin"]).optional(),
+  password: z.string().min(8).optional(),
 });
 
 type Params = { params: Promise<{ userId: string }> };
@@ -52,6 +53,21 @@ export async function PATCH(request: Request, { params }: Params) {
     if (parsed.data.role !== undefined) {
       return NextResponse.json({ error: "Администратор не может менять роль" }, { status: 403 });
     }
+    if (parsed.data.password !== undefined) {
+      return NextResponse.json({ error: "Только суперадминистратор может задавать пароль" }, { status: 403 });
+    }
+  }
+
+  if (parsed.data.password !== undefined) {
+    if (!isSuperAdminRole(callerRole)) {
+      return NextResponse.json({ error: "Только суперадминистратор может задавать пароль" }, { status: 403 });
+    }
+    const { error: pwErr } = await admin.auth.admin.updateUserById(userId, {
+      password: parsed.data.password,
+    });
+    if (pwErr) {
+      return NextResponse.json({ error: pwErr.message }, { status: 400 });
+    }
   }
 
   const payload: Record<string, unknown> = {};
@@ -61,14 +77,68 @@ export async function PATCH(request: Request, { params }: Params) {
     payload.role = parsed.data.role;
   }
 
-  if (Object.keys(payload).length === 0) {
+  if (Object.keys(payload).length > 0) {
+    const { error } = await admin.from("profiles").update(payload).eq("id", userId);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+  } else if (parsed.data.password === undefined) {
     return NextResponse.json({ error: "Нет полей для обновления" }, { status: 400 });
   }
 
-  const { error } = await admin.from("profiles").update(payload).eq("id", userId);
+  return NextResponse.json({ ok: true });
+}
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+export async function DELETE(_: Request, { params }: Params) {
+  const auth = await getAuthedProfile();
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const callerRole = auth.ctx.profile.role;
+  if (!isEventManagerRole(callerRole)) {
+    return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
+  }
+
+  const { userId } = await params;
+  if (userId === auth.ctx.user.id) {
+    return NextResponse.json({ error: "Нельзя удалить собственную учётную запись" }, { status: 403 });
+  }
+
+  const admin = createAdminSupabaseClient();
+  const { data: target, error: targetErr } = await admin
+    .from("profiles")
+    .select("id,role,created_by")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (targetErr || !target) {
+    return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
+  }
+
+  if (target.role === "super_admin") {
+    return NextResponse.json({ error: "Нельзя удалить суперадминистратора" }, { status: 403 });
+  }
+
+  if (callerRole === "admin") {
+    if (target.role !== "user") {
+      return NextResponse.json(
+        { error: "Администратор может удалять только пользователей с ролью «пользователь»" },
+        { status: 403 }
+      );
+    }
+    if (target.created_by !== auth.ctx.user.id) {
+      return NextResponse.json(
+        { error: "Можно удалить только пользователей, созданных вами" },
+        { status: 403 }
+      );
+    }
+  }
+
+  const { error: delErr } = await admin.auth.admin.deleteUser(userId);
+  if (delErr) {
+    return NextResponse.json({ error: delErr.message }, { status: 400 });
   }
 
   return NextResponse.json({ ok: true });

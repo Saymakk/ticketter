@@ -11,7 +11,20 @@
     "toPanel": "Панельге",
     "active": "белсенді",
     "inactive": "белсенді емес",
-    "required": "Міндетті"
+    "required": "Міндетті",
+    "passwordPlaceholder": "Кемінде 8 таңба"
+  },
+  "account": {
+    "settingsAria": "Аккаунт баптаулары",
+    "changePassword": "Құпия сөзді өзгерту",
+    "newPassword": "Жаңа құпия сөз",
+    "confirmPassword": "Қайталау",
+    "submit": "Сақтау",
+    "mismatch": "Құпия сөздер сәйкес емес",
+    "success": "Құпия сөз жаңартылды",
+    "error": "Құпия сөзді өзгерту мүмкін болмады",
+    "minLength": "Кемінде 8 таңба",
+    "close": "Жабу"
   },
   "lang": {
     "ru": "Русский",
@@ -28,6 +41,7 @@
     "loginLabel": "Телефон немесе email",
     "loginPlaceholder": "+7 701 123 45 67 немесе name@company.com",
     "password": "Құпия сөз",
+    "passwordPlaceholder": "Кемінде 8 таңба",
     "submit": "Кіру",
     "submitting": "Кіруде…",
     "errorCredentials": "Логин немесе құпия сөз дұрыс емес",
@@ -112,15 +126,18 @@
       "loadEventsFailed": "Іс-шараларды жүктеу қатесі: {detail}",
       "loadUsersFailed": "Пайдаланушыларды жүктеу қатесі: {detail}",
       "errorApi": "Қате: {detail}",
-      "noUserName": "Аты жоқ"
+      "noUserName": "Аты жоқ",
+      "cannotEditPast": "Іс-шара аяқталды — өңдеу мүмкін емес"
     },
     "users": {
       "title": "Пайдаланушылар",
       "subtitle": "«Пайдаланушы» рөліндегі жазбалар — тағайындалған іс-шаралар бойынша билеттер мен сканер.",
       "sectionNew": "Жаңа пайдаланушы",
       "fullName": "ТАӘ",
+      "fullNamePh": "Тегі Аты Әкесінің аты",
       "login": "Логин (телефон немесе email)",
       "password": "Құпия сөз (кемінде 8 таңба)",
+      "passwordPh": "Кемінде 8 таңба",
       "region": "Аймақ (міндетті емес өріс)",
       "regionPh": "Міндетті емес",
       "submit": "Пайдаланушыны жасау",
@@ -135,7 +152,12 @@
       "saveError": "Сақтау қатесі",
       "roleUser": "пайдаланушы",
       "roleAdmin": "әкімші",
-      "editRegionPh": "Аймақ"
+      "editRegionPh": "Аймақ",
+      "deleteConfirm": "Осы пайдаланушыны жою керек пе? Кіру мүмкін болмайды.",
+      "deleteError": "Жою мүмкін болмады",
+      "deleteSuccess": "Пайдаланушы жойылды",
+      "newPasswordOptional": "Жаңа құпия сөз (қажет болса)",
+      "newPasswordPh": "Кемінде 8 таңба"
     },
     "tickets": {
       "backEvents": "Іс-шараларға",
@@ -172,13 +194,15 @@
       "typeNotSet": "Көрсетілмеген",
       "legacyTypeLabel": "Ескі билет түрі (vip / standard / vip+) қажет болса",
       "statsLine": "Барлық билеттер: {total}, пробиткен: {checkedIn}",
-      "newTicketDisabledPast": "Іс-шара аяқталған — жаңа билет жасауға болмайды"
+      "newTicketDisabledPast": "Іс-шара аяқталған — жаңа билет жасауға болмайды",
+      "lockedActionsPast": "Іс-шара аяқталды — билеттерді өзгерту немесе жою мүмкін емес"
     },
     "ticketNew": {
       "back": "Билеттер тізіміне",
       "title": "Жаңа билет",
       "subtitle": "Өрістерді толтырыңыз және сақтаңыз. Қосымша өрістерді (соның ішінде билет түрін) іс-шара конструкторында қосыңыз.",
       "buyerName": "Сатып алушының ТАӘ",
+      "buyerNamePh": "Тегі Аты Әкесінің аты",
       "phone": "Телефон",
       "ticketType": "Билет түрі",
       "region": "Аймақ (міндетті емес өріс)",
@@ -243,7 +267,16 @@
       "createError": "Қате: {error}",
       "unknownError": "Белгісіз қате",
       "donePhone": "Дайын. Кіру: телефон {loginHint}, құпия сөз — жасау кезінде көрсетілген. Auth email: {authEmail}",
-      "doneEmail": "Дайын. Кіру: email {loginHint}, құпия сөз — жасау кезінде көрсетілген."
+      "doneEmail": "Дайын. Кіру: email {loginHint}, құпия сөз — жасау кезінде көрсетілген.",
+      "fullNamePh": "Тегі Аты Әкесінің аты",
+      "passwordPh": "Кемінде 8 таңба",
+      "deleteConfirm": "Осы әкімшіні жою керек пе?",
+      "deleteSuccess": "Әкімші жойылды",
+      "deleteError": "Жою мүмкін болмады",
+      "setPassword": "Құпия сөз",
+      "passwordModalTitle": "Жаңа құпия сөз",
+      "passwordSaved": "Құпия сөз жаңартылды",
+      "passwordError": "Құпия сөзді орнату мүмкін болмады"
     }
   },
   "scanner": {

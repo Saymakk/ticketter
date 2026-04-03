@@ -65,6 +65,7 @@ export async function POST(request: Request) {
       phone: phoneForProfile,
       role,
       region: region ?? null,
+      created_by: auth.ctx.user.id,
     });
 
     if (insertProfileError) {

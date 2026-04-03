@@ -11,7 +11,20 @@
     "toPanel": "К панели",
     "active": "активно",
     "inactive": "неактивно",
-    "required": "Обязательное"
+    "required": "Обязательное",
+    "passwordPlaceholder": "Минимум 8 знаков"
+  },
+  "account": {
+    "settingsAria": "Настройки аккаунта",
+    "changePassword": "Сменить пароль",
+    "newPassword": "Новый пароль",
+    "confirmPassword": "Повторите пароль",
+    "submit": "Сохранить пароль",
+    "mismatch": "Пароли не совпадают",
+    "success": "Пароль обновлён",
+    "error": "Не удалось сменить пароль",
+    "minLength": "Минимум 8 символов",
+    "close": "Закрыть"
   },
   "lang": {
     "ru": "Русский",
@@ -28,6 +41,7 @@
     "loginLabel": "Телефон или email",
     "loginPlaceholder": "+7 701 123 45 67 или name@company.com",
     "password": "Пароль",
+    "passwordPlaceholder": "Минимум 8 знаков",
     "submit": "Войти",
     "submitting": "Входим…",
     "errorCredentials": "Неверный логин или пароль",
@@ -112,15 +126,18 @@
       "loadEventsFailed": "Ошибка загрузки мероприятий: {detail}",
       "loadUsersFailed": "Ошибка загрузки пользователей: {detail}",
       "errorApi": "Ошибка: {detail}",
-      "noUserName": "Без имени"
+      "noUserName": "Без имени",
+      "cannotEditPast": "Мероприятие завершено — редактирование недоступно"
     },
     "users": {
       "title": "Пользователи",
       "subtitle": "Учётные записи с ролью «пользователь» — билеты и сканер по назначенным мероприятиям.",
       "sectionNew": "Новый пользователь",
       "fullName": "ФИО",
+      "fullNamePh": "Иванов Иван Иванович",
       "login": "Логин (телефон или email)",
       "password": "Пароль (мин. 8 символов)",
+      "passwordPh": "Минимум 8 знаков",
       "region": "Регион (необязательное поле)",
       "regionPh": "Необязательно",
       "submit": "Создать пользователя",
@@ -135,7 +152,12 @@
       "saveError": "Ошибка сохранения",
       "roleUser": "пользователь",
       "roleAdmin": "администратор",
-      "editRegionPh": "Регион"
+      "editRegionPh": "Регион",
+      "deleteConfirm": "Удалить этого пользователя? Войти под ним будет нельзя.",
+      "deleteError": "Не удалось удалить пользователя",
+      "deleteSuccess": "Пользователь удалён",
+      "newPasswordOptional": "Новый пароль (если нужно сменить)",
+      "newPasswordPh": "Минимум 8 знаков"
     },
     "tickets": {
       "backEvents": "К мероприятиям",
@@ -172,13 +194,15 @@
       "typeNotSet": "Не указан",
       "legacyTypeLabel": "Старый тип билета (vip / standard / vip+), если нужен",
       "statsLine": "Всего билетов: {total}, пробито: {checkedIn}",
-      "newTicketDisabledPast": "Мероприятие завершено — создавать билеты нельзя"
+      "newTicketDisabledPast": "Мероприятие завершено — создавать билеты нельзя",
+      "lockedActionsPast": "Мероприятие завершено — билеты нельзя менять или удалять"
     },
     "ticketNew": {
       "back": "К списку билетов",
       "title": "Новый билет",
       "subtitle": "Заполните поля и сохраните. Дополнительные поля (в т.ч. тип билета) задайте в конструкторе мероприятия.",
       "buyerName": "ФИО покупателя",
+      "buyerNamePh": "Иванов Иван Иванович",
       "phone": "Телефон",
       "ticketType": "Тип билета",
       "region": "Регион (необязательное поле)",
@@ -243,7 +267,16 @@
       "createError": "Ошибка: {error}",
       "unknownError": "Неизвестная ошибка",
       "donePhone": "Готово. Вход: телефон {loginHint}, пароль — заданный при создании. Технический email в Auth: {authEmail}",
-      "doneEmail": "Готово. Вход: email {loginHint}, пароль — заданный при создании."
+      "doneEmail": "Готово. Вход: email {loginHint}, пароль — заданный при создании.",
+      "fullNamePh": "Иванов Иван Иванович",
+      "passwordPh": "Минимум 8 знаков",
+      "deleteConfirm": "Удалить этого администратора?",
+      "deleteSuccess": "Администратор удалён",
+      "deleteError": "Не удалось удалить",
+      "setPassword": "Пароль",
+      "passwordModalTitle": "Новый пароль",
+      "passwordSaved": "Пароль обновлён",
+      "passwordError": "Не удалось задать пароль"
     }
   },
   "scanner": {

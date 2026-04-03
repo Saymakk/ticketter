@@ -152,6 +152,7 @@ export default function NewTicketPage() {
                 className={inputClass}
                 value={buyerName}
                 onChange={(e) => setBuyerName(e.target.value)}
+                placeholder={t("admin.ticketNew.buyerNamePh")}
               />
             </label>
 

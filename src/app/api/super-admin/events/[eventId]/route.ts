@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireEventManager } from "@/lib/auth/api-guards";
+import { EVENT_MANAGEMENT_LOCKED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
 
 const patchSchema = z.object({
     title: z.string().min(2).optional(),
@@ -29,6 +30,12 @@ export async function PATCH(req: Request, { params }: Params) {
     if (p.isActive !== undefined) payload.is_active = p.isActive;
 
     const admin = createAdminSupabaseClient();
+    const { data: evRow } = await admin.from("events").select("event_date").eq("id", eventId).maybeSingle();
+    if (!evRow) return NextResponse.json({ error: "Мероприятие не найдено" }, { status: 404 });
+    if (isEventPastByDateString(evRow.event_date)) {
+        return NextResponse.json({ error: EVENT_MANAGEMENT_LOCKED_MESSAGE }, { status: 403 });
+    }
+
     const { error } = await admin.from("events").update(payload).eq("id", eventId);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 

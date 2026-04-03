@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import AccountSettingsButton from "@/components/account-settings-button";
 import LanguageSwitcher from "@/components/language-switcher";
 import { useLocaleContext } from "@/components/locale-provider";
 
@@ -33,6 +34,7 @@ export default function LogoutBar() {
         </span>
         <div className="flex flex-wrap items-center gap-3">
           <LanguageSwitcher />
+          <AccountSettingsButton />
           <button
             type="button"
             onClick={handleLogout}

@@ -264,6 +264,7 @@ export default function ManageEventsPage() {
   }
 
   function startEditEvent(ev: EventItem) {
+    if (isEventPastByDateString(ev.event_date)) return;
     setEditEventId(ev.id);
     setEditTitle(ev.title);
     setEditCity(ev.city);
@@ -588,7 +589,13 @@ export default function ManageEventsPage() {
                             <button
                               type="button"
                               onClick={() => startEditEvent(ev)}
-                              className={btnSecondary}
+                              disabled={isEventPastByDateString(ev.event_date)}
+                              title={
+                                isEventPastByDateString(ev.event_date)
+                                  ? t("admin.manage.cannotEditPast")
+                                  : undefined
+                              }
+                              className={`${btnSecondary} disabled:cursor-not-allowed disabled:opacity-50`}
                             >
                               {t("common.edit")}
                             </button>

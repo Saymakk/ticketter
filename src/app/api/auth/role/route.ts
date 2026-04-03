@@ -6,5 +6,8 @@ export async function GET() {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
-  return NextResponse.json({ role: auth.ctx.profile.role });
+  return NextResponse.json({
+    role: auth.ctx.profile.role,
+    userId: auth.ctx.user.id,
+  });
 }

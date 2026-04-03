@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import type { Result } from "@zxing/library";
+import AccountSettingsButton from "@/components/account-settings-button";
 import LanguageSwitcher from "@/components/language-switcher";
 import { useLocaleContext } from "@/components/locale-provider";
 import {
@@ -257,8 +258,9 @@ function ScannerPageContent() {
 
   return (
     <AppShell maxWidth="max-w-2xl">
-      <div className="mx-auto -mt-5 mb-1 flex max-w-2xl justify-end px-4 sm:-mt-6 sm:px-6">
+      <div className="mx-auto -mt-5 mb-1 flex max-w-2xl items-center justify-end gap-3 px-4 sm:-mt-6 sm:px-6">
         <LanguageSwitcher />
+        <AccountSettingsButton />
       </div>
       {fromPanel ? <BackNav href="/admin">{t("scanner.backPanel")}</BackNav> : null}
       <AppCard title={t("scanner.title")} subtitle={t("scanner.subtitle")}>

@@ -506,7 +506,8 @@ export default function TicketsPage() {
                         type="button"
                         onClick={() => startEditTicket(ticket)}
                         disabled={eventPast}
-                        className={btnSecondary}
+                        title={eventPast ? t("admin.tickets.lockedActionsPast") : undefined}
+                        className={`${btnSecondary} disabled:cursor-not-allowed disabled:opacity-50`}
                       >
                         {t("admin.users.edit")}
                       </button>
@@ -514,7 +515,8 @@ export default function TicketsPage() {
                         type="button"
                         onClick={() => deleteTicket(ticket.id)}
                         disabled={eventPast}
-                        className={btnDanger}
+                        title={eventPast ? t("admin.tickets.lockedActionsPast") : undefined}
+                        className={`${btnDanger} disabled:cursor-not-allowed disabled:opacity-50`}
                       >
                         {t("admin.tickets.deleteTicket")}
                       </button>

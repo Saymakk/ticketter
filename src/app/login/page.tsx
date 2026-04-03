@@ -120,6 +120,7 @@ function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 type="password"
+                placeholder={t("login.passwordPlaceholder")}
                 autoComplete="current-password"
                 required
               />
