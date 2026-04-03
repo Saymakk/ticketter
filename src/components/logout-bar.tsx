@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import brandMark from "@/app/apple-icon.png";
 import AccountSettingsButton from "@/components/account-settings-button";
 import LanguageSwitcher from "@/components/language-switcher";
 import { useLocaleContext } from "@/components/locale-provider";
@@ -29,7 +31,15 @@ export default function LogoutBar() {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 px-4 py-3 shadow-sm backdrop-blur-md sm:px-6">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
-        <span className="text-sm font-semibold tracking-tight text-slate-800">
+        <span className="flex items-center gap-2 text-sm font-semibold tracking-tight text-slate-800">
+          <Image
+            src={brandMark}
+            alt=""
+            width={32}
+            height={32}
+            className="h-8 w-8 shrink-0 object-contain"
+            priority
+          />
           {t("logoutBar.brand")}
         </span>
         <div className="flex flex-wrap items-center gap-3">
