@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useLocaleContext } from "@/components/locale-provider";
 import {
   AppCard,
   AppShell,
@@ -10,6 +11,7 @@ import {
   FormStack,
   inputClass,
   labelClass,
+  ListLoading,
   selectClass,
 } from "@/components/ui/app-shell";
 
@@ -31,6 +33,7 @@ type ApiOk = {
 type ApiErr = { error: string };
 
 export default function AdminUsersPage() {
+  const { t } = useLocaleContext();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [fullName, setFullName] = useState("");
   const [login, setLogin] = useState("");
@@ -43,11 +46,17 @@ export default function AdminUsersPage() {
   const [editRegion, setEditRegion] = useState("");
   const [editRole, setEditRole] = useState<"user" | "admin">("user");
   const [isSuper, setIsSuper] = useState(false);
+  const [listLoading, setListLoading] = useState(true);
 
   async function loadUsers() {
-    const res = await fetch("/api/admin/users", { cache: "no-store" });
-    const json = await res.json();
-    if (res.ok) setUsers(json.users ?? []);
+    setListLoading(true);
+    try {
+      const res = await fetch("/api/admin/users", { cache: "no-store" });
+      const json = await res.json();
+      if (res.ok) setUsers(json.users ?? []);
+    } finally {
+      setListLoading(false);
+    }
   }
 
   async function loadMe() {
@@ -63,7 +72,7 @@ export default function AdminUsersPage() {
 
   async function onCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setResultText("Создаём пользователя…");
+    setResultText(t("admin.users.creating"));
 
     const res = await fetch("/api/admin/users/create", {
       method: "POST",
@@ -80,14 +89,21 @@ export default function AdminUsersPage() {
     const data = (await res.json()) as ApiOk | ApiErr;
 
     if (!res.ok || !("ok" in data) || !data.ok) {
-      setResultText(`Ошибка: ${"error" in data ? data.error : "Неизвестная ошибка"}`);
+      setResultText(
+        t("admin.users.createError", {
+          error: "error" in data ? data.error : t("admin.users.unknownError"),
+        })
+      );
       return;
     }
 
     setResultText(
       data.mode === "phone"
-        ? `Готово. Вход: телефон ${data.loginHint}. Email в Auth: ${data.authEmail}`
-        : `Готово. Вход: email ${data.loginHint}`
+        ? t("admin.users.donePhone", {
+            loginHint: data.loginHint,
+            authEmail: data.authEmail,
+          })
+        : t("admin.users.doneEmail", { loginHint: data.loginHint })
     );
     setFullName("");
     setLogin("");
@@ -120,28 +136,25 @@ export default function AdminUsersPage() {
     });
     const json = await res.json();
     if (!res.ok) {
-      setResultText(json.error ?? "Ошибка сохранения");
+      setResultText(json.error ?? t("admin.users.saveError"));
       return;
     }
     cancelEdit();
     await loadUsers();
-    setResultText("Сохранено");
+    setResultText(t("admin.users.saved"));
   }
 
   return (
     <AppShell maxWidth="max-w-2xl">
-      <BackNav href="/admin">К панели</BackNav>
-      <AppCard
-        title="Пользователи"
-        subtitle="Учётные записи с ролью «пользователь» — билеты и сканер по назначенным мероприятиям."
-      >
+      <BackNav href="/admin">{t("common.toPanel")}</BackNav>
+      <AppCard title={t("admin.users.title")} subtitle={t("admin.users.subtitle")}>
         <form onSubmit={onCreate}>
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-teal-800/90">
-            Новый пользователь
+            {t("admin.users.sectionNew")}
           </p>
           <FormStack>
             <label className={labelClass}>
-              ФИО
+              {t("admin.users.fullName")}
               <input
                 className={inputClass}
                 value={fullName}
@@ -150,7 +163,7 @@ export default function AdminUsersPage() {
               />
             </label>
             <label className={labelClass}>
-              Логин (телефон или email)
+              {t("admin.users.login")}
               <input
                 className={inputClass}
                 value={login}
@@ -159,7 +172,7 @@ export default function AdminUsersPage() {
               />
             </label>
             <label className={labelClass}>
-              Пароль (мин. 8 символов)
+              {t("admin.users.password")}
               <input
                 type="password"
                 className={inputClass}
@@ -170,16 +183,16 @@ export default function AdminUsersPage() {
               />
             </label>
             <label className={labelClass}>
-              Регион
+              {t("admin.users.region")}
               <input
                 className={inputClass}
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
-                placeholder="Необязательно"
+                placeholder={t("admin.users.regionPh")}
               />
             </label>
             <button type="submit" className={btnPrimary}>
-              Создать пользователя
+              {t("admin.users.submit")}
             </button>
           </FormStack>
         </form>
@@ -192,8 +205,11 @@ export default function AdminUsersPage() {
 
         <div className="mt-10 border-t border-slate-100 pt-8">
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-teal-800/90">
-            Список
+            {t("admin.users.listTitle")}
           </h2>
+          {listLoading ? (
+            <ListLoading label={t("common.loading")} className="py-8" />
+          ) : (
           <ul className="space-y-3">
             {users.map((u) => (
               <li key={u.id} className="rounded-lg border border-slate-100 bg-slate-50/80 p-3">
@@ -208,7 +224,7 @@ export default function AdminUsersPage() {
                       className={inputClass}
                       value={editRegion}
                       onChange={(e) => setEditRegion(e.target.value)}
-                      placeholder="Регион"
+                      placeholder={t("admin.users.editRegionPh")}
                     />
                     {isSuper && (
                       <select
@@ -216,16 +232,16 @@ export default function AdminUsersPage() {
                         value={editRole}
                         onChange={(e) => setEditRole(e.target.value as "user" | "admin")}
                       >
-                        <option value="user">пользователь</option>
-                        <option value="admin">администратор</option>
+                        <option value="user">{t("admin.users.roleUser")}</option>
+                        <option value="admin">{t("admin.users.roleAdmin")}</option>
                       </select>
                     )}
                     <div className="flex flex-wrap gap-2">
                       <button type="button" onClick={saveEdit} className={btnPrimary}>
-                        Сохранить
+                        {t("common.save")}
                       </button>
                       <button type="button" onClick={cancelEdit} className={btnSecondary}>
-                        Отмена
+                        {t("common.cancel")}
                       </button>
                     </div>
                   </div>
@@ -239,13 +255,14 @@ export default function AdminUsersPage() {
                       </p>
                     </div>
                     <button type="button" onClick={() => startEdit(u)} className={btnSecondary}>
-                      Изменить
+                      {t("admin.users.edit")}
                     </button>
                   </div>
                 )}
               </li>
             ))}
           </ul>
+          )}
         </div>
       </AppCard>
     </AppShell>

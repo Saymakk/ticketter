@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import IdleTracker from "@/components/idle-tracker";
+import { LocaleProvider } from "@/components/locale-provider";
 import LogoutBar from "@/components/logout-bar";
 
 const geistSans = Geist({
@@ -27,12 +28,15 @@ export default function RootLayout({
   return (
     <html
       lang="ru"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full`}
     >
       <body className="min-h-full font-sans antialiased">
-        <IdleTracker />
-        <LogoutBar />
-        {children}
+        <LocaleProvider>
+          <IdleTracker />
+          <LogoutBar />
+          {children}
+        </LocaleProvider>
       </body>
     </html>
   );

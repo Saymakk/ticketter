@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useLocaleContext } from "@/components/locale-provider";
 import {
   AppCard,
   AppShell,
@@ -10,10 +11,20 @@ import {
   btnDanger,
   btnPrimary,
   btnSecondary,
+  CircularProgress,
   inputClass,
   linkClass,
-  selectClass,
+  ListLoading,
 } from "@/components/ui/app-shell";
+
+type EventHead = {
+  title: string;
+  city: string;
+  event_date: string;
+  isPast: boolean;
+};
+
+type TicketStats = { total: number; checkedIn: number };
 
 type TicketItem = {
   id: number;
@@ -27,55 +38,79 @@ type TicketItem = {
 };
 
 export default function TicketsPage() {
+  const { t } = useLocaleContext();
   const params = useParams<{ eventId: string }>();
   const eventId = params.eventId;
 
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState("");
+  const [listLoading, setListLoading] = useState(true);
   const [loadingZip, setLoadingZip] = useState(false);
+  const [dupCopies, setDupCopies] = useState(1);
+  const [dupLoading, setDupLoading] = useState(false);
+  const [deleteBulkLoading, setDeleteBulkLoading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [eventHead, setEventHead] = useState<EventHead | null>(null);
+  const [ticketStats, setTicketStats] = useState<TicketStats | null>(null);
 
   const [editTicketId, setEditTicketId] = useState<number | null>(null);
   const [editBuyerName, setEditBuyerName] = useState("");
   const [editPhone, setEditPhone] = useState("");
-  const [editType, setEditType] = useState<"vip" | "standard" | "vip+">("standard");
   const [editRegion, setEditRegion] = useState("");
+
+  const eventPast = eventHead?.isPast === true;
 
   useEffect(() => {
     if (eventId) loadTickets();
   }, [eventId]);
 
   async function loadTickets() {
+    setListLoading(true);
     setError("");
-    const res = await fetch(`/api/admin/events/${eventId}/tickets`, { cache: "no-store" });
-    const json = await res.json();
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/tickets`, { cache: "no-store" });
+      const json = await res.json();
 
-    if (!res.ok) {
-      setError(json.error ?? "Ошибка загрузки билетов");
-      return;
+      if (!res.ok) {
+        setError(json.error ?? t("admin.tickets.loadError"));
+        setTickets([]);
+        setEventHead(null);
+        setTicketStats(null);
+        return;
+      }
+
+      setEventHead(json.event ?? null);
+      setTicketStats(json.stats ?? null);
+      setTickets(json.tickets ?? []);
+      if (json.event?.isPast) {
+        setEditTicketId(null);
+        setEditBuyerName("");
+        setEditPhone("");
+        setEditRegion("");
+      }
+    } finally {
+      setListLoading(false);
     }
-
-    setTickets(json.tickets ?? []);
   }
 
-  function startEditTicket(t: TicketItem) {
-    setEditTicketId(t.id);
-    setEditBuyerName(t.buyer_name ?? "");
-    setEditPhone(t.phone ?? "");
-    setEditType((t.ticket_type as "vip" | "standard" | "vip+") ?? "standard");
-    setEditRegion(t.region ?? "");
+  function startEditTicket(ticket: TicketItem) {
+    if (eventPast) return;
+    setEditTicketId(ticket.id);
+    setEditBuyerName(ticket.buyer_name ?? "");
+    setEditPhone(ticket.phone ?? "");
+    setEditRegion(ticket.region ?? "");
   }
 
   function cancelEditTicket() {
     setEditTicketId(null);
     setEditBuyerName("");
     setEditPhone("");
-    setEditType("standard");
     setEditRegion("");
   }
 
   async function saveEditTicket() {
-    if (!editTicketId) return;
+    if (!editTicketId || eventPast) return;
 
     const res = await fetch(`/api/admin/events/${eventId}/tickets/${editTicketId}`, {
       method: "PATCH",
@@ -83,14 +118,13 @@ export default function TicketsPage() {
       body: JSON.stringify({
         buyerName: editBuyerName || null,
         phone: editPhone || null,
-        ticketType: editType,
         region: editRegion || null,
       }),
     });
 
     const json = await res.json();
     if (!res.ok) {
-      setError(json.error ?? "Ошибка обновления билета");
+      setError(json.error ?? t("admin.tickets.updateError"));
       return;
     }
 
@@ -99,7 +133,8 @@ export default function TicketsPage() {
   }
 
   async function deleteTicket(ticketId: number) {
-    const ok = window.confirm("Удалить билет?");
+    if (eventPast) return;
+    const ok = window.confirm(t("admin.tickets.deleteConfirm"));
     if (!ok) return;
 
     const res = await fetch(`/api/admin/events/${eventId}/tickets/${ticketId}`, {
@@ -108,7 +143,7 @@ export default function TicketsPage() {
 
     const json = await res.json();
     if (!res.ok) {
-      setError(json.error ?? "Ошибка удаления билета");
+      setError(json.error ?? t("admin.tickets.deleteError"));
       return;
     }
 
@@ -134,12 +169,13 @@ export default function TicketsPage() {
 
   async function downloadSelectedQrZip() {
     if (selected.length === 0) {
-      setError("Выбери хотя бы один билет");
+      setError(t("admin.tickets.needOneTicket"));
       return;
     }
 
     setLoadingZip(true);
     setError("");
+    setSuccessMsg("");
 
     try {
       const res = await fetch("/api/tickets/qr-bulk", {
@@ -150,7 +186,7 @@ export default function TicketsPage() {
 
       if (!res.ok) {
         const json = await res.json();
-        setError(json.error ?? "Ошибка скачивания архива");
+        setError(json.error ?? t("admin.tickets.zipError"));
         return;
       }
 
@@ -164,20 +200,122 @@ export default function TicketsPage() {
 
       window.URL.revokeObjectURL(url);
     } catch {
-      setError("Сетевая ошибка при скачивании архива");
+      setError(t("admin.tickets.zipNetworkError"));
     } finally {
       setLoadingZip(false);
     }
   }
 
+  async function duplicateSelected() {
+    if (selected.length === 0) {
+      setSuccessMsg("");
+      setError(t("admin.tickets.needOneTicket"));
+      return;
+    }
+
+    const copies = Math.min(30, Math.max(1, Math.floor(Number(dupCopies)) || 1));
+
+    setDupLoading(true);
+    setError("");
+    setSuccessMsg("");
+
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/tickets/duplicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceUuids: selected, copies }),
+      });
+      const json = await res.json();
+
+      if (!res.ok) {
+        setError(String(json.error ?? t("admin.tickets.duplicateError")));
+        return;
+      }
+
+      setSelected([]);
+      setSuccessMsg(t("admin.tickets.duplicateSuccess", { count: json.created ?? 0 }));
+      await loadTickets();
+    } catch {
+      setError(t("admin.tickets.duplicateError"));
+    } finally {
+      setDupLoading(false);
+    }
+  }
+
+  async function deleteSelectedTickets() {
+    if (selected.length === 0) {
+      setSuccessMsg("");
+      setError(t("admin.tickets.needOneTicket"));
+      return;
+    }
+    if (eventPast) return;
+
+    const ok = window.confirm(
+      t("admin.tickets.deleteSelectedConfirm", { count: selected.length })
+    );
+    if (!ok) return;
+
+    const ids = tickets.filter((x) => selected.includes(x.uuid)).map((x) => x.id);
+    if (ids.length !== selected.length) {
+      setError(t("admin.tickets.deleteSelectedError"));
+      return;
+    }
+
+    setDeleteBulkLoading(true);
+    setError("");
+    setSuccessMsg("");
+
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/tickets/bulk-delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticketIds: ids }),
+      });
+      const json = await res.json();
+
+      if (!res.ok) {
+        setError(String(json.error ?? t("admin.tickets.deleteSelectedError")));
+        return;
+      }
+
+      setSelected([]);
+      await loadTickets();
+    } catch {
+      setError(t("admin.tickets.deleteSelectedError"));
+    } finally {
+      setDeleteBulkLoading(false);
+    }
+  }
+
   return (
     <AppShell maxWidth="max-w-4xl">
-      <BackNav href="/admin/events">К мероприятиям</BackNav>
-      <AppCard
-        title="Билеты мероприятия"
-        subtitle="Редактирование, удаление, массовая выгрузка QR."
-      >
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <BackNav href="/admin/events">{t("admin.tickets.backEvents")}</BackNav>
+      <AppCard title={t("admin.tickets.title")} subtitle={t("admin.tickets.subtitle")}>
+        {eventHead && !listLoading && !error ? (
+          <div className="mb-5 rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-medium text-slate-900">{eventHead.title}</span>
+              <span className="text-sm text-slate-600">
+                {eventHead.city} · {eventHead.event_date}
+              </span>
+              {eventPast ? (
+                <span className="rounded-full bg-slate-200/90 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                  {t("admin.events.eventPastBadge")}
+                </span>
+              ) : null}
+            </div>
+            {ticketStats ? (
+              <p className="mt-2 text-sm text-slate-600">
+                {t("admin.tickets.statsLine", {
+                  total: ticketStats.total,
+                  checkedIn: ticketStats.checkedIn,
+                })}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex max-w-full flex-wrap items-center gap-2">
             <button
               type="button"
@@ -185,25 +323,100 @@ export default function TicketsPage() {
               disabled={tickets.length === 0}
               className={btnSecondary}
             >
-              {allSelected ? "Снять выбор" : "Выбрать все"}
+              {allSelected ? t("admin.tickets.deselectAll") : t("admin.tickets.selectAll")}
             </button>
             <button
               type="button"
               onClick={downloadSelectedQrZip}
               disabled={loadingZip || selected.length === 0}
-              className={btnPrimary}
+              className={`${btnPrimary} inline-flex items-center gap-2`}
             >
-              {loadingZip ? "Скачиваем…" : "Скачать QR (zip)"}
+              {loadingZip ? (
+                <>
+                  <CircularProgress size="sm" className="border-white/35 border-t-white" />
+                  {t("admin.tickets.downloading")}
+                </>
+              ) : (
+                t("admin.tickets.downloadZip")
+              )}
             </button>
-            <span className="text-sm text-slate-600">Выбрано: {selected.length}</span>
+            <button
+              type="button"
+              onClick={() => void deleteSelectedTickets()}
+              disabled={deleteBulkLoading || selected.length === 0 || eventPast}
+              className={`${btnDanger} inline-flex items-center gap-2`}
+            >
+              {deleteBulkLoading ? (
+                <>
+                  <CircularProgress size="sm" className="border-white/35 border-t-white" />
+                  {t("admin.tickets.deleteSelectedProgress")}
+                </>
+              ) : (
+                t("admin.tickets.deleteSelected")
+              )}
+            </button>
+            <div className="flex flex-wrap items-center gap-1.5 sm:border-l sm:border-slate-200 sm:pl-2">
+              <span className="text-sm text-slate-600">{t("admin.tickets.duplicateCopiesShort")}</span>
+              <input
+                type="number"
+                min={1}
+                max={30}
+                title={t("admin.tickets.duplicateCopiesShort")}
+                className={`${inputClass} !mt-0 !w-16 !max-w-16 shrink-0 px-1 py-1.5 text-center text-sm tabular-nums`}
+                value={dupCopies}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value, 10);
+                  if (Number.isNaN(n)) setDupCopies(1);
+                  else setDupCopies(Math.min(30, Math.max(1, n)));
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => void duplicateSelected()}
+                disabled={
+                  dupLoading ||
+                  selected.length === 0 ||
+                  tickets.length === 0 ||
+                  eventPast
+                }
+                className={`${btnSecondary} inline-flex items-center gap-1.5 px-3 py-1.5 text-sm`}
+              >
+                {dupLoading ? (
+                  <>
+                    <CircularProgress size="sm" />
+                    <span className="hidden sm:inline">{t("admin.tickets.duplicating")}</span>
+                  </>
+                ) : (
+                  t("admin.tickets.duplicateButton")
+                )}
+              </button>
+            </div>
+            <span className="text-sm text-slate-600">
+              {t("admin.tickets.selected", { count: selected.length })}
+            </span>
           </div>
-          <Link
-            href={`/admin/events/${eventId}/tickets/new`}
-            className={`${btnPrimary} no-underline`}
-          >
-            Новый билет
-          </Link>
+          {eventPast ? (
+            <span
+              className={`${btnPrimary} inline-flex shrink-0 cursor-not-allowed select-none opacity-50`}
+              title={t("admin.tickets.newTicketDisabledPast")}
+            >
+              {t("admin.tickets.newTicket")}
+            </span>
+          ) : (
+            <Link
+              href={`/admin/events/${eventId}/tickets/new`}
+              className={`${btnPrimary} shrink-0 no-underline`}
+            >
+              {t("admin.tickets.newTicket")}
+            </Link>
+          )}
         </div>
+
+        {successMsg ? (
+          <p className="mb-4 rounded-lg border border-teal-100 bg-teal-50/90 px-3 py-2 text-sm text-teal-900">
+            {successMsg}
+          </p>
+        ) : null}
 
         {error && (
           <p className="mb-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-800">
@@ -211,52 +424,43 @@ export default function TicketsPage() {
           </p>
         )}
 
-        {tickets.length === 0 ? (
-          <p className="text-sm text-slate-600">Пока билетов нет</p>
+        {listLoading ? (
+          <ListLoading label={t("common.loading")} />
+        ) : error ? null : tickets.length === 0 ? (
+          <p className="text-sm text-slate-600">{t("admin.tickets.listEmpty")}</p>
         ) : (
           <ul className="space-y-4">
-            {tickets.map((t) => (
+            {tickets.map((ticket) => (
               <li
-                key={t.id}
+                key={ticket.id}
                 className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 shadow-sm"
               >
-                {editTicketId === t.id ? (
+                {editTicketId === ticket.id ? (
                   <div className="grid gap-3 sm:max-w-md">
                     <input
                       className={inputClass}
                       value={editBuyerName}
                       onChange={(e) => setEditBuyerName(e.target.value)}
-                      placeholder="ФИО"
+                      placeholder={t("admin.tickets.placeholderName")}
                     />
                     <input
                       className={inputClass}
                       value={editPhone}
                       onChange={(e) => setEditPhone(e.target.value)}
-                      placeholder="Телефон"
+                      placeholder={t("admin.tickets.placeholderPhone")}
                     />
-                    <select
-                      className={selectClass}
-                      value={editType}
-                      onChange={(e) =>
-                        setEditType(e.target.value as "vip" | "standard" | "vip+")
-                      }
-                    >
-                      <option value="standard">standard</option>
-                      <option value="vip">vip</option>
-                      <option value="vip+">vip+</option>
-                    </select>
                     <input
                       className={inputClass}
                       value={editRegion}
                       onChange={(e) => setEditRegion(e.target.value)}
-                      placeholder="Регион"
+                      placeholder={t("admin.tickets.placeholderRegion")}
                     />
                     <div className="flex flex-wrap gap-2">
                       <button type="button" onClick={saveEditTicket} className={btnPrimary}>
-                        Сохранить
+                        {t("common.save")}
                       </button>
                       <button type="button" onClick={cancelEditTicket} className={btnSecondary}>
-                        Отмена
+                        {t("common.cancel")}
                       </button>
                     </div>
                   </div>
@@ -266,42 +470,53 @@ export default function TicketsPage() {
                       <input
                         type="checkbox"
                         className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                        checked={selected.includes(t.uuid)}
-                        onChange={() => toggleSelected(t.uuid)}
+                        checked={selected.includes(ticket.uuid)}
+                        onChange={() => toggleSelected(ticket.uuid)}
                       />
                       <div>
-                        <p className="font-mono text-xs text-slate-500">{t.uuid}</p>
+                        <p className="font-mono text-xs text-slate-500">{ticket.uuid}</p>
                         <p className="font-medium text-slate-900">
-                          {t.buyer_name ?? "—"} · {t.phone ?? "—"}
+                          {ticket.buyer_name ?? "—"} · {ticket.phone ?? "—"}
                         </p>
                         <p className="text-sm text-slate-600">
-                          {t.ticket_type ?? "—"} ·{" "}
+                          {ticket.ticket_type ? (
+                            <>
+                              {ticket.ticket_type}
+                              {" · "}
+                            </>
+                          ) : null}
                           <span
                             className={
-                              t.status === "checked_in" ? "text-teal-700" : "text-slate-500"
+                              ticket.status === "checked_in" ? "text-teal-700" : "text-slate-500"
                             }
                           >
-                            {t.status}
+                            {ticket.status}
                           </span>
                         </p>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Link
-                        href={`/admin/events/${eventId}/tickets/${t.uuid}`}
+                        href={`/admin/events/${eventId}/tickets/${ticket.uuid}`}
                         className={`${linkClass} rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm no-underline`}
                       >
-                        Карточка
+                        {t("admin.tickets.card")}
                       </Link>
                       <button
                         type="button"
-                        onClick={() => startEditTicket(t)}
+                        onClick={() => startEditTicket(ticket)}
+                        disabled={eventPast}
                         className={btnSecondary}
                       >
-                        Изменить
+                        {t("admin.users.edit")}
                       </button>
-                      <button type="button" onClick={() => deleteTicket(t.id)} className={btnDanger}>
-                        Удалить
+                      <button
+                        type="button"
+                        onClick={() => deleteTicket(ticket.id)}
+                        disabled={eventPast}
+                        className={btnDanger}
+                      >
+                        {t("admin.tickets.deleteTicket")}
                       </button>
                     </div>
                   </div>

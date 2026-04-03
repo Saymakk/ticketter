@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useLocaleContext } from "@/components/locale-provider";
 import {
   AppCard,
   AppShell,
@@ -10,6 +11,7 @@ import {
   FormStack,
   inputClass,
   labelClass,
+  ListLoading,
 } from "@/components/ui/app-shell";
 
 type AdminRow = {
@@ -31,17 +33,24 @@ type ApiOk = {
 type ApiErr = { error: string };
 
 export default function SuperAdminAdminsPage() {
+  const { t } = useLocaleContext();
   const [fullName, setFullName] = useState("");
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [region, setRegion] = useState("");
   const [resultText, setResultText] = useState("");
   const [admins, setAdmins] = useState<AdminRow[]>([]);
+  const [listLoading, setListLoading] = useState(true);
 
   async function loadAdmins() {
-    const res = await fetch("/api/super-admin/admins", { cache: "no-store" });
-    const json = await res.json();
-    if (res.ok) setAdmins(json.admins ?? []);
+    setListLoading(true);
+    try {
+      const res = await fetch("/api/super-admin/admins", { cache: "no-store" });
+      const json = await res.json();
+      if (res.ok) setAdmins(json.admins ?? []);
+    } finally {
+      setListLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -50,7 +59,7 @@ export default function SuperAdminAdminsPage() {
 
   async function onCreateAdmin(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setResultText("Создаём администратора…");
+    setResultText(t("super.admins.creating"));
 
     const res = await fetch("/api/admin/users/create", {
       method: "POST",
@@ -67,18 +76,23 @@ export default function SuperAdminAdminsPage() {
     const data = (await res.json()) as ApiOk | ApiErr;
 
     if (!res.ok || !("ok" in data) || !data.ok) {
-      setResultText(`Ошибка: ${"error" in data ? data.error : "Неизвестная ошибка"}`);
+      setResultText(
+        t("super.admins.createError", {
+          error: "error" in data ? data.error : t("super.admins.unknownError"),
+        })
+      );
       return;
     }
 
     if (data.mode === "phone") {
       setResultText(
-        `Готово. Вход: телефон ${data.loginHint}, пароль — заданный при создании. Технический email в Auth: ${data.authEmail}`
+        t("super.admins.donePhone", {
+          loginHint: data.loginHint,
+          authEmail: data.authEmail,
+        })
       );
     } else {
-      setResultText(
-        `Готово. Вход: email ${data.loginHint}, пароль — заданный при создании.`
-      );
+      setResultText(t("super.admins.doneEmail", { loginHint: data.loginHint }));
     }
 
     setFullName("");
@@ -90,15 +104,12 @@ export default function SuperAdminAdminsPage() {
 
   return (
     <AppShell maxWidth="max-w-2xl">
-      <BackNav href="/super-admin">К суперадмину</BackNav>
-      <AppCard
-        title="Администраторы"
-        subtitle="Только суперадмин может создавать учётные записи с ролью «администратор». Они управляют мероприятиями и пользователями."
-      >
+      <BackNav href="/admin">{t("common.toPanel")}</BackNav>
+      <AppCard title={t("super.admins.title")} subtitle={t("super.admins.subtitle")}>
         <form onSubmit={onCreateAdmin}>
           <FormStack>
             <label className={labelClass}>
-              ФИО
+              {t("super.admins.fullName")}
               <input
                 className={inputClass}
                 value={fullName}
@@ -108,19 +119,19 @@ export default function SuperAdminAdminsPage() {
             </label>
 
             <label className={labelClass}>
-              Логин (телефон или email)
+              {t("super.admins.login")}
               <input
                 className={inputClass}
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
-                placeholder="+7 701 123 45 67 или name@company.com"
+                placeholder={t("super.admins.loginPh")}
                 autoComplete="off"
                 required
               />
             </label>
 
             <label className={labelClass}>
-              Пароль (минимум 8 символов)
+              {t("super.admins.password")}
               <input
                 type="password"
                 className={inputClass}
@@ -133,17 +144,17 @@ export default function SuperAdminAdminsPage() {
             </label>
 
             <label className={labelClass}>
-              Регион (north / south / west / east)
+              {t("super.admins.region")}
               <input
                 className={inputClass}
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
-                placeholder="Необязательно"
+                placeholder={t("super.admins.regionPh")}
               />
             </label>
 
             <button type="submit" className={btnPrimary}>
-              Создать администратора
+              {t("super.admins.submit")}
             </button>
           </FormStack>
         </form>
@@ -156,10 +167,12 @@ export default function SuperAdminAdminsPage() {
 
         <div className="mt-10 border-t border-slate-100 pt-8">
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-teal-800/90">
-            Список администраторов
+            {t("super.admins.listTitle")}
           </h2>
-          {admins.length === 0 ? (
-            <p className="text-sm text-slate-600">Пока нет записей</p>
+          {listLoading ? (
+            <ListLoading label={t("common.loading")} className="py-8" />
+          ) : admins.length === 0 ? (
+            <p className="text-sm text-slate-600">{t("super.admins.listEmpty")}</p>
           ) : (
             <ul className="space-y-2 text-sm text-slate-800">
               {admins.map((a) => (
@@ -171,8 +184,13 @@ export default function SuperAdminAdminsPage() {
               ))}
             </ul>
           )}
-          <button type="button" onClick={() => loadAdmins()} className={`${btnSecondary} mt-4`}>
-            Обновить список
+          <button
+            type="button"
+            onClick={() => void loadAdmins()}
+            disabled={listLoading}
+            className={`${btnSecondary} mt-4`}
+          >
+            {t("super.admins.refreshList")}
           </button>
         </div>
       </AppCard>

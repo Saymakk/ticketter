@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { useLocaleContext } from "@/components/locale-provider";
+import { isEventPastByDateString } from "@/lib/event-date";
 import {
   AppCard,
   AppSection,
@@ -12,6 +14,7 @@ import {
   btnSecondary,
   FormStack,
   inputClass,
+  ListLoading,
   selectClass,
 } from "@/components/ui/app-shell";
 
@@ -55,6 +58,7 @@ async function safeReadJson<T>(res: Response): Promise<T | null> {
 type ManageTab = "create" | "assign" | "list";
 
 export default function ManageEventsPage() {
+  const { t } = useLocaleContext();
   const [activeTab, setActiveTab] = useState<ManageTab>("create");
   const [events, setEvents] = useState<EventItem[]>([]);
   const [users, setUsers] = useState<UserItem[]>([]);
@@ -94,7 +98,9 @@ export default function ManageEventsPage() {
       } else {
         setEvents([]);
         setResult(
-            `Ошибка загрузки мероприятий: ${eventsJson.error ?? `HTTP ${eventsRes.status}`}`
+          t("admin.manage.loadEventsFailed", {
+            detail: String(eventsJson.error ?? `HTTP ${eventsRes.status}`),
+          })
         );
       }
 
@@ -103,11 +109,13 @@ export default function ManageEventsPage() {
       } else {
         setUsers([]);
         setResult(
-            `Ошибка загрузки пользователей: ${usersJson.error ?? `HTTP ${usersRes.status}`}`
+          t("admin.manage.loadUsersFailed", {
+            detail: String(usersJson.error ?? `HTTP ${usersRes.status}`),
+          })
         );
       }
     } catch {
-      setResult("Ошибка загрузки данных");
+      setResult(t("admin.manage.loadError"));
     } finally {
       setLoading(false);
     }
@@ -148,7 +156,7 @@ export default function ManageEventsPage() {
 
   async function onCreateEvent(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setResult("Создаем мероприятие...");
+    setResult(t("admin.manage.resultCreating"));
 
     const fieldsPayload: {
       fieldKey: string;
@@ -163,11 +171,11 @@ export default function ManageEventsPage() {
       const label = f.fieldLabel.trim();
       if (!key && !label) continue;
       if (!key || !label) {
-        setResult("Для каждого поля заполните ключ и подпись или удалите строку.");
+        setResult(t("admin.manage.fieldRowError"));
         return;
       }
       if (!/^[a-z0-9_]+$/.test(key)) {
-        setResult(`Ключ поля «${key}»: только латиница, цифры и подчёркивание.`);
+        setResult(t("admin.manage.fieldKeyError", { key }));
         return;
       }
       const opts =
@@ -178,7 +186,7 @@ export default function ManageEventsPage() {
               .filter(Boolean)
           : undefined;
       if (f.fieldType === "select" && (!opts || opts.length === 0)) {
-        setResult(`Для списка «${label}» укажите варианты (построчно).`);
+        setResult(t("admin.manage.fieldSelectError", { label }));
         return;
       }
       fieldsPayload.push({
@@ -205,24 +213,28 @@ export default function ManageEventsPage() {
       const json = (await safeReadJson<ApiError>(res)) ?? {};
 
       if (!res.ok) {
-        setResult(`Ошибка: ${json.error ?? `HTTP ${res.status}`}`);
+        setResult(
+          t("admin.manage.errorApi", {
+            detail: String(json.error ?? `HTTP ${res.status}`),
+          })
+        );
         return;
       }
 
-      setResult("Мероприятие создано");
+      setResult(t("admin.manage.resultCreated"));
       setTitle("");
       setCity("");
       setEventDate("");
       setDraftFields([]);
       await loadData();
     } catch {
-      setResult("Сетевая ошибка при создании мероприятия");
+      setResult(t("admin.manage.networkCreate"));
     }
   }
 
   async function onAssign(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setResult("Назначаем доступ...");
+    setResult(t("admin.manage.resultAssigning"));
 
     try {
       const res = await fetch("/api/super-admin/events/assign-user", {
@@ -237,13 +249,17 @@ export default function ManageEventsPage() {
       const json = (await safeReadJson<ApiError>(res)) ?? {};
 
       if (!res.ok) {
-        setResult(`Ошибка: ${json.error ?? `HTTP ${res.status}`}`);
+        setResult(
+          t("admin.manage.errorApi", {
+            detail: String(json.error ?? `HTTP ${res.status}`),
+          })
+        );
         return;
       }
 
-      setResult("Доступ назначен");
+      setResult(t("admin.manage.resultAssigned"));
     } catch {
-      setResult("Сетевая ошибка при назначении доступа");
+      setResult(t("admin.manage.networkAssign"));
     }
   }
 
@@ -265,7 +281,7 @@ export default function ManageEventsPage() {
 
   async function saveEditEvent() {
     if (!editEventId) return;
-    setResult("Сохраняем изменения мероприятия...");
+    setResult(t("admin.manage.resultSaving"));
 
     const res = await fetch(`/api/super-admin/events/${editEventId}`, {
       method: "PATCH",
@@ -280,33 +296,39 @@ export default function ManageEventsPage() {
 
     const json = (await safeReadJson<ApiError>(res)) ?? {};
     if (!res.ok) {
-      setResult(`Ошибка: ${json.error ?? `HTTP ${res.status}`}`);
+      setResult(
+        t("admin.manage.errorApi", {
+          detail: String(json.error ?? `HTTP ${res.status}`),
+        })
+      );
       return;
     }
 
-    setResult("Мероприятие обновлено");
+    setResult(t("admin.manage.resultSaved"));
     cancelEditEvent();
     await loadData();
   }
 
   async function deleteEvent(eventId: string) {
-    const ok = window.confirm(
-        "Удалить мероприятие? Связанные данные удалятся, если в БД настроен CASCADE."
-    );
+    const ok = window.confirm(t("admin.manage.deleteConfirm"));
     if (!ok) return;
 
-    setResult("Удаляем мероприятие...");
+    setResult(t("admin.manage.resultDeleting"));
     const res = await fetch(`/api/super-admin/events/${eventId}`, {
       method: "DELETE",
     });
 
     const json = (await safeReadJson<ApiError>(res)) ?? {};
     if (!res.ok) {
-      setResult(`Ошибка: ${json.error ?? `HTTP ${res.status}`}`);
+      setResult(
+        t("admin.manage.errorApi", {
+          detail: String(json.error ?? `HTTP ${res.status}`),
+        })
+      );
       return;
     }
 
-    setResult("Мероприятие удалено");
+    setResult(t("admin.manage.resultDeleted"));
     await loadData();
   }
 
@@ -328,35 +350,33 @@ export default function ManageEventsPage() {
 
   return (
     <AppShell maxWidth="max-w-4xl">
-      <BackNav href="/admin">К панели</BackNav>
-      <AppCard
-        title="Мероприятия"
-      >
+      <BackNav href="/admin">{t("common.toPanel")}</BackNav>
+      <AppCard title={t("admin.manage.title")} subtitle={t("admin.manage.subtitle")}>
         <div
           className="mb-5 flex gap-0.5 overflow-x-auto border-b border-slate-200"
           role="tablist"
-          aria-label="Разделы управления мероприятиями"
+          aria-label={t("admin.manage.tabsAria")}
         >
-          {tabBtn("create", "Создание мероприятий")}
-          {tabBtn("assign", "Назначение ответственных пользователей")}
-          {tabBtn("list", "Список мероприятий")}
+          {tabBtn("create", t("admin.manage.tabCreate"))}
+          {tabBtn("assign", t("admin.manage.tabAssign"))}
+          {tabBtn("list", t("admin.manage.tabList"))}
         </div>
 
         {activeTab === "create" && (
           <div className="space-y-8" role="tabpanel">
-            <AppSection title="Новое мероприятие">
+            <AppSection title={t("admin.manage.sectionNew")}>
               <form onSubmit={onCreateEvent}>
                 <FormStack>
                   <input
                     className={inputClass}
-                    placeholder="Название"
+                    placeholder={t("admin.manage.placeholderTitle")}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required
                   />
                   <input
                     className={inputClass}
-                    placeholder="Город"
+                    placeholder={t("admin.manage.placeholderCity")}
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     required
@@ -369,19 +389,15 @@ export default function ManageEventsPage() {
                     required
                   />
                   <button type="submit" disabled={loading} className={btnPrimary}>
-                    Создать мероприятие
+                    {t("admin.manage.submitCreate")}
                   </button>
                 </FormStack>
               </form>
             </AppSection>
 
-            <AppSection title="Поля билета при создании (необязательно)">
+            <AppSection title={t("admin.manage.sectionFields")}>
               <div className="max-w-md space-y-4">
-              <p className="text-xs text-slate-600">
-                Ключ — латиница (например <span className="font-mono">company_name</span>). Для
-                «Список» варианты — с новой строки. Позже поля можно менять в карточке мероприятия
-                («Поля»).
-              </p>
+              <p className="text-xs text-slate-600">{t("admin.manage.fieldsHint")}</p>
               {draftFields.map((f) => (
                 <div
                   key={f.id}
@@ -389,13 +405,13 @@ export default function ManageEventsPage() {
                 >
                   <input
                     className={inputClass}
-                    placeholder="Ключ (латиница)"
+                    placeholder={t("admin.manage.fieldKey")}
                     value={f.fieldKey}
                     onChange={(e) => updateDraftField(f.id, { fieldKey: e.target.value })}
                   />
                   <input
                     className={inputClass}
-                    placeholder="Подпись в форме"
+                    placeholder={t("admin.manage.fieldLabel")}
                     value={f.fieldLabel}
                     onChange={(e) => updateDraftField(f.id, { fieldLabel: e.target.value })}
                   />
@@ -408,15 +424,15 @@ export default function ManageEventsPage() {
                       })
                     }
                   >
-                    <option value="text">Текст</option>
-                    <option value="textarea">Многострочный</option>
-                    <option value="select">Список</option>
+                    <option value="text">{t("admin.manage.fieldTypeText")}</option>
+                    <option value="textarea">{t("admin.manage.fieldTypeTextarea")}</option>
+                    <option value="select">{t("admin.manage.fieldTypeSelect")}</option>
                   </select>
                   {f.fieldType === "select" && (
                     <textarea
                       className={inputClass}
                       rows={3}
-                      placeholder="Варианты списка (каждый с новой строки)"
+                      placeholder={t("admin.manage.fieldOptions")}
                       value={f.optionsText}
                       onChange={(e) => updateDraftField(f.id, { optionsText: e.target.value })}
                     />
@@ -428,15 +444,15 @@ export default function ManageEventsPage() {
                       onChange={(e) => updateDraftField(f.id, { isRequired: e.target.checked })}
                       className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                     />
-                    Обязательное
+                    {t("common.required")}
                   </label>
                   <button type="button" onClick={() => removeDraftField(f.id)} className={btnDanger}>
-                    Удалить поле
+                    {t("admin.manage.removeField")}
                   </button>
                 </div>
               ))}
               <button type="button" onClick={addDraftField} className={btnSecondary}>
-                + Добавить поле
+                {t("admin.manage.addField")}
               </button>
               </div>
             </AppSection>
@@ -445,11 +461,11 @@ export default function ManageEventsPage() {
 
         {activeTab === "assign" && (
           <div role="tabpanel">
-            <AppSection title="Назначить пользователя на мероприятие">
-              <p className="mb-4 text-xs text-slate-600">
-                В списке только пользователи с ролью «пользователь». Они увидят мероприятие в своей
-                панели и смогут вести билеты и сканер.
-              </p>
+            {loading ? (
+              <ListLoading label={t("common.loading")} />
+            ) : (
+            <AppSection title={t("admin.manage.sectionAssign")}>
+              <p className="mb-4 text-xs text-slate-600">{t("admin.manage.assignHint")}</p>
               <form onSubmit={onAssign}>
                 <FormStack>
                   <select
@@ -458,7 +474,7 @@ export default function ManageEventsPage() {
                     onChange={(e) => setSelectedEventId(e.target.value)}
                     required
                   >
-                    <option value="">Мероприятие</option>
+                    <option value="">{t("admin.manage.selectEvent")}</option>
                     {events.map((ev) => (
                       <option key={ev.id} value={ev.id}>
                         {ev.title} / {ev.city} / {ev.event_date}
@@ -471,20 +487,21 @@ export default function ManageEventsPage() {
                     onChange={(e) => setSelectedUserId(e.target.value)}
                     required
                   >
-                    <option value="">Пользователь</option>
+                    <option value="">{t("admin.manage.selectUser")}</option>
                     {users.map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.full_name ?? "Без имени"}
+                        {u.full_name ?? t("admin.manage.noUserName")}
                         {u.phone ? ` / ${u.phone}` : ""}
                       </option>
                     ))}
                   </select>
                   <button type="submit" disabled={loading} className={btnPrimary}>
-                    Назначить доступ
+                    {t("admin.manage.assignSubmit")}
                   </button>
                 </FormStack>
               </form>
             </AppSection>
+            )}
           </div>
         )}
 
@@ -493,9 +510,11 @@ export default function ManageEventsPage() {
             className="max-h-[min(70vh,calc(100vh-16rem))] overflow-y-auto pr-1"
             role="tabpanel"
           >
-            <AppSection title="Все мероприятия">
-              {events.length === 0 ? (
-                <p className="text-sm text-slate-600">Пока нет мероприятий</p>
+            <AppSection title={t("admin.manage.sectionList")}>
+              {loading ? (
+                <ListLoading label={t("common.loading")} className="py-6" />
+              ) : events.length === 0 ? (
+                <p className="text-sm text-slate-600">{t("admin.manage.listEmpty")}</p>
               ) : (
                 <ul className="space-y-4">
                   {events.map((ev) => (
@@ -528,14 +547,14 @@ export default function ManageEventsPage() {
                               onChange={(e) => setEditIsActive(e.target.checked)}
                               className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                             />
-                            Активно
+                            {t("admin.manage.activeFlag")}
                           </label>
                           <div className="flex flex-wrap gap-2">
                             <button type="button" onClick={saveEditEvent} className={btnPrimary}>
-                              Сохранить
+                              {t("common.save")}
                             </button>
                             <button type="button" onClick={cancelEditEvent} className={btnSecondary}>
-                              Отмена
+                              {t("common.cancel")}
                             </button>
                           </div>
                         </div>
@@ -543,13 +562,20 @@ export default function ManageEventsPage() {
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
                             <p className="font-medium text-slate-900">{ev.title}</p>
-                            <p className="text-sm text-slate-600">
-                              {ev.city} · {ev.event_date} ·{" "}
-                              <span
-                                className={ev.is_active ? "text-teal-700" : "text-slate-400"}
-                              >
-                                {ev.is_active ? "активно" : "неактивно"}
+                            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
+                              <span>
+                                {ev.city} · {ev.event_date} ·{" "}
+                                <span
+                                  className={ev.is_active ? "text-teal-700" : "text-slate-400"}
+                                >
+                                  {ev.is_active ? t("common.active") : t("common.inactive")}
+                                </span>
                               </span>
+                              {isEventPastByDateString(ev.event_date) ? (
+                                <span className="rounded-full bg-slate-200/90 px-2 py-0.5 text-xs font-medium text-slate-700">
+                                  {t("admin.events.eventPastBadge")}
+                                </span>
+                              ) : null}
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-2">
@@ -557,21 +583,21 @@ export default function ManageEventsPage() {
                               href={`/admin/manage/events/${ev.id}/fields`}
                               className={`${btnSecondary} no-underline`}
                             >
-                              Поля
+                              {t("admin.manage.fieldsLink")}
                             </Link>
                             <button
                               type="button"
                               onClick={() => startEditEvent(ev)}
                               className={btnSecondary}
                             >
-                              Редактировать
+                              {t("common.edit")}
                             </button>
                             <button
                               type="button"
                               onClick={() => deleteEvent(ev.id)}
                               className={btnDanger}
                             >
-                              Удалить
+                              {t("common.delete")}
                             </button>
                           </div>
                         </div>

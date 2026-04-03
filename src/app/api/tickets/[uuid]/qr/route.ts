@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { isEventManagerRole } from "@/lib/auth/roles";
+import { contentDispositionWithUtf8Name, qrImageFileName } from "@/lib/qr-filename";
 
 type Params = { params: Promise<{ uuid: string }> };
 
@@ -18,7 +19,7 @@ async function ensureTicketReadable(ticketUuid: string) {
     // Находим билет + event_id
     const { data: ticket, error: ticketError } = await supabase
         .from("tickets")
-        .select("uuid,event_id")
+        .select("uuid,event_id,buyer_name")
         .eq("uuid", ticketUuid)
         .single();
 
@@ -46,10 +47,10 @@ async function ensureTicketReadable(ticketUuid: string) {
         return { ok: false as const, status: 403, error: "Нет доступа к билету" };
     }
 
-    return { ok: true as const, ticketUuid: ticket.uuid };
+    return { ok: true as const, ticketUuid: ticket.uuid, buyerName: ticket.buyer_name };
 }
 
-export async function GET(_: Request, { params }: Params) {
+export async function GET(request: Request, { params }: Params) {
     const { uuid } = await params;
     const check = await ensureTicketReadable(uuid);
 
@@ -64,12 +65,16 @@ export async function GET(_: Request, { params }: Params) {
     });
 
     const body = new Uint8Array(pngBuffer);
+    const url = new URL(request.url);
+    const inline = url.searchParams.get("inline") === "1";
+    const fileName = qrImageFileName(check.buyerName, check.ticketUuid);
+    const disposition = contentDispositionWithUtf8Name(inline ? "inline" : "attachment", fileName);
 
     return new NextResponse(body, {
         status: 200,
         headers: {
             "Content-Type": "image/png",
-            "Content-Disposition": `attachment; filename="ticket-${check.ticketUuid}.png"`,
+            "Content-Disposition": disposition,
             "Cache-Control": "no-store",
         },
     });

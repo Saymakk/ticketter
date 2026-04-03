@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireEventManager } from "@/lib/auth/api-guards";
+import { EVENT_ENDED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
 
 const createFieldSchema = z
   .object({
@@ -47,6 +48,14 @@ export async function POST(request: Request, { params }: Params) {
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
   const { eventId } = await params;
+
+  const adminGuard = createAdminSupabaseClient();
+  const { data: evRow } = await adminGuard.from("events").select("event_date").eq("id", eventId).maybeSingle();
+  if (!evRow) return NextResponse.json({ error: "Мероприятие не найдено" }, { status: 404 });
+  if (isEventPastByDateString(evRow.event_date)) {
+    return NextResponse.json({ error: EVENT_ENDED_MESSAGE }, { status: 403 });
+  }
+
   const body = await request.json();
   const parsed = createFieldSchema.safeParse(body);
 
@@ -56,7 +65,7 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   const p = parsed.data;
-  const admin = createAdminSupabaseClient();
+  const admin = adminGuard;
 
   let sortOrder = p.sortOrder;
   if (sortOrder === undefined) {

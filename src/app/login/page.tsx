@@ -4,6 +4,9 @@ import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { resolveAuthEmail } from "@/lib/auth/login";
+import { patchProfileLocale, getStoredLocale } from "@/lib/i18n/sync-locale";
+import LanguageSwitcher from "@/components/language-switcher";
+import { useLocaleContext } from "@/components/locale-provider";
 import {
   AppCard,
   AppShellCenter,
@@ -11,12 +14,19 @@ import {
   FormStack,
   inputClass,
   labelClass,
+  ListLoading,
 } from "@/components/ui/app-shell";
+
+function LoginSuspenseFallback() {
+  const { t } = useLocaleContext();
+  return <ListLoading label={t("login.suspenseFallback")} />;
+}
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
+  const { t } = useLocaleContext();
 
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
@@ -37,7 +47,7 @@ function LoginForm() {
       });
 
       if (error) {
-        setErrorText("Неверный логин или пароль");
+        setErrorText(t("login.errorCredentials"));
         return;
       }
 
@@ -47,7 +57,7 @@ function LoginForm() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        setErrorText("Не удалось получить пользователя после входа");
+        setErrorText(t("login.errorUser"));
         return;
       }
 
@@ -58,9 +68,11 @@ function LoginForm() {
         .single();
 
       if (profileError || !profile) {
-        setErrorText("Профиль пользователя не найден");
+        setErrorText(t("login.errorProfile"));
         return;
       }
+
+      await patchProfileLocale(getStoredLocale());
 
       const nextPath = searchParams.get("next");
       if (nextPath && nextPath.startsWith("/")) {
@@ -68,19 +80,14 @@ function LoginForm() {
         return;
       }
 
-      if (profile.role === "super_admin") {
-        router.push("/super-admin");
-        return;
-      }
-
-      if (profile.role === "admin" || profile.role === "user") {
+      if (profile.role === "super_admin" || profile.role === "admin" || profile.role === "user") {
         router.push("/admin");
         return;
       }
 
-      setErrorText("Неизвестная роль в профиле. Обратитесь к администратору.");
+      setErrorText(t("login.errorUnknownRole"));
     } catch {
-      setErrorText("Проверь формат: телефон (+7 …) или корректный email.");
+      setErrorText(t("login.errorFormat"));
     } finally {
       setLoading(false);
     }
@@ -88,26 +95,26 @@ function LoginForm() {
 
   return (
     <AppShellCenter>
-      <AppCard
-        title="Вход"
-        subtitle="Телефон или email и пароль, выданные администратором."
-      >
+      <div className="mb-4 flex justify-end">
+        <LanguageSwitcher />
+      </div>
+      <AppCard title={t("login.title")} subtitle={t("login.subtitle")}>
         <form onSubmit={onSubmit}>
           <FormStack>
             <label className={labelClass}>
-              Телефон или email
+              {t("login.loginLabel")}
               <input
                 className={inputClass}
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
-                placeholder="+7 701 123 45 67 или name@company.com"
+                placeholder={t("login.loginPlaceholder")}
                 autoComplete="username"
                 required
               />
             </label>
 
             <label className={labelClass}>
-              Пароль
+              {t("login.password")}
               <input
                 className={inputClass}
                 value={password}
@@ -119,7 +126,7 @@ function LoginForm() {
             </label>
 
             <button type="submit" disabled={loading} className={`${btnPrimary} w-full`}>
-              {loading ? "Входим…" : "Войти"}
+              {loading ? t("login.submitting") : t("login.submit")}
             </button>
           </FormStack>
         </form>
@@ -139,7 +146,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <AppShellCenter>
-          <p className="text-center text-sm text-slate-600">Загрузка…</p>
+          <LoginSuspenseFallback />
         </AppShellCenter>
       }
     >

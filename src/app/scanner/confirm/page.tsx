@@ -2,12 +2,19 @@
 
 import { FormEvent, Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useLocaleContext } from "@/components/locale-provider";
+import {
+  isScannerFromPanelParam,
+  scannerListHref,
+  SCANNER_FROM_PANEL_PARAM,
+} from "@/lib/scanner/from-panel";
 import {
   AppCard,
   AppShell,
   BackNav,
   btnPrimary,
   btnSecondary,
+  ListLoading,
 } from "@/components/ui/app-shell";
 
 type Ticket = {
@@ -47,20 +54,24 @@ function row(label: string, value: string) {
 }
 
 function ConfirmContent() {
+  const { t } = useLocaleContext();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const eventId = searchParams.get("eventId") ?? "";
   const uuid = searchParams.get("uuid") ?? "";
+  const fromPanel = isScannerFromPanelParam(searchParams.get(SCANNER_FROM_PANEL_PARAM));
+  const scannerListPath = scannerListHref(fromPanel);
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [eventPast, setEventPast] = useState(false);
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (!eventId || !uuid) {
-      setMessage("Не указаны eventId или uuid");
+      setMessage(t("scanner.confirm.missingParams"));
       setLoading(false);
       return;
     }
@@ -76,18 +87,21 @@ function ConfirmContent() {
         { cache: "no-store" }
       );
 
-      const json = (await safeReadJson<{ ticket?: Ticket } & ApiError>(res)) ?? {};
+      const json =
+        (await safeReadJson<{ ticket?: Ticket; eventPast?: boolean } & ApiError>(res)) ?? {};
 
       if (cancelled) return;
 
       if (!res.ok || !json.ticket) {
         setTicket(null);
-        setMessage(json.error ?? "Билет не найден");
+        setEventPast(false);
+        setMessage(json.error ?? t("scanner.confirm.notFound"));
         setLoading(false);
         return;
       }
 
       setTicket(json.ticket);
+      setEventPast(!!json.eventPast);
       setLoading(false);
     }
 
@@ -100,7 +114,7 @@ function ConfirmContent() {
 
   async function onCheckIn(e: FormEvent) {
     e.preventDefault();
-    if (!ticket || !eventId) return;
+    if (!ticket || !eventId || eventPast) return;
 
     setCheckingIn(true);
     setMessage("");
@@ -116,17 +130,17 @@ function ConfirmContent() {
         (await safeReadJson<{ success?: boolean; message?: string } & ApiError>(res)) ?? {};
 
       if (!res.ok) {
-        setMessage(json.error ?? "Ошибка пробивки");
+        setMessage(json.error ?? t("scanner.confirm.checkInError"));
         return;
       }
 
       setMessage(json.message ?? "");
 
       if (json.success) {
-        router.replace("/scanner");
+        router.replace(scannerListPath);
       }
     } catch {
-      setMessage("Сетевая ошибка при пробивке");
+      setMessage(t("scanner.confirm.checkInNet"));
     } finally {
       setCheckingIn(false);
     }
@@ -135,11 +149,11 @@ function ConfirmContent() {
   if (!eventId || !uuid) {
     return (
       <AppShell maxWidth="max-w-md">
-        <BackNav href="/scanner">К сканеру</BackNav>
-        <AppCard title="Ошибка">
-          <p className="text-sm text-slate-600">Некорректная ссылка.</p>
-          <button type="button" onClick={() => router.replace("/scanner")} className={`${btnPrimary} mt-4`}>
-            На сканер
+        <BackNav href={scannerListPath}>{t("scanner.confirm.back")}</BackNav>
+        <AppCard title={t("scanner.confirm.errorTitle")}>
+          <p className="text-sm text-slate-600">{t("scanner.confirm.errorLink")}</p>
+          <button type="button" onClick={() => router.replace(scannerListPath)} className={`${btnPrimary} mt-4`}>
+            {t("scanner.confirm.toScanner")}
           </button>
         </AppCard>
       </AppShell>
@@ -149,9 +163,9 @@ function ConfirmContent() {
   if (loading) {
     return (
       <AppShell maxWidth="max-w-md">
-        <BackNav href="/scanner">К сканеру</BackNav>
-        <AppCard title="Загрузка">
-          <p className="text-sm text-slate-600">Загрузка билета…</p>
+        <BackNav href={scannerListPath}>{t("scanner.confirm.back")}</BackNav>
+        <AppCard title={t("scanner.confirm.loadTitle")}>
+          <ListLoading label={t("scanner.confirm.loading")} />
         </AppCard>
       </AppShell>
     );
@@ -160,50 +174,75 @@ function ConfirmContent() {
   if (!ticket) {
     return (
       <AppShell maxWidth="max-w-md">
-        <BackNav href="/scanner">К сканеру</BackNav>
-        <AppCard title="Билет не найден">
-          <p className="text-sm text-red-800">{message || "Билет не найден"}</p>
-          <button type="button" onClick={() => router.replace("/scanner")} className={`${btnSecondary} mt-4`}>
-            Назад к сканеру
+        <BackNav href={scannerListPath}>{t("scanner.confirm.back")}</BackNav>
+        <AppCard title={t("scanner.confirm.notFound")}>
+          <p className="text-sm text-red-800">{message || t("scanner.confirm.notFound")}</p>
+          <button type="button" onClick={() => router.replace(scannerListPath)} className={`${btnSecondary} mt-4`}>
+            {t("scanner.confirm.backScanner")}
           </button>
         </AppCard>
       </AppShell>
     );
   }
 
+  const ticketRows = (
+    <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3">
+      {row(t("scanner.confirm.rowUuid"), ticket.uuid)}
+      {row(t("admin.ticketCard.rowFio"), ticket.buyer_name ?? "—")}
+      {row(t("admin.ticketCard.rowPhone"), ticket.phone ?? "—")}
+      {ticket.ticket_type ? row(t("admin.ticketCard.rowType"), ticket.ticket_type) : null}
+      {row(t("admin.ticketCard.rowRegion"), ticket.region ?? "—")}
+      {row(t("admin.ticketCard.rowStatus"), ticket.status)}
+      {row(t("scanner.confirm.rowDate"), new Date(ticket.created_at).toLocaleString())}
+    </div>
+  );
+
   return (
     <AppShell maxWidth="max-w-lg">
-      <BackNav href="/scanner">К сканеру</BackNav>
+      <BackNav href={scannerListPath}>{t("scanner.confirm.back")}</BackNav>
       <AppCard
-        title={ticket.status === "checked_in" ? "Билет уже пробит" : "Подтверждение"}
-        subtitle="Проверьте данные перед пробивкой."
+        title={
+          eventPast
+            ? t("scanner.confirm.titleEventEnded")
+            : ticket.status === "checked_in"
+              ? t("scanner.confirm.titleChecked")
+              : t("scanner.confirm.titlePending")
+        }
+        subtitle={eventPast ? t("scanner.confirm.subtitleEventEnded") : t("scanner.confirm.subtitle")}
       >
-        <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3">
-          {row("UUID", ticket.uuid)}
-          {row("ФИО", ticket.buyer_name ?? "—")}
-          {row("Телефон", ticket.phone ?? "—")}
-          {row("Тип", ticket.ticket_type ?? "—")}
-          {row("Регион", ticket.region ?? "—")}
-          {row("Статус", ticket.status)}
-          {row("Дата", new Date(ticket.created_at).toLocaleString())}
-        </div>
+        {eventPast ? (
+          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+            {t("scanner.confirm.ticketNotValid")}
+          </p>
+        ) : null}
+        {ticketRows}
 
-        <form onSubmit={onCheckIn} className="mt-6 flex flex-wrap gap-2">
-          <button
-            type="submit"
-            disabled={checkingIn || ticket.status === "checked_in"}
-            className={btnPrimary}
-          >
-            {checkingIn ? "Пробиваем…" : "Пробить билет"}
-          </button>
+        {eventPast ? (
           <button
             type="button"
-            onClick={() => router.replace("/scanner")}
-            className={btnSecondary}
+            onClick={() => router.replace(scannerListPath)}
+            className={`${btnSecondary} mt-6`}
           >
-            Отмена
+            {t("scanner.confirm.cancel")}
           </button>
-        </form>
+        ) : (
+          <form onSubmit={onCheckIn} className="mt-6 flex flex-wrap gap-2">
+            <button
+              type="submit"
+              disabled={checkingIn || ticket.status === "checked_in"}
+              className={btnPrimary}
+            >
+              {checkingIn ? t("scanner.confirm.checkingIn") : t("scanner.confirm.checkIn")}
+            </button>
+            <button
+              type="button"
+              onClick={() => router.replace(scannerListPath)}
+              className={btnSecondary}
+            >
+              {t("scanner.confirm.cancel")}
+            </button>
+          </form>
+        )}
 
         {message && (
           <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
@@ -215,15 +254,18 @@ function ConfirmContent() {
   );
 }
 
+function ConfirmSuspenseFallback() {
+  const { t } = useLocaleContext();
+  return (
+    <AppShell maxWidth="max-w-md">
+      <ListLoading label={t("common.loading")} />
+    </AppShell>
+  );
+}
+
 export default function ScannerConfirmPage() {
   return (
-    <Suspense
-      fallback={
-        <AppShell maxWidth="max-w-md">
-          <p className="text-center text-sm text-slate-600">Загрузка…</p>
-        </AppShell>
-      }
-    >
+    <Suspense fallback={<ConfirmSuspenseFallback />}>
       <ConfirmContent />
     </Suspense>
   );

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { isEventPastByDateString } from "@/lib/event-date";
 
 export async function GET(request: Request) {
     const supabase = await createServerSupabaseClient();
@@ -55,5 +56,8 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Билет не найден в выбранном мероприятии" }, { status: 404 });
     }
 
-    return NextResponse.json({ ticket });
+    const { data: ev } = await supabase.from("events").select("event_date").eq("id", eventId).maybeSingle();
+    const eventPast = ev ? isEventPastByDateString(ev.event_date) : false;
+
+    return NextResponse.json({ ticket, eventPast });
 }

@@ -2,6 +2,17 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireEventManager } from "@/lib/auth/api-guards";
+import { EVENT_ENDED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
+
+async function blockIfEventEnded(eventId: string): Promise<NextResponse | null> {
+  const admin = createAdminSupabaseClient();
+  const { data: evRow } = await admin.from("events").select("event_date").eq("id", eventId).maybeSingle();
+  if (!evRow) return NextResponse.json({ error: "Мероприятие не найдено" }, { status: 404 });
+  if (isEventPastByDateString(evRow.event_date)) {
+    return NextResponse.json({ error: EVENT_ENDED_MESSAGE }, { status: 403 });
+  }
+  return null;
+}
 
 const patchFieldSchema = z.object({
   fieldKey: z.string().min(1).regex(/^[a-z0-9_]+$/).optional(),
@@ -19,6 +30,9 @@ export async function PATCH(request: Request, { params }: Params) {
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
   const { eventId, fieldId } = await params;
+  const blocked = await blockIfEventEnded(eventId);
+  if (blocked) return blocked;
+
   const body = await request.json();
   const parsed = patchFieldSchema.safeParse(body);
 
@@ -67,6 +81,9 @@ export async function DELETE(_: Request, { params }: Params) {
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
   const { eventId, fieldId } = await params;
+  const blocked = await blockIfEventEnded(eventId);
+  if (blocked) return blocked;
+
   const admin = createAdminSupabaseClient();
 
   const { error } = await admin.from("event_fields").delete().eq("id", fieldId).eq("event_id", eventId);

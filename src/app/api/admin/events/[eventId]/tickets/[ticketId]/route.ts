@@ -3,11 +3,14 @@ import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { isEventManagerRole } from "@/lib/auth/roles";
+import { EVENT_TICKETS_LOCKED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
+
+const ticketTypeValue = z.union([z.enum(["vip", "standard", "vip+"]), z.null()]);
 
 const patchSchema = z.object({
     buyerName: z.string().nullable().optional(),
     phone: z.string().nullable().optional(),
-    ticketType: z.enum(["vip", "standard", "vip+"]).optional(),
+    ticketType: ticketTypeValue.optional(),
     region: z.string().nullable().optional(),
     customData: z.record(z.string(), z.any()).optional(),
 });
@@ -38,6 +41,13 @@ export async function PATCH(req: Request, { params }: Params) {
     const check = await ensureAccess(eventId);
     if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
+    const adminGuard = createAdminSupabaseClient();
+    const { data: evRow } = await adminGuard.from("events").select("event_date").eq("id", eventId).maybeSingle();
+    if (!evRow) return NextResponse.json({ error: "Мероприятие не найдено" }, { status: 404 });
+    if (isEventPastByDateString(evRow.event_date)) {
+        return NextResponse.json({ error: EVENT_TICKETS_LOCKED_MESSAGE }, { status: 403 });
+    }
+
     const parsed = patchSchema.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: "Некорректные данные" }, { status: 400 });
 
@@ -49,8 +59,7 @@ export async function PATCH(req: Request, { params }: Params) {
     if (p.region !== undefined) payload.region = p.region;
     if (p.customData !== undefined) payload.custom_data = p.customData;
 
-    const admin = createAdminSupabaseClient();
-    const { error } = await admin.from("tickets").update(payload).eq("id", Number(ticketId)).eq("event_id", eventId);
+    const { error } = await adminGuard.from("tickets").update(payload).eq("id", Number(ticketId)).eq("event_id", eventId);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
     return NextResponse.json({ ok: true });
@@ -62,6 +71,12 @@ export async function DELETE(_: Request, { params }: Params) {
     if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
     const admin = createAdminSupabaseClient();
+    const { data: evRow } = await admin.from("events").select("event_date").eq("id", eventId).maybeSingle();
+    if (!evRow) return NextResponse.json({ error: "Мероприятие не найдено" }, { status: 404 });
+    if (isEventPastByDateString(evRow.event_date)) {
+        return NextResponse.json({ error: EVENT_TICKETS_LOCKED_MESSAGE }, { status: 403 });
+    }
+
     const { error } = await admin.from("tickets").delete().eq("id", Number(ticketId)).eq("event_id", eventId);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 

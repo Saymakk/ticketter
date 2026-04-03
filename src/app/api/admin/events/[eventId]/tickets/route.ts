@@ -3,11 +3,12 @@ import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { isEventManagerRole } from "@/lib/auth/roles";
+import { EVENT_ENDED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
 
 const createTicketSchema = z.object({
     buyerName: z.string().optional().nullable(),
     phone: z.string().optional().nullable(),
-    ticketType: z.enum(["vip", "standard", "vip+"]),
+    ticketType: z.enum(["vip", "standard", "vip+"]).optional().nullable(),
     region: z.string().optional().nullable(),
     customData: z.record(z.string(), z.any()),
 });
@@ -47,6 +48,17 @@ export async function GET(_: Request, { params }: Params) {
     if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
     const admin = createAdminSupabaseClient();
+
+    const { data: ev, error: evErr } = await admin
+        .from("events")
+        .select("title,city,event_date")
+        .eq("id", eventId)
+        .single();
+
+    if (evErr || !ev) {
+        return NextResponse.json({ error: "Мероприятие не найдено" }, { status: 404 });
+    }
+
     const { data, error } = await admin
         .from("tickets")
         .select("id,uuid,buyer_name,phone,ticket_type,region,status,created_at")
@@ -54,13 +66,33 @@ export async function GET(_: Request, { params }: Params) {
         .order("created_at", { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-    return NextResponse.json({ tickets: data ?? [] });
+
+    const tickets = data ?? [];
+    const checkedIn = tickets.filter((t) => t.status === "checked_in").length;
+
+    return NextResponse.json({
+        event: {
+            title: ev.title,
+            city: ev.city,
+            event_date: ev.event_date,
+            isPast: isEventPastByDateString(ev.event_date),
+        },
+        stats: { total: tickets.length, checkedIn },
+        tickets,
+    });
 }
 
 export async function POST(request: Request, { params }: Params) {
     const { eventId } = await params;
     const check = await ensureAccess(eventId);
     if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
+
+    const admin = createAdminSupabaseClient();
+    const { data: evRow } = await admin.from("events").select("event_date").eq("id", eventId).maybeSingle();
+    if (!evRow) return NextResponse.json({ error: "Мероприятие не найдено" }, { status: 404 });
+    if (isEventPastByDateString(evRow.event_date)) {
+        return NextResponse.json({ error: EVENT_ENDED_MESSAGE }, { status: 403 });
+    }
 
     const payload = await request.json();
     const parsed = createTicketSchema.safeParse(payload);
@@ -69,7 +101,6 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     const p = parsed.data;
-    const admin = createAdminSupabaseClient();
 
     const { data, error } = await admin
         .from("tickets")
@@ -77,7 +108,7 @@ export async function POST(request: Request, { params }: Params) {
             event_id: eventId,
             buyer_name: p.buyerName ?? null,
             phone: p.phone ?? null,
-            ticket_type: p.ticketType,
+            ticket_type: p.ticketType ?? null,
             region: p.region ?? null,
             manager_id: check.userId,
             status: "new",

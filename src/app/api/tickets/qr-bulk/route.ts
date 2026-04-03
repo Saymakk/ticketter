@@ -4,6 +4,7 @@ import JSZip from "jszip";
 import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { isEventManagerRole } from "@/lib/auth/roles";
+import { qrImageFileName } from "@/lib/qr-filename";
 
 const bodySchema = z.object({
     uuids: z.array(z.string().uuid()).min(1),
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
 
     const { data: tickets, error } = await supabase
         .from("tickets")
-        .select("uuid,event_id")
+        .select("uuid,event_id,buyer_name")
         .in("uuid", uuids);
 
     if (error || !tickets) {
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
 
     for (const t of tickets) {
         const png = await QRCode.toBuffer(t.uuid, { type: "png", width: 512, margin: 1 });
-        zip.file(`ticket-${t.uuid}.png`, png);
+        zip.file(qrImageFileName(t.buyer_name, t.uuid), png);
     }
 
     const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });

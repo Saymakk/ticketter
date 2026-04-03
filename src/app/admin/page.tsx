@@ -2,13 +2,36 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useLocaleContext } from "@/components/locale-provider";
+import { scannerListHref } from "@/lib/scanner/from-panel";
 import {
   AppCard,
   AppShell,
   linkClass,
+  panelNavTileClass,
 } from "@/components/ui/app-shell";
 
+function HomeNavTile({
+  href,
+  title,
+  description,
+}: {
+  href: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <li>
+      <Link href={href} className={`${linkClass} ${panelNavTileClass}`}>
+        <span className="font-semibold text-slate-900">{title}</span>
+        <span className="mt-1 block text-xs font-normal text-slate-600">{description}</span>
+      </Link>
+    </li>
+  );
+}
+
 export default function AdminPage() {
+  const { t } = useLocaleContext();
   const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,44 +46,46 @@ export default function AdminPage() {
   return (
     <AppShell>
       <AppCard
-        title="Панель"
+        title={t("admin.home.title")}
         subtitle={
-          role === "user"
-            ? "Билеты и сканер по назначенным мероприятиям."
-            : "Мероприятия, пользователи, билеты и сканер."
+          role === null
+            ? t("admin.home.subtitleLoading")
+            : role === "user"
+              ? t("admin.home.subtitleUser")
+              : t("admin.home.subtitleManager")
         }
       >
-        <ul className="space-y-3 text-sm">
-          <li>
-            <Link href="/admin/events" className={linkClass}>
-              Билеты для мероприятий →
-            </Link>
-          </li>
-          <li>
-            <Link href="/scanner" className={linkClass}>
-              Сканер билетов →
-            </Link>
-          </li>
+        <ul className="grid gap-3 sm:grid-cols-2">
+          <HomeNavTile
+            href="/admin/events"
+            title={t("admin.home.tileTicketsTitle")}
+            description={t("admin.home.tileTicketsDesc")}
+          />
+          <HomeNavTile
+            href={scannerListHref(true)}
+            title={t("admin.home.tileScannerTitle")}
+            description={t("admin.home.tileScannerDesc")}
+          />
           {isManager && (
             <>
-              <li>
-                <Link href="/admin/manage/events" className={linkClass}>
-                  Управление мероприятиями →
-                </Link>
-              </li>
-              <li>
-                <Link href="/admin/users" className={linkClass}>
-                  Создание и редактирование пользователей →
-                </Link>
-              </li>
+              <HomeNavTile
+                href="/admin/manage/events"
+                title={t("admin.home.tileManageTitle")}
+                description={t("admin.home.tileManageDesc")}
+              />
+              <HomeNavTile
+                href="/admin/users"
+                title={t("admin.home.tileUsersTitle")}
+                description={t("admin.home.tileUsersDesc")}
+              />
             </>
           )}
           {role === "super_admin" && (
-            <li>
-              <Link href="/super-admin" className={linkClass}>
-                Суперадмин →
-              </Link>
-            </li>
+            <HomeNavTile
+              href="/super-admin/admins"
+              title={t("admin.home.tileAdminsTitle")}
+              description={t("admin.home.tileAdminsDesc")}
+            />
           )}
         </ul>
       </AppCard>

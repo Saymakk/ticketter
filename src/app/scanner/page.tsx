@@ -1,17 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import type { Result } from "@zxing/library";
+import LanguageSwitcher from "@/components/language-switcher";
+import { useLocaleContext } from "@/components/locale-provider";
 import {
   AppCard,
   AppShell,
   BackNav,
   btnPrimary,
   btnSecondary,
+  ListLoading,
   selectClass,
 } from "@/components/ui/app-shell";
+import {
+  isScannerFromPanelParam,
+  scannerConfirmHref,
+  SCANNER_FROM_PANEL_PARAM,
+} from "@/lib/scanner/from-panel";
 
 type EventItem = {
   id: string;
@@ -38,8 +46,11 @@ async function safeReadJson<T>(res: Response): Promise<T | null> {
   }
 }
 
-export default function ScannerPage() {
+function ScannerPageContent() {
+  const { t } = useLocaleContext();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromPanel = isScannerFromPanelParam(searchParams.get(SCANNER_FROM_PANEL_PARAM));
 
   const [events, setEvents] = useState<EventItem[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
@@ -88,9 +99,7 @@ export default function ScannerPage() {
   function goToConfirm(uuid: string) {
     if (!selectedEventId) return;
     stopScanner();
-    router.push(
-      `/scanner/confirm?eventId=${encodeURIComponent(selectedEventId)}&uuid=${encodeURIComponent(uuid)}`
-    );
+    router.push(scannerConfirmHref(selectedEventId, uuid, fromPanel));
   }
 
   async function loadEvents() {
@@ -103,7 +112,10 @@ export default function ScannerPage() {
 
       if (!res.ok) {
         setEvents([]);
-        setMessage(json.error ?? `Ошибка загрузки мероприятий (HTTP ${res.status})`);
+        setMessage(
+          json.error ??
+            t("scanner.errLoadEvents", { detail: `HTTP ${res.status}` })
+        );
         return;
       }
 
@@ -114,7 +126,7 @@ export default function ScannerPage() {
         setSelectedEventId(list[0].id);
       }
     } catch {
-      setMessage("Сетевая ошибка при загрузке мероприятий");
+      setMessage(t("scanner.errLoadEventsNet"));
     } finally {
       setLoadingEvents(false);
     }
@@ -130,13 +142,16 @@ export default function ScannerPage() {
 
       if (!res.ok) {
         setCheckedInTickets([]);
-        setMessage(json.error ?? `Ошибка загрузки пробитых билетов (HTTP ${res.status})`);
+        setMessage(
+          json.error ??
+            t("scanner.errLoadChecked", { detail: `HTTP ${res.status}` })
+        );
         return;
       }
 
       setCheckedInTickets(json.tickets ?? []);
     } catch {
-      setMessage("Сетевая ошибка при загрузке пробитых билетов");
+      setMessage(t("scanner.errLoadCheckedNet"));
     } finally {
       setLoadingCheckedIn(false);
     }
@@ -144,11 +159,11 @@ export default function ScannerPage() {
 
   async function startScanner() {
     if (!selectedEventId) {
-      setMessage("Сначала выбери мероприятие");
+      setMessage(t("scanner.pickEventFirst"));
       return;
     }
     if (!videoRef.current) {
-      setMessage("Видео-элемент недоступен");
+      setMessage(t("scanner.videoUnavailable"));
       return;
     }
     if (isScannerOpen) return;
@@ -164,15 +179,13 @@ export default function ScannerPage() {
         typeof window !== "undefined" && (window.isSecureContext || isLocalhost);
 
       if (!isSecure) {
-        setMessage(
-          "Открой сайт по HTTPS (Vercel или туннель). По http:// камера на телефоне часто блокируется."
-        );
+        setMessage(t("scanner.needHttps"));
         setIsScannerOpen(false);
         return;
       }
 
       if (!navigator.mediaDevices?.getUserMedia) {
-        setMessage("Браузер не поддерживает доступ к камере.");
+        setMessage(t("scanner.noCameraApi"));
         setIsScannerOpen(false);
         return;
       }
@@ -216,7 +229,7 @@ export default function ScannerPage() {
         const devices = await BrowserMultiFormatReader.listVideoInputDevices();
         const deviceId = devices[0]?.deviceId;
         if (!deviceId) {
-          setMessage("Камера не найдена. Разреши доступ и открой сайт по HTTPS.");
+          setMessage(t("scanner.cameraError"));
           setIsScannerOpen(false);
           return;
         }
@@ -230,7 +243,7 @@ export default function ScannerPage() {
 
       controlsRef.current = controls;
     } catch {
-      setMessage("Не удалось запустить сканер. Проверь HTTPS и разрешение на камеру.");
+      setMessage(t("scanner.scannerError"));
       setIsScannerOpen(false);
     }
   }
@@ -244,27 +257,27 @@ export default function ScannerPage() {
 
   return (
     <AppShell maxWidth="max-w-2xl">
-      <BackNav href="/admin">К панели</BackNav>
-      <AppCard
-        title="Сканер билетов"
-        subtitle="Выберите мероприятие, затем нажмите «Сканировать»."
-      >
+      <div className="mx-auto -mt-5 mb-1 flex max-w-2xl justify-end px-4 sm:-mt-6 sm:px-6">
+        <LanguageSwitcher />
+      </div>
+      {fromPanel ? <BackNav href="/admin">{t("scanner.backPanel")}</BackNav> : null}
+      <AppCard title={t("scanner.title")} subtitle={t("scanner.subtitle")}>
         <div className="space-y-8">
           <section>
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-teal-800/90">
-              1. Мероприятие
+              {t("scanner.stepEvent")}
             </h3>
             {loadingEvents ? (
-              <p className="text-sm text-slate-600">Загрузка…</p>
+              <ListLoading label={t("scanner.loadingEvents")} className="py-6" />
             ) : events.length === 0 ? (
-              <p className="text-sm text-slate-600">Нет активных мероприятий для сканирования</p>
+              <p className="text-sm text-slate-600">{t("scanner.noEvents")}</p>
             ) : (
               <select
                 className={selectClass}
                 value={selectedEventId}
                 onChange={(e) => setSelectedEventId(e.target.value)}
               >
-                <option value="">Выберите мероприятие</option>
+                <option value="">{t("scanner.pickEvent")}</option>
                 {events.map((ev) => (
                   <option key={ev.id} value={ev.id}>
                     {ev.title} / {ev.city} / {ev.event_date}
@@ -285,7 +298,7 @@ export default function ScannerPage() {
 
           <section>
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-teal-800/90">
-              2. Камера
+              {t("scanner.stepCamera")}
             </h3>
             <div className="flex flex-wrap gap-2">
               <button
@@ -294,7 +307,7 @@ export default function ScannerPage() {
                 disabled={!selectedEventId || isScannerOpen}
                 className={btnPrimary}
               >
-                {isScannerOpen ? "Сканирование…" : "Сканировать"}
+                {isScannerOpen ? t("scanner.scanning") : t("scanner.scan")}
               </button>
               <button
                 type="button"
@@ -302,7 +315,7 @@ export default function ScannerPage() {
                 disabled={!isScannerOpen}
                 className={btnSecondary}
               >
-                Остановить
+                {t("scanner.stop")}
               </button>
             </div>
 
@@ -314,7 +327,7 @@ export default function ScannerPage() {
               />
               {!isScannerOpen && (
                 <p className="px-4 py-8 text-center text-sm text-slate-400">
-                  Камера выключена. Нажмите «Сканировать».
+                  {t("scanner.cameraOff")}
                 </p>
               )}
             </div>
@@ -322,22 +335,27 @@ export default function ScannerPage() {
 
           <section>
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-teal-800/90">
-              Пробитые билеты
+              {t("scanner.checkedIn")}
             </h3>
             {loadingCheckedIn ? (
-              <p className="text-sm text-slate-600">Загрузка…</p>
+              <ListLoading label={t("scanner.loadingEvents")} className="py-6" />
             ) : checkedInTickets.length === 0 ? (
-              <p className="text-sm text-slate-600">Пока нет</p>
+              <p className="text-sm text-slate-600">{t("scanner.checkedEmpty")}</p>
             ) : (
               <ul className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50/80 p-3">
-                {checkedInTickets.map((t) => (
-                  <li key={t.uuid}>
+                {checkedInTickets.map((row) => (
+                  <li key={row.uuid}>
                     <button
                       type="button"
-                      onClick={() => goToConfirm(t.uuid)}
-                      className="w-full truncate text-left font-mono text-xs text-teal-700 underline decoration-teal-700/30 hover:text-teal-900"
+                      onClick={() => goToConfirm(row.uuid)}
+                      className="w-full text-left underline decoration-teal-700/30 hover:text-teal-900"
                     >
-                      {t.uuid}
+                      <span className="block truncate text-sm font-medium text-slate-900">
+                        {row.buyer_name?.trim() || "—"}
+                      </span>
+                      <span className="mt-0.5 block truncate font-mono text-xs text-teal-700">
+                        {row.uuid}
+                      </span>
                     </button>
                   </li>
                 ))}
@@ -353,5 +371,22 @@ export default function ScannerPage() {
         )}
       </AppCard>
     </AppShell>
+  );
+}
+
+function ScannerPageSuspenseFallback() {
+  const { t } = useLocaleContext();
+  return (
+    <AppShell maxWidth="max-w-2xl">
+      <ListLoading label={t("common.loading")} />
+    </AppShell>
+  );
+}
+
+export default function ScannerPage() {
+  return (
+    <Suspense fallback={<ScannerPageSuspenseFallback />}>
+      <ScannerPageContent />
+    </Suspense>
   );
 }

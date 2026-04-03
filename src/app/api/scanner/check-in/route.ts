@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { isEventPastByDateString, SCAN_EVENT_ENDED_TICKET_INVALID } from "@/lib/event-date";
 
 const schema = z.object({
     uuid: z.string().uuid(),
@@ -27,6 +28,14 @@ export async function POST(request: Request) {
     }
 
     const { uuid, eventId } = parsed.data;
+
+    const { data: evRow } = await supabase.from("events").select("event_date").eq("id", eventId).maybeSingle();
+    if (!evRow) {
+        return NextResponse.json({ error: "Мероприятие не найдено", success: false }, { status: 404 });
+    }
+    if (isEventPastByDateString(evRow.event_date)) {
+        return NextResponse.json({ error: SCAN_EVENT_ENDED_TICKET_INVALID, success: false }, { status: 403 });
+    }
 
     // В Supabase убедитесь, что RPC check_in_ticket_scoped разрешает роль «user» (не только admin).
     const { data, error } = await supabase.rpc("check_in_ticket_scoped", {

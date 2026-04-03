@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useLocaleContext } from "@/components/locale-provider";
 import {
   AppCard,
   AppShell,
@@ -12,6 +13,7 @@ import {
   FormStack,
   inputClass,
   labelClass,
+  ListLoading,
   selectClass,
 } from "@/components/ui/app-shell";
 
@@ -40,6 +42,7 @@ function parseOptions(text: string): string[] {
 }
 
 export default function EventFieldsPage() {
+  const { t } = useLocaleContext();
   const params = useParams<{ eventId: string }>();
   const eventId = params.eventId;
 
@@ -54,6 +57,8 @@ export default function EventFieldsPage() {
   const [newRequired, setNewRequired] = useState(false);
   const [newOptions, setNewOptions] = useState("");
 
+  const [eventPast, setEventPast] = useState(false);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editKey, setEditKey] = useState("");
   const [editLabel, setEditLabel] = useState("");
@@ -65,16 +70,28 @@ export default function EventFieldsPage() {
     setLoading(true);
     setMessage("");
     try {
-      const res = await fetch(`/api/super-admin/events/${eventId}/fields`, { cache: "no-store" });
+      const [res, eventRes] = await Promise.all([
+        fetch(`/api/super-admin/events/${eventId}/fields`, { cache: "no-store" }),
+        fetch(`/api/admin/events/${eventId}`, { cache: "no-store" }),
+      ]);
+      const eventJson = await eventRes.json();
+      if (eventRes.ok) {
+        const past = !!eventJson.event?.isPast;
+        setEventPast(past);
+        if (past) setEditingId(null);
+      } else {
+        setEventPast(false);
+      }
+
       const json = await res.json();
       if (!res.ok) {
-        setMessage(json.error ?? "Ошибка загрузки");
+        setMessage(json.error ?? t("fields.loadFailed"));
         setFields([]);
         return;
       }
       setFields(json.fields ?? []);
     } catch {
-      setMessage("Сетевая ошибка");
+      setMessage(t("fields.netError"));
       setFields([]);
     } finally {
       setLoading(false);
@@ -87,6 +104,7 @@ export default function EventFieldsPage() {
   }, [eventId]);
 
   function startEdit(f: EventField) {
+    if (eventPast) return;
     setEditingId(f.id);
     setEditKey(f.field_key);
     setEditLabel(f.field_label);
@@ -101,19 +119,20 @@ export default function EventFieldsPage() {
 
   async function onAdd(e: FormEvent) {
     e.preventDefault();
+    if (eventPast) return;
     const key = newKey.trim();
     const label = newLabel.trim();
     if (!/^[a-z0-9_]+$/.test(key)) {
-      setMessage("Ключ: только латиница, цифры и подчёркивание (например company_name)");
+      setMessage(t("fields.keyLatin"));
       return;
     }
     if (!label) {
-      setMessage("Укажите подпись поля");
+      setMessage(t("fields.fieldLabelRequired"));
       return;
     }
     const opts = newType === "select" ? parseOptions(newOptions) : undefined;
     if (newType === "select" && (!opts || opts.length === 0)) {
-      setMessage("Для списка укажите варианты (каждый с новой строки)");
+      setMessage(t("fields.selectOptions"));
       return;
     }
 
@@ -133,7 +152,7 @@ export default function EventFieldsPage() {
       });
       const json = await res.json();
       if (!res.ok) {
-        setMessage(json.error ?? "Ошибка сохранения");
+        setMessage(json.error ?? t("fields.saveFailed"));
         return;
       }
       setNewKey("");
@@ -143,26 +162,27 @@ export default function EventFieldsPage() {
       setNewOptions("");
       await load();
     } catch {
-      setMessage("Сетевая ошибка");
+      setMessage(t("fields.netError"));
     } finally {
       setSaving(false);
     }
   }
 
   async function onSaveEdit(fieldId: string) {
+    if (eventPast) return;
     const key = editKey.trim();
     const label = editLabel.trim();
     if (!/^[a-z0-9_]+$/.test(key)) {
-      setMessage("Ключ: только латиница, цифры и подчёркивание");
+      setMessage(t("fields.keyShort"));
       return;
     }
     if (!label) {
-      setMessage("Укажите подпись");
+      setMessage(t("fields.labelShort"));
       return;
     }
     const opts = editType === "select" ? parseOptions(editOptions) : null;
     if (editType === "select" && (!opts || opts.length === 0)) {
-      setMessage("Для списка укажите варианты");
+      setMessage(t("fields.selectShort"));
       return;
     }
 
@@ -182,20 +202,21 @@ export default function EventFieldsPage() {
       });
       const json = await res.json();
       if (!res.ok) {
-        setMessage(json.error ?? "Ошибка сохранения");
+        setMessage(json.error ?? t("fields.saveFailed"));
         return;
       }
       cancelEdit();
       await load();
     } catch {
-      setMessage("Сетевая ошибка");
+      setMessage(t("fields.netError"));
     } finally {
       setSaving(false);
     }
   }
 
   async function onDelete(fieldId: string) {
-    const ok = window.confirm("Удалить поле?");
+    if (eventPast) return;
+    const ok = window.confirm(t("fields.deleteConfirm"));
     if (!ok) return;
     setMessage("");
     try {
@@ -204,39 +225,41 @@ export default function EventFieldsPage() {
       });
       const json = await res.json();
       if (!res.ok) {
-        setMessage(json.error ?? "Ошибка удаления");
+        setMessage(json.error ?? t("fields.deleteFailed"));
         return;
       }
       if (editingId === fieldId) cancelEdit();
       await load();
     } catch {
-      setMessage("Сетевая ошибка");
+      setMessage(t("fields.netError"));
     }
   }
 
   return (
     <AppShell maxWidth="max-w-2xl">
-      <BackNav href="/admin/manage/events">К мероприятиям</BackNav>
-      <AppCard
-        title="Поля мероприятия"
-        subtitle="Дополнительные поля при создании билета (текст, многострочный текст, список)."
-      >
+      <BackNav href="/admin/manage/events">{t("fields.back")}</BackNav>
+      <AppCard title={t("fields.title")} subtitle={t("fields.subtitle")}>
+        {eventPast && !loading ? (
+          <p className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+            {t("fields.eventPastReadOnly")}
+          </p>
+        ) : null}
         {loading ? (
-          <p className="text-sm text-slate-600">Загрузка…</p>
+          <ListLoading label={t("fields.loading")} />
         ) : (
           <ul className="mb-8 space-y-4">
             {fields.length === 0 ? (
-              <li className="text-sm text-slate-600">Пока нет полей — добавьте ниже.</li>
+              <li className="text-sm text-slate-600">{t("fields.empty")}</li>
             ) : (
               fields.map((f) => (
                 <li
                   key={f.id}
                   className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 shadow-sm"
                 >
-                  {editingId === f.id ? (
+                  {editingId === f.id && !eventPast ? (
                     <div className="space-y-3">
                       <label className={labelClass}>
-                        Ключ (латиница)
+                        {t("fields.editKeyPh")}
                         <input
                           className={inputClass}
                           value={editKey}
@@ -244,7 +267,7 @@ export default function EventFieldsPage() {
                         />
                       </label>
                       <label className={labelClass}>
-                        Подпись
+                        {t("fields.editLabelPh")}
                         <input
                           className={inputClass}
                           value={editLabel}
@@ -252,7 +275,7 @@ export default function EventFieldsPage() {
                         />
                       </label>
                       <label className={labelClass}>
-                        Тип
+                        {t("fields.editType")}
                         <select
                           className={selectClass}
                           value={editType}
@@ -260,14 +283,14 @@ export default function EventFieldsPage() {
                             setEditType(e.target.value as "text" | "textarea" | "select")
                           }
                         >
-                          <option value="text">Текст</option>
-                          <option value="textarea">Многострочный</option>
-                          <option value="select">Список</option>
+                          <option value="text">{t("admin.manage.fieldTypeText")}</option>
+                          <option value="textarea">{t("admin.manage.fieldTypeTextarea")}</option>
+                          <option value="select">{t("admin.manage.fieldTypeSelect")}</option>
                         </select>
                       </label>
                       {editType === "select" && (
                         <label className={labelClass}>
-                          Варианты (с новой строки)
+                          {t("fields.editOptions")}
                           <textarea
                             className={inputClass}
                             rows={4}
@@ -283,7 +306,7 @@ export default function EventFieldsPage() {
                           onChange={(e) => setEditRequired(e.target.checked)}
                           className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                         />
-                        Обязательное
+                        {t("common.required")}
                       </label>
                       <div className="flex flex-wrap gap-2">
                         <button
@@ -292,10 +315,10 @@ export default function EventFieldsPage() {
                           onClick={() => onSaveEdit(f.id)}
                           className={btnPrimary}
                         >
-                          Сохранить
+                          {t("common.save")}
                         </button>
                         <button type="button" onClick={cancelEdit} className={btnSecondary}>
-                          Отмена
+                          {t("common.cancel")}
                         </button>
                       </div>
                     </div>
@@ -306,17 +329,19 @@ export default function EventFieldsPage() {
                         <p className="font-medium text-slate-900">{f.field_label}</p>
                         <p className="text-sm text-slate-600">
                           {f.field_type}
-                          {f.is_required ? " · обязательное" : ""}
+                          {f.is_required ? t("fields.listRequired") : ""}
                         </p>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        <button type="button" onClick={() => startEdit(f)} className={btnSecondary}>
-                          Изменить
-                        </button>
-                        <button type="button" onClick={() => onDelete(f.id)} className={btnDanger}>
-                          Удалить
-                        </button>
-                      </div>
+                      {!eventPast ? (
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button" onClick={() => startEdit(f)} className={btnSecondary}>
+                            {t("admin.users.edit")}
+                          </button>
+                          <button type="button" onClick={() => onDelete(f.id)} className={btnDanger}>
+                            {t("common.delete")}
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   )}
                 </li>
@@ -325,44 +350,45 @@ export default function EventFieldsPage() {
           </ul>
         )}
 
+        {!eventPast ? (
         <form onSubmit={onAdd}>
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-teal-800/90">
-            Новое поле
+            {t("fields.newField")}
           </p>
           <FormStack>
             <label className={labelClass}>
-              Ключ (латиница, например inn)
+              {t("fields.keyLabel")}
               <input
                 className={inputClass}
                 value={newKey}
                 onChange={(e) => setNewKey(e.target.value)}
-                placeholder="company_name"
+                placeholder={t("fields.keyPh")}
               />
             </label>
             <label className={labelClass}>
-              Подпись для формы
+              {t("fields.formLabel")}
               <input
                 className={inputClass}
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
-                placeholder="Название компании"
+                placeholder={t("fields.labelPh")}
               />
             </label>
             <label className={labelClass}>
-              Тип
+              {t("fields.editType")}
               <select
                 className={selectClass}
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as "text" | "textarea" | "select")}
               >
-                <option value="text">Текст</option>
-                <option value="textarea">Многострочный</option>
-                <option value="select">Список</option>
+                <option value="text">{t("admin.manage.fieldTypeText")}</option>
+                <option value="textarea">{t("admin.manage.fieldTypeTextarea")}</option>
+                <option value="select">{t("admin.manage.fieldTypeSelect")}</option>
               </select>
             </label>
             {newType === "select" && (
               <label className={labelClass}>
-                Варианты (каждый с новой строки)
+                {t("admin.manage.fieldOptions")}
                 <textarea
                   className={inputClass}
                   rows={4}
@@ -378,13 +404,14 @@ export default function EventFieldsPage() {
                 onChange={(e) => setNewRequired(e.target.checked)}
                 className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
               />
-              Обязательное
+              {t("common.required")}
             </label>
             <button type="submit" disabled={saving || loading} className={btnPrimary}>
-              Добавить поле
+              {t("fields.add")}
             </button>
           </FormStack>
         </form>
+        ) : null}
 
         {message && (
           <p className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">

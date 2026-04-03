@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useLocaleContext } from "@/components/locale-provider";
 import {
   AppCard,
   AppShell,
@@ -10,6 +11,7 @@ import {
   FormStack,
   inputClass,
   labelClass,
+  ListLoading,
   selectClass,
 } from "@/components/ui/app-shell";
 
@@ -28,29 +30,64 @@ function fieldOptions(opts: unknown): string[] {
 }
 
 export default function NewTicketPage() {
+  const { t } = useLocaleContext();
   const params = useParams<{ eventId: string }>();
   const router = useRouter();
   const eventId = params.eventId;
 
   const [fields, setFields] = useState<EventField[]>([]);
-  const [ticketType, setTicketType] = useState<"vip" | "standard" | "vip+">("standard");
   const [buyerName, setBuyerName] = useState("");
   const [phone, setPhone] = useState("");
   const [region, setRegion] = useState("");
   const [customData, setCustomData] = useState<Record<string, string>>({});
   const [result, setResult] = useState("");
+  const [fieldsLoading, setFieldsLoading] = useState(true);
+  const [eventPastBlocked, setEventPastBlocked] = useState(false);
 
   useEffect(() => {
     async function loadFields() {
-      const res = await fetch(`/api/admin/events/${eventId}/fields`, { cache: "no-store" });
-      const json = await res.json();
-      if (!res.ok) {
-        setResult(`Ошибка: ${json.error ?? "Не удалось загрузить поля"}`);
-        return;
+      if (!eventId) return;
+      setFieldsLoading(true);
+      setEventPastBlocked(false);
+      setResult("");
+      try {
+        const [fieldsRes, eventRes] = await Promise.all([
+          fetch(`/api/admin/events/${eventId}/fields`, { cache: "no-store" }),
+          fetch(`/api/admin/events/${eventId}`, { cache: "no-store" }),
+        ]);
+        const eventJson = await eventRes.json();
+        if (eventRes.ok && eventJson.event?.isPast) {
+          setEventPastBlocked(true);
+          setFields([]);
+          return;
+        }
+        if (!eventRes.ok) {
+          setResult(
+            t("admin.ticketNew.createError", {
+              detail: String(eventJson.error ?? t("common.error")),
+            })
+          );
+          setFields([]);
+          return;
+        }
+
+        const json = await fieldsRes.json();
+        if (!fieldsRes.ok) {
+          setResult(
+            t("admin.ticketNew.createError", {
+              detail: String(json.error ?? t("admin.ticketNew.loadFieldsError")),
+            })
+          );
+          setFields([]);
+          return;
+        }
+        setFields(json.fields ?? []);
+      } finally {
+        setFieldsLoading(false);
       }
-      setFields(json.fields ?? []);
     }
-    if (eventId) loadFields();
+    void loadFields();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- перезагрузка при смене eventId
   }, [eventId]);
 
   function updateCustomField(key: string, value: string) {
@@ -62,7 +99,7 @@ export default function NewTicketPage() {
 
     for (const f of fields) {
       if (f.is_required && (customData[f.field_key] === undefined || customData[f.field_key] === "")) {
-        setResult(`Заполни обязательное поле: ${f.field_label}`);
+        setResult(t("admin.ticketNew.requiredField", { label: f.field_label }));
         return;
       }
     }
@@ -73,7 +110,6 @@ export default function NewTicketPage() {
       body: JSON.stringify({
         buyerName,
         phone,
-        ticketType,
         region,
         customData,
       }),
@@ -81,25 +117,37 @@ export default function NewTicketPage() {
 
     const json = await res.json();
     if (!res.ok) {
-      setResult(`Ошибка: ${json.error ?? "Не удалось создать билет"}`);
+      setResult(
+        t("admin.ticketNew.createError", {
+          detail: String(json.error ?? t("admin.ticketNew.createFailed")),
+        })
+      );
       return;
     }
 
-    setResult(`Билет создан. UUID: ${json.ticket.uuid}`);
+    setResult(t("admin.ticketNew.createdWithUuid", { uuid: json.ticket.uuid }));
     router.push(`/admin/events/${eventId}/tickets`);
+  }
+
+  if (eventPastBlocked) {
+    return (
+      <AppShell maxWidth="max-w-2xl">
+        <BackNav href={`/admin/events/${eventId}/tickets`}>{t("admin.ticketNew.back")}</BackNav>
+        <AppCard title={t("admin.ticketNew.title")}>
+          <p className="text-sm text-slate-700">{t("admin.ticketNew.eventPastBlocked")}</p>
+        </AppCard>
+      </AppShell>
+    );
   }
 
   return (
     <AppShell maxWidth="max-w-2xl">
-      <BackNav href={`/admin/events/${eventId}/tickets`}>К списку билетов</BackNav>
-      <AppCard
-        title="Новый билет"
-        subtitle="Заполните поля и сохраните."
-      >
+      <BackNav href={`/admin/events/${eventId}/tickets`}>{t("admin.ticketNew.back")}</BackNav>
+      <AppCard title={t("admin.ticketNew.title")} subtitle={t("admin.ticketNew.subtitle")}>
         <form onSubmit={onSubmit}>
           <FormStack>
             <label className={labelClass}>
-              ФИО покупателя
+              {t("admin.ticketNew.buyerName")}
               <input
                 className={inputClass}
                 value={buyerName}
@@ -108,7 +156,7 @@ export default function NewTicketPage() {
             </label>
 
             <label className={labelClass}>
-              Телефон
+              {t("admin.ticketNew.phone")}
               <input
                 className={inputClass}
                 value={phone}
@@ -117,20 +165,7 @@ export default function NewTicketPage() {
             </label>
 
             <label className={labelClass}>
-              Тип билета
-              <select
-                className={selectClass}
-                value={ticketType}
-                onChange={(e) => setTicketType(e.target.value as "vip" | "standard" | "vip+")}
-              >
-                <option value="standard">standard</option>
-                <option value="vip">vip</option>
-                <option value="vip+">vip+</option>
-              </select>
-            </label>
-
-            <label className={labelClass}>
-              Регион (north / south / west / east)
+              {t("admin.ticketNew.region")}
               <input
                 className={inputClass}
                 value={region}
@@ -138,10 +173,12 @@ export default function NewTicketPage() {
               />
             </label>
 
-            {fields.length > 0 && (
+            {fieldsLoading ? (
+              <ListLoading label={t("common.loading")} className="py-6" />
+            ) : fields.length > 0 ? (
               <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-teal-800/90">
-                  Поля мероприятия
+                  {t("admin.ticketNew.sectionFields")}
                 </p>
                 <div className="space-y-3">
                   {fields.map((f) => {
@@ -198,10 +235,10 @@ export default function NewTicketPage() {
                   })}
                 </div>
               </div>
-            )}
+            ) : null}
 
-            <button type="submit" className={btnPrimary}>
-              Создать билет
+            <button type="submit" className={btnPrimary} disabled={fieldsLoading}>
+              {t("admin.ticketNew.submit")}
             </button>
           </FormStack>
         </form>

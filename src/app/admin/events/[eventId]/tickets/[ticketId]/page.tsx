@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useLocaleContext } from "@/components/locale-provider";
 import {
   AppCard,
   AppShell,
   BackNav,
   btnPrimary,
+  btnSecondary,
+  ListLoading,
 } from "@/components/ui/app-shell";
 
 type Ticket = {
@@ -32,18 +35,59 @@ function row(label: string, value: string) {
 }
 
 export default function TicketCardPage() {
+  const { t } = useLocaleContext();
   const params = useParams<{ eventId: string; ticketId: string }>();
   const eventId = params.eventId;
   const ticketUuid = params.ticketId;
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [error, setError] = useState("");
+  const [qrPanelOpen, setQrPanelOpen] = useState(false);
+  const [qrEntered, setQrEntered] = useState(false);
+
+  const closeQrPanel = useCallback(() => {
+    setQrEntered(false);
+    window.setTimeout(() => setQrPanelOpen(false), 300);
+  }, []);
+
+  useEffect(() => {
+    if (!qrPanelOpen) {
+      setQrEntered(false);
+      return;
+    }
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setQrEntered(true));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, [qrPanelOpen]);
+
+  useEffect(() => {
+    if (!qrPanelOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") closeQrPanel();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [qrPanelOpen, closeQrPanel]);
+
+  useEffect(() => {
+    if (!qrPanelOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [qrPanelOpen]);
 
   useEffect(() => {
     async function load() {
       const res = await fetch(`/api/tickets/${ticketUuid}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) {
-        setError(json.error ?? "Ошибка");
+        setError(json.error ?? t("common.error"));
         return;
       }
       setTicket(json.ticket);
@@ -55,9 +99,9 @@ export default function TicketCardPage() {
     return (
       <AppShell maxWidth="max-w-lg">
         <BackNav href={eventId ? `/admin/events/${eventId}/tickets` : "/admin/events"}>
-          К списку билетов
+          {t("admin.ticketCard.back")}
         </BackNav>
-        <AppCard title="Ошибка">
+        <AppCard title={t("common.error")}>
           <p className="text-sm text-red-800">{error}</p>
         </AppCard>
       </AppShell>
@@ -68,10 +112,10 @@ export default function TicketCardPage() {
     return (
       <AppShell maxWidth="max-w-lg">
         <BackNav href={eventId ? `/admin/events/${eventId}/tickets` : "/admin/events"}>
-          К списку билетов
+          {t("admin.ticketCard.back")}
         </BackNav>
-        <AppCard title="Загрузка">
-          <p className="text-sm text-slate-600">Загрузка…</p>
+        <AppCard title={t("admin.ticketCard.title")}>
+          <ListLoading label={t("admin.ticketCard.loading")} />
         </AppCard>
       </AppShell>
     );
@@ -82,28 +126,81 @@ export default function TicketCardPage() {
       ? Object.entries(ticket.custom_data as Record<string, unknown>)
       : [];
 
+  const qrSrc = `/api/tickets/${ticket.uuid}/qr?inline=1`;
+
   return (
     <AppShell maxWidth="max-w-lg">
-      <BackNav href={`/admin/events/${eventId}/tickets`}>К списку билетов</BackNav>
-      <AppCard title="Карточка билета" subtitle={ticket.uuid}>
+      <BackNav href={`/admin/events/${eventId}/tickets`}>{t("admin.ticketCard.back")}</BackNav>
+      <AppCard title={t("admin.ticketCard.title")} subtitle={ticket.uuid}>
         <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3">
-          {row("ФИО", ticket.buyer_name ?? "—")}
-          {row("Телефон", ticket.phone ?? "—")}
-          {row("Тип", ticket.ticket_type ?? "—")}
-          {row("Регион", ticket.region ?? "—")}
-          {row("Статус", ticket.status)}
-          {row("Создан", new Date(ticket.created_at).toLocaleString())}
-          {customEntries.map(([k, v]) => row(k, String(v ?? "—")))}
+          {row(t("admin.ticketCard.rowFio"), ticket.buyer_name ?? "—")}
+          {row(t("admin.ticketCard.rowPhone"), ticket.phone ?? "—")}
+          {ticket.ticket_type
+            ? row(t("admin.ticketCard.rowType"), ticket.ticket_type)
+            : null}
+          {row(t("admin.ticketCard.rowRegion"), ticket.region ?? "—")}
+          {row(t("admin.ticketCard.rowStatus"), ticket.status)}
+          {row(t("admin.ticketCard.rowCreated"), new Date(ticket.created_at).toLocaleString())}
+          {customEntries.map(([k, v]) => (
+            <Fragment key={k}>{row(k, String(v ?? "—"))}</Fragment>
+          ))}
         </div>
 
-        <a
-          href={`/api/tickets/${ticket.uuid}/qr`}
-          download
-          className={`${btnPrimary} mt-6 inline-flex no-underline`}
-        >
-          Скачать QR (PNG)
-        </a>
+        <div className="mt-6 flex flex-wrap gap-2">
+          <a
+            href={`/api/tickets/${ticket.uuid}/qr`}
+            download
+            className={`${btnPrimary} inline-flex no-underline`}
+          >
+            {t("admin.ticketCard.downloadQr")}
+          </a>
+          <button
+            type="button"
+            onClick={() => setQrPanelOpen(true)}
+            className={btnSecondary}
+          >
+            {t("admin.ticketCard.showQr")}
+          </button>
+        </div>
       </AppCard>
+
+      {qrPanelOpen ? (
+        <>
+          <button
+            type="button"
+            aria-label={t("admin.ticketCard.closeQrBackdrop")}
+            className={`fixed inset-0 z-40 bg-slate-900/45 transition-opacity duration-300 ease-out ${
+              qrEntered ? "opacity-100" : "opacity-0"
+            }`}
+            onClick={closeQrPanel}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("admin.ticketCard.qrDialogAria")}
+            className={`fixed inset-x-0 bottom-0 z-50 max-h-[min(520px,85vh)] rounded-t-2xl border border-slate-200/90 bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_40px_rgba(15,23,42,0.12)] transition-transform duration-300 ease-out sm:mx-auto sm:max-w-lg ${
+              qrEntered ? "translate-y-0" : "translate-y-full"
+            }`}
+          >
+            <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-slate-200" aria-hidden />
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-slate-900">{t("admin.ticketCard.qrSheetTitle")}</p>
+              <button type="button" onClick={closeQrPanel} className={btnSecondary}>
+                {t("admin.ticketCard.closeQr")}
+              </button>
+            </div>
+            <div className="flex justify-center pb-2">
+              <img
+                src={qrSrc}
+                alt={t("admin.ticketCard.qrAlt")}
+                className="h-auto w-full max-w-[min(280px,72vw)] rounded-xl border border-slate-100 bg-white p-2 shadow-inner"
+                width={280}
+                height={280}
+              />
+            </div>
+          </div>
+        </>
+      ) : null}
     </AppShell>
   );
 }

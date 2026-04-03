@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+export { CircularProgress, ListLoading } from "./loading";
+
 /** Фон страницы: мягкий градиент */
 export function AppShell({
   children,
@@ -102,6 +104,10 @@ export const btnDanger =
 
 export const linkClass =
   "font-medium text-teal-700 underline decoration-teal-700/30 underline-offset-2 transition hover:text-teal-800 hover:decoration-teal-800";
+
+/** Плитка-ссылка на главных панелях (админ / суперадмин) */
+export const panelNavTileClass =
+  "block rounded-lg border border-slate-100 bg-slate-50/80 p-4 no-underline transition hover:border-teal-200 hover:bg-teal-50/50";
 
 /**
  * Колонка формы: ограниченная ширина, кнопки по ширине контента (не на всю строку).
