@@ -6,6 +6,7 @@ import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser"
 import type { Result } from "@zxing/library";
 import AccountSettingsButton from "@/components/account-settings-button";
 import LanguageSwitcher from "@/components/language-switcher";
+import PwaInstallPrompt from "@/components/pwa-install-prompt";
 import { useLocaleContext } from "@/components/locale-provider";
 import {
   AppCard,
@@ -265,6 +266,7 @@ function ScannerPageContent() {
       {fromPanel ? <BackNav href="/admin">{t("scanner.backPanel")}</BackNav> : null}
       <AppCard title={t("scanner.title")} subtitle={t("scanner.subtitle")}>
         <div className="space-y-8">
+          <PwaInstallPrompt />
           <section>
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-teal-800/90">
               {t("scanner.stepEvent")}
