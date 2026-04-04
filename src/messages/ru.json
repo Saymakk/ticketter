@@ -195,7 +195,7 @@
       "saveError": "Ошибка сохранения",
       "roleUser": "пользователь",
       "roleAdmin": "администратор",
-      "editRegionPh": "Регион",
+      "editRegionPh": "Регион (необязательное поле)",
       "deleteConfirm": "Удалить этого пользователя? Войти под ним будет нельзя.",
       "deleteError": "Не удалось удалить пользователя",
       "deleteSuccess": "Пользователь удалён",
@@ -218,7 +218,7 @@
       "deleteConfirm": "Удалить билет?",
       "placeholderName": "ФИО",
       "placeholderPhone": "Телефон",
-      "placeholderRegion": "Регион",
+      "placeholderRegion": "Регион (необязательное поле)",
       "loadError": "Ошибка загрузки билетов",
       "updateError": "Ошибка обновления билета",
       "deleteError": "Ошибка удаления билета",
@@ -277,7 +277,7 @@
       "rowFio": "ФИО",
       "rowPhone": "Телефон",
       "rowType": "Тип",
-      "rowRegion": "Регион",
+      "rowRegion": "Регион (необязательное поле)",
       "rowStatus": "Статус",
       "rowCreated": "Создан",
       "loadTicketError": "Ошибка загрузки билета",
@@ -322,11 +322,7 @@
       "passwordPh": "Минимум 8 знаков",
       "deleteConfirm": "Удалить этого администратора?",
       "deleteSuccess": "Администратор удалён",
-      "deleteError": "Не удалось удалить",
-      "setPassword": "Пароль",
-      "passwordModalTitle": "Новый пароль",
-      "passwordSaved": "Пароль обновлён",
-      "passwordError": "Не удалось задать пароль"
+      "deleteError": "Не удалось удалить"
     }
   },
   "scanner": {

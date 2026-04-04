@@ -195,7 +195,7 @@
       "saveError": "Сақтау қатесі",
       "roleUser": "пайдаланушы",
       "roleAdmin": "әкімші",
-      "editRegionPh": "Аймақ",
+      "editRegionPh": "Аймақ (міндетті емес өріс)",
       "deleteConfirm": "Осы пайдаланушыны жою керек пе? Кіру мүмкін болмайды.",
       "deleteError": "Жою мүмкін болмады",
       "deleteSuccess": "Пайдаланушы жойылды",
@@ -218,7 +218,7 @@
       "deleteConfirm": "Билетті жою керек пе?",
       "placeholderName": "ТАӘ",
       "placeholderPhone": "Телефон",
-      "placeholderRegion": "Аймақ",
+      "placeholderRegion": "Аймақ (міндетті емес өріс)",
       "loadError": "Билеттерді жүктеу қатесі",
       "updateError": "Билетті жаңарту қатесі",
       "deleteError": "Билетті жою қатесі",
@@ -277,7 +277,7 @@
       "rowFio": "ТАӘ",
       "rowPhone": "Телефон",
       "rowType": "Түрі",
-      "rowRegion": "Аймақ",
+      "rowRegion": "Аймақ (міндетті емес өріс)",
       "rowStatus": "Күйі",
       "rowCreated": "Жасалған",
       "loadTicketError": "Билетті жүктеу қатесі",
@@ -322,11 +322,7 @@
       "passwordPh": "Кемінде 8 таңба",
       "deleteConfirm": "Осы әкімшіні жою керек пе?",
       "deleteSuccess": "Әкімші жойылды",
-      "deleteError": "Жою мүмкін болмады",
-      "setPassword": "Құпия сөз",
-      "passwordModalTitle": "Жаңа құпия сөз",
-      "passwordSaved": "Құпия сөз жаңартылды",
-      "passwordError": "Құпия сөзді орнату мүмкін болмады"
+      "deleteError": "Жою мүмкін болмады"
     }
   },
   "scanner": {

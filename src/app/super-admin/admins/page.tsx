@@ -13,6 +13,7 @@ import {
   inputClass,
   labelClass,
   ListLoading,
+  selectClass,
 } from "@/components/ui/app-shell";
 
 type AdminRow = {
@@ -33,6 +34,7 @@ type ApiOk = {
 
 type ApiErr = { error: string };
 
+/** Доступ через API только для super_admin; редактирование списка — как у пользователей (ФИО, регион, роль, пароль). */
 export default function SuperAdminAdminsPage() {
   const { t } = useLocaleContext();
   const [fullName, setFullName] = useState("");
@@ -42,10 +44,12 @@ export default function SuperAdminAdminsPage() {
   const [resultText, setResultText] = useState("");
   const [admins, setAdmins] = useState<AdminRow[]>([]);
   const [listLoading, setListLoading] = useState(true);
-  const [pwModalId, setPwModalId] = useState<string | null>(null);
-  const [newPw, setNewPw] = useState("");
-  const [newPw2, setNewPw2] = useState("");
-  const [pwLoading, setPwLoading] = useState(false);
+
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editRegion, setEditRegion] = useState("");
+  const [editRole, setEditRole] = useState<"user" | "admin">("admin");
+  const [editPassword, setEditPassword] = useState("");
 
   async function loadAdmins() {
     setListLoading(true);
@@ -116,52 +120,48 @@ export default function SuperAdminAdminsPage() {
       setResultText(json.error ?? t("super.admins.deleteError"));
       return;
     }
-    if (pwModalId === id) {
-      setPwModalId(null);
-      setNewPw("");
-      setNewPw2("");
-    }
+    if (editId === id) cancelEdit();
     await loadAdmins();
     setResultText(t("super.admins.deleteSuccess"));
   }
 
-  async function savePassword(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!pwModalId) return;
-    if (newPw.length < 8) {
-      setResultText(t("account.minLength"));
-      return;
-    }
-    if (newPw !== newPw2) {
-      setResultText(t("account.mismatch"));
-      return;
-    }
-    setPwLoading(true);
-    setResultText("");
-    try {
-      const res = await fetch(`/api/admin/users/${pwModalId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: newPw }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        setResultText(json.error ?? t("super.admins.passwordError"));
-        return;
-      }
-      setResultText(t("super.admins.passwordSaved"));
-      setPwModalId(null);
-      setNewPw("");
-      setNewPw2("");
-    } finally {
-      setPwLoading(false);
-    }
+  function startEdit(a: AdminRow) {
+    setEditId(a.id);
+    setEditName(a.full_name ?? "");
+    setEditRegion(a.region ?? "");
+    setEditRole(a.role === "admin" ? "admin" : "user");
+    setEditPassword("");
   }
 
-  function closePwModal() {
-    setPwModalId(null);
-    setNewPw("");
-    setNewPw2("");
+  function cancelEdit() {
+    setEditId(null);
+    setEditPassword("");
+  }
+
+  async function saveEdit() {
+    if (!editId) return;
+    const body: Record<string, unknown> = {
+      fullName: editName,
+      region: editRegion || null,
+      role: editRole,
+    };
+    if (editPassword.trim().length >= 8) {
+      body.password = editPassword.trim();
+    }
+
+    const res = await fetch(`/api/admin/users/${editId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      setResultText(json.error ?? t("admin.users.saveError"));
+      return;
+    }
+    cancelEdit();
+    await loadAdmins();
+    setResultText(t("admin.users.saved"));
   }
 
   return (
@@ -238,37 +238,75 @@ export default function SuperAdminAdminsPage() {
           ) : admins.length === 0 ? (
             <p className="text-sm text-slate-600">{t("super.admins.listEmpty")}</p>
           ) : (
-            <ul className="space-y-2 text-sm text-slate-800">
+            <ul className="space-y-3 text-sm text-slate-800">
               {admins.map((a) => (
-                <li
-                  key={a.id}
-                  className="flex flex-col gap-2 rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <span className="font-medium">{a.full_name ?? "—"}</span>
-                    {a.phone ? <span className="text-slate-600"> · {a.phone}</span> : null}
-                    {a.region ? <span className="text-slate-500"> · {a.region}</span> : null}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPwModalId(a.id);
-                        setNewPw("");
-                        setNewPw2("");
-                      }}
-                      className={btnSecondary}
-                    >
-                      {t("super.admins.setPassword")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void deleteAdmin(a.id)}
-                      className={btnDanger}
-                    >
-                      {t("common.delete")}
-                    </button>
-                  </div>
+                <li key={a.id} className="rounded-lg border border-slate-100 bg-slate-50/80 p-3">
+                  {editId === a.id ? (
+                    <div className="space-y-2">
+                      <input
+                        className={inputClass}
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder={t("admin.users.fullNamePh")}
+                      />
+                      <input
+                        className={inputClass}
+                        value={editRegion}
+                        onChange={(e) => setEditRegion(e.target.value)}
+                        placeholder={t("admin.users.editRegionPh")}
+                      />
+                      <select
+                        className={selectClass}
+                        value={editRole}
+                        onChange={(e) => setEditRole(e.target.value as "user" | "admin")}
+                      >
+                        <option value="user">{t("admin.users.roleUser")}</option>
+                        <option value="admin">{t("admin.users.roleAdmin")}</option>
+                      </select>
+                      <label className={labelClass}>
+                        {t("admin.users.newPasswordOptional")}
+                        <input
+                          type="password"
+                          className={inputClass}
+                          value={editPassword}
+                          onChange={(e) => setEditPassword(e.target.value)}
+                          placeholder={t("admin.users.newPasswordPh")}
+                          minLength={8}
+                          autoComplete="new-password"
+                        />
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={() => void saveEdit()} className={btnPrimary}>
+                          {t("common.save")}
+                        </button>
+                        <button type="button" onClick={cancelEdit} className={btnSecondary}>
+                          {t("common.cancel")}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="font-medium text-slate-900">{a.full_name ?? "—"}</p>
+                        <p className="text-sm text-slate-600">
+                          {a.phone ?? "—"}
+                          {a.region ? ` · ${a.region}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={() => startEdit(a)} className={btnSecondary}>
+                          {t("admin.users.edit")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void deleteAdmin(a.id)}
+                          className={btnDanger}
+                        >
+                          {t("common.delete")}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -283,57 +321,6 @@ export default function SuperAdminAdminsPage() {
           </button>
         </div>
       </AppCard>
-
-      {pwModalId ? (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
-          role="presentation"
-          onClick={closePwModal}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-semibold text-slate-900">{t("super.admins.passwordModalTitle")}</h2>
-            <form onSubmit={savePassword} className="mt-4 space-y-3">
-              <label className={labelClass}>
-                {t("account.newPassword")}
-                <input
-                  type="password"
-                  className={inputClass}
-                  value={newPw}
-                  onChange={(e) => setNewPw(e.target.value)}
-                  minLength={8}
-                  autoComplete="new-password"
-                  placeholder={t("common.passwordPlaceholder")}
-                />
-              </label>
-              <label className={labelClass}>
-                {t("account.confirmPassword")}
-                <input
-                  type="password"
-                  className={inputClass}
-                  value={newPw2}
-                  onChange={(e) => setNewPw2(e.target.value)}
-                  minLength={8}
-                  autoComplete="new-password"
-                  placeholder={t("common.passwordPlaceholder")}
-                />
-              </label>
-              <div className="flex flex-wrap gap-2 pt-1">
-                <button type="submit" disabled={pwLoading} className={btnPrimary}>
-                  {pwLoading ? t("common.loading") : t("account.submit")}
-                </button>
-                <button type="button" onClick={closePwModal} className={btnSecondary}>
-                  {t("account.close")}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
     </AppShell>
   );
 }
