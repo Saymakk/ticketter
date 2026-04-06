@@ -17,10 +17,6 @@ import {
   labelClass,
   ListLoading,
 } from "@/components/ui/app-shell";
-import {
-  beginTrackedOperation,
-  endTrackedOperation,
-} from "@/lib/http/tracked-fetch";
 
 function LoginSuspenseFallback() {
   const { t } = useLocaleContext();
@@ -42,7 +38,6 @@ function LoginForm() {
     e.preventDefault();
     setErrorText("");
     setLoading(true);
-    beginTrackedOperation();
 
     try {
       const { email } = resolveAuthEmail(login);
@@ -95,7 +90,6 @@ function LoginForm() {
     } catch {
       setErrorText(t("login.errorFormat"));
     } finally {
-      endTrackedOperation();
       setLoading(false);
     }
   }

@@ -57,44 +57,44 @@ export default function AdminPage() {
         }
       >
         <ul className="grid gap-3 sm:grid-cols-2">
+          {isManager && (
+            <HomeNavTile
+              href="/admin/manage/events"
+              title={t("admin.home.tileManageTitle")}
+              description={t("admin.home.tileManageDesc")}
+            />
+          )}
           <HomeNavTile
             href="/admin/events"
             title={t("admin.home.tileTicketsTitle")}
             description={t("admin.home.tileTicketsDesc")}
           />
+          {role === "super_admin" && (
+            <HomeNavTile
+              href="/super-admin/admins"
+              title={t("admin.home.tileAdminsTitle")}
+              description={t("admin.home.tileAdminsDesc")}
+            />
+          )}
+          {isManager && (
+            <HomeNavTile
+              href="/admin/users"
+              title={t("admin.home.tileUsersTitle")}
+              description={t("admin.home.tileUsersDesc")}
+            />
+          )}
+          {role === "super_admin" && (
+            <HomeNavTile
+              href="/super-admin/audit-logs"
+              title={t("admin.home.tileAuditTitle")}
+              description={t("admin.home.tileAuditDesc")}
+            />
+          )}
           <HomeNavTile
             href={scannerListHref(true)}
             title={t("admin.home.tileScannerTitle")}
             description={t("admin.home.tileScannerDesc")}
           />
-          {isManager && (
-            <>
-              <HomeNavTile
-                href="/admin/manage/events"
-                title={t("admin.home.tileManageTitle")}
-                description={t("admin.home.tileManageDesc")}
-              />
-              <HomeNavTile
-                href="/admin/users"
-                title={t("admin.home.tileUsersTitle")}
-                description={t("admin.home.tileUsersDesc")}
-              />
-            </>
-          )}
-          {role === "super_admin" && (
-            <>
-              <HomeNavTile
-                href="/super-admin/admins"
-                title={t("admin.home.tileAdminsTitle")}
-                description={t("admin.home.tileAdminsDesc")}
-              />
-              <HomeNavTile
-                href="/super-admin/audit-logs"
-                title={t("admin.home.tileAuditTitle")}
-                description={t("admin.home.tileAuditDesc")}
-              />
-            </>
-          )}
         </ul>
       </AppCard>
     </AppShell>

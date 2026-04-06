@@ -2,11 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import {
-  beginTrackedOperation,
-  endTrackedOperation,
-} from "@/lib/http/tracked-fetch";
-
 export type CurrentUserProfileState = {
   email: string | null;
   fullName: string | null;
@@ -32,10 +27,9 @@ export function useCurrentUserProfile(enabled: boolean): CurrentUserProfileState
     let mounted = true;
 
     async function load(opts?: { showLoading?: boolean }) {
-      const track = opts?.showLoading !== false;
-      if (track) {
+      const showBar = opts?.showLoading !== false;
+      if (showBar) {
         setState((s) => ({ ...s, loading: true }));
-        beginTrackedOperation();
       }
       try {
         const {
@@ -64,9 +58,9 @@ export function useCurrentUserProfile(enabled: boolean): CurrentUserProfileState
           phone: profile?.phone ?? null,
           loading: false,
         });
-      } finally {
-        if (track) {
-          endTrackedOperation();
+      } catch {
+        if (mounted) {
+          setState((s) => ({ ...s, loading: false }));
         }
       }
     }
@@ -77,6 +71,8 @@ export function useCurrentUserProfile(enabled: boolean): CurrentUserProfileState
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === "INITIAL_SESSION") return;
+      /* Обновление JWT при возврате во вкладку — без перезагрузки профиля и без лишней анимации */
+      if (event === "TOKEN_REFRESHED") return;
       void load({ showLoading: false });
     });
 
