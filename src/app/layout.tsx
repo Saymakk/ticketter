@@ -19,6 +19,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Ticketter",
   description: "Учёт билетов и сканирование QR",
+  icons: {
+    icon: "/scanner.png",
+    shortcut: "/scanner.png",
+    apple: "/scanner.png",
+  },
 };
 
 export default function RootLayout({
