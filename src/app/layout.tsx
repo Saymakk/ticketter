@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import GlobalRequestLoadingProvider from "@/components/global-request-loading-provider";
 import IdleTracker from "@/components/idle-tracker";
 import { LocaleProvider } from "@/components/locale-provider";
 import LogoutBar from "@/components/logout-bar";
@@ -33,9 +34,11 @@ export default function RootLayout({
     >
       <body className="min-h-full font-sans antialiased">
         <LocaleProvider>
-          <IdleTracker />
-          <LogoutBar />
-          {children}
+          <GlobalRequestLoadingProvider>
+            <IdleTracker />
+            <LogoutBar />
+            {children}
+          </GlobalRequestLoadingProvider>
         </LocaleProvider>
       </body>
     </html>

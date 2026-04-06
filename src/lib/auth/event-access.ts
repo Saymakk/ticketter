@@ -120,3 +120,34 @@ export async function ensureEventAccess(eventId: string) {
   if (!access) return { ok: false as const, status: 403, error: "Нет доступа к мероприятию" };
   return { ok: true as const, userId: auth.userId, role: auth.role };
 }
+
+export const TICKET_EDIT_FORBIDDEN_MESSAGE =
+  "Нет права создавать и изменять билеты. Доступны просмотр и работа в сканере.";
+
+/** Доступ к изменению билетов (создание, правка, удаление, массовые операции, выгрузки). Для роли user учитывается profiles.can_edit_tickets. */
+export async function ensureTicketMutationAccess(
+  eventId: string
+): Promise<
+  | { ok: true; userId: string; role: StaffRole }
+  | { ok: false; status: number; error: string }
+> {
+  const check = await ensureEventAccess(eventId);
+  if (!check.ok) return check;
+
+  if (check.role === "super_admin" || check.role === "admin") {
+    return check;
+  }
+
+  const admin = createAdminSupabaseClient();
+  const { data: row, error } = await admin
+    .from("profiles")
+    .select("can_edit_tickets")
+    .eq("id", check.userId)
+    .maybeSingle();
+
+  if (!error && row?.can_edit_tickets === false) {
+    return { ok: false, status: 403, error: TICKET_EDIT_FORBIDDEN_MESSAGE };
+  }
+
+  return check;
+}

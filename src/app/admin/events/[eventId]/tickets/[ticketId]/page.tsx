@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useLocaleContext } from "@/components/locale-provider";
+import { trackedFetch } from "@/lib/http/tracked-fetch";
 import { ticketStatusLabel } from "@/lib/ticket-status-label";
 import {
   AppCard,
@@ -85,7 +86,7 @@ export default function TicketCardPage() {
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(`/api/tickets/${ticketUuid}`, { cache: "no-store" });
+      const res = await trackedFetch(`/api/tickets/${ticketUuid}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) {
         setError(json.error ?? t("common.error"));

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLocaleContext } from "@/components/locale-provider";
+import { trackedFetch } from "@/lib/http/tracked-fetch";
 import { formatEventDateTimeLine, isEventPastByDateString } from "@/lib/event-date";
 import {
   AppCard,
@@ -32,7 +33,7 @@ export default function AdminEventsPage() {
       setListLoading(true);
       setError("");
       try {
-        const res = await fetch("/api/admin/events", { cache: "no-store" });
+        const res = await trackedFetch("/api/admin/events", { cache: "no-store" });
         const json = await res.json();
         if (!res.ok) {
           setError(json.error ?? t("common.error"));

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { EVENT_TICKETS_LOCKED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
-import { ensureEventAccess } from "@/lib/auth/event-access";
+import { ensureTicketMutationAccess } from "@/lib/auth/event-access";
 import { writeAuditLog } from "@/lib/audit";
 
 const bodySchema = z.object({
@@ -13,7 +13,7 @@ type Params = { params: Promise<{ eventId: string }> };
 
 export async function POST(request: Request, { params }: Params) {
   const { eventId } = await params;
-  const check = await ensureEventAccess(eventId);
+  const check = await ensureTicketMutationAccess(eventId);
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
   const admin = createAdminSupabaseClient();

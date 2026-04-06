@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { EVENT_TICKETS_LOCKED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
-import { ensureEventAccess } from "@/lib/auth/event-access";
+import { ensureTicketMutationAccess } from "@/lib/auth/event-access";
 import { writeAuditLog } from "@/lib/audit";
 
 const ticketTypeValue = z.union([z.enum(["vip", "standard", "vip+"]), z.null()]);
@@ -19,7 +19,7 @@ type Params = { params: Promise<{ eventId: string; ticketId: string }> };
 
 export async function PATCH(req: Request, { params }: Params) {
     const { eventId, ticketId } = await params;
-    const check = await ensureEventAccess(eventId);
+    const check = await ensureTicketMutationAccess(eventId);
     if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
     const adminGuard = createAdminSupabaseClient();
@@ -58,7 +58,7 @@ export async function PATCH(req: Request, { params }: Params) {
 
 export async function DELETE(req: Request, { params }: Params) {
     const { eventId, ticketId } = await params;
-    const check = await ensureEventAccess(eventId);
+    const check = await ensureTicketMutationAccess(eventId);
     if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
     const admin = createAdminSupabaseClient();

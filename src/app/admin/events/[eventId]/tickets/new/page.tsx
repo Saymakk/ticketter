@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocaleContext } from "@/components/locale-provider";
+import { trackedFetch } from "@/lib/http/tracked-fetch";
 import {
   AppCard,
   AppShell,
@@ -11,6 +13,7 @@ import {
   FormStack,
   inputClass,
   labelClass,
+  linkClass,
   ListLoading,
   selectClass,
 } from "@/components/ui/app-shell";
@@ -43,6 +46,23 @@ export default function NewTicketPage() {
   const [result, setResult] = useState("");
   const [fieldsLoading, setFieldsLoading] = useState(true);
   const [eventPastBlocked, setEventPastBlocked] = useState(false);
+  const [accessChecked, setAccessChecked] = useState(false);
+  const [readOnlyBlocked, setReadOnlyBlocked] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await trackedFetch("/api/auth/role", { cache: "no-store" });
+        const j = await res.json();
+        if (res.ok && j.canEditTickets === false) {
+          setReadOnlyBlocked(true);
+          setFieldsLoading(false);
+        }
+      } finally {
+        setAccessChecked(true);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     async function loadFields() {
@@ -52,8 +72,8 @@ export default function NewTicketPage() {
       setResult("");
       try {
         const [fieldsRes, eventRes] = await Promise.all([
-          fetch(`/api/admin/events/${eventId}/fields`, { cache: "no-store" }),
-          fetch(`/api/admin/events/${eventId}`, { cache: "no-store" }),
+          trackedFetch(`/api/admin/events/${eventId}/fields`, { cache: "no-store" }),
+          trackedFetch(`/api/admin/events/${eventId}`, { cache: "no-store" }),
         ]);
         const eventJson = await eventRes.json();
         if (eventRes.ok && eventJson.event?.isPast) {
@@ -86,9 +106,9 @@ export default function NewTicketPage() {
         setFieldsLoading(false);
       }
     }
-    void loadFields();
+    if (accessChecked && !readOnlyBlocked) void loadFields();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- перезагрузка при смене eventId
-  }, [eventId]);
+  }, [eventId, accessChecked, readOnlyBlocked]);
 
   function updateCustomField(key: string, value: string) {
     setCustomData((prev) => ({ ...prev, [key]: value }));
@@ -104,7 +124,7 @@ export default function NewTicketPage() {
       }
     }
 
-    const res = await fetch(`/api/admin/events/${eventId}/tickets`, {
+    const res = await trackedFetch(`/api/admin/events/${eventId}/tickets`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -127,6 +147,36 @@ export default function NewTicketPage() {
 
     setResult(t("admin.ticketNew.createdWithUuid", { uuid: json.ticket.uuid }));
     router.push(`/admin/events/${eventId}/tickets`);
+  }
+
+  if (!accessChecked) {
+    return (
+      <AppShell maxWidth="max-w-2xl">
+        <BackNav href={eventId ? `/admin/events/${eventId}/tickets` : "/admin/events"}>
+          {t("admin.ticketNew.back")}
+        </BackNav>
+        <AppCard title={t("admin.ticketNew.title")}>
+          <ListLoading label={t("common.loading")} className="py-10" />
+        </AppCard>
+      </AppShell>
+    );
+  }
+
+  if (readOnlyBlocked) {
+    return (
+      <AppShell maxWidth="max-w-2xl">
+        <BackNav href={`/admin/events/${eventId}/tickets`}>{t("admin.ticketNew.back")}</BackNav>
+        <AppCard title={t("admin.ticketNew.readOnlyBlockedTitle")}>
+          <p className="text-sm text-slate-700">{t("admin.ticketNew.readOnlyBlockedBody")}</p>
+          <Link
+            href={`/admin/events/${eventId}/tickets`}
+            className={`${linkClass} mt-4 inline-block font-medium no-underline`}
+          >
+            {t("admin.ticketNew.back")}
+          </Link>
+        </AppCard>
+      </AppShell>
+    );
   }
 
   if (eventPastBlocked) {

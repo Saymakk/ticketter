@@ -1,3 +1,4 @@
+import { trackedFetch } from "@/lib/http/tracked-fetch";
 import { isLocale, LOCALE_STORAGE_KEY, type Locale } from "./types";
 
 export function getStoredLocale(): Locale {
@@ -12,7 +13,7 @@ export function getStoredLocale(): Locale {
 }
 
 export async function fetchProfileLocale(): Promise<Locale | null> {
-  const res = await fetch("/api/me/locale", { credentials: "include" });
+  const res = await trackedFetch("/api/me/locale", { credentials: "include" });
   if (!res.ok) return null;
   const j: unknown = await res.json();
   if (!j || typeof j !== "object" || !("locale" in j)) return null;
@@ -21,7 +22,7 @@ export async function fetchProfileLocale(): Promise<Locale | null> {
 }
 
 export async function patchProfileLocale(locale: Locale): Promise<boolean> {
-  const res = await fetch("/api/me/locale", {
+  const res = await trackedFetch("/api/me/locale", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ locale }),

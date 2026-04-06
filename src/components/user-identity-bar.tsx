@@ -1,5 +1,6 @@
 "use client";
 
+import { CircularProgress } from "@/components/ui/loading";
 import { useCurrentUserProfile } from "@/hooks/use-current-user-profile";
 
 type Props = {
@@ -15,9 +16,11 @@ export default function UserIdentityBar({ className = "", enabled = true }: Prop
 
   if (loading) {
     return (
-      <div className={`min-w-0 ${className}`} aria-hidden>
-        <div className="h-4 max-w-[14rem] animate-pulse rounded bg-slate-200" />
-        <div className="mt-1 h-3 max-w-[18rem] animate-pulse rounded bg-slate-100" />
+      <div
+        className={`flex min-w-0 items-center gap-2 ${className}`}
+        aria-hidden
+      >
+        <CircularProgress size="sm" />
       </div>
     );
   }

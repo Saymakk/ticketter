@@ -9,6 +9,7 @@ import LanguageSwitcher from "@/components/language-switcher";
 import UserIdentityBar from "@/components/user-identity-bar";
 import PwaInstallPrompt from "@/components/pwa-install-prompt";
 import { useLocaleContext } from "@/components/locale-provider";
+import { trackedFetch } from "@/lib/http/tracked-fetch";
 import {
   AppCard,
   AppShell,
@@ -112,7 +113,7 @@ function ScannerPageContent() {
     setMessage("");
 
     try {
-      const res = await fetch("/api/scanner/events", { cache: "no-store" });
+      const res = await trackedFetch("/api/scanner/events", { cache: "no-store" });
       const json = (await safeReadJson<{ events?: EventItem[] } & ApiError>(res)) ?? {};
 
       if (!res.ok) {
@@ -140,7 +141,7 @@ function ScannerPageContent() {
   async function loadCheckedInTickets(eventId: string) {
     setLoadingCheckedIn(true);
     try {
-      const res = await fetch(`/api/scanner/events/${eventId}/checked-in`, {
+      const res = await trackedFetch(`/api/scanner/events/${eventId}/checked-in`, {
         cache: "no-store",
       });
       const json = (await safeReadJson<{ tickets?: CheckedInItem[] } & ApiError>(res)) ?? {};

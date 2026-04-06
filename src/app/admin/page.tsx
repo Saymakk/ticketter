@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLocaleContext } from "@/components/locale-provider";
+import { trackedFetch } from "@/lib/http/tracked-fetch";
 import { scannerListHref } from "@/lib/scanner/from-panel";
 import {
   AppCard,
@@ -35,7 +36,7 @@ export default function AdminPage() {
   const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
-    void fetch("/api/auth/role", { cache: "no-store" })
+    void trackedFetch("/api/auth/role", { cache: "no-store" })
       .then((r) => r.json())
       .then((j) => setRole(j.role ?? null))
       .catch(() => setRole(null));

@@ -2,6 +2,10 @@
 
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  beginTrackedOperation,
+  endTrackedOperation,
+} from "@/lib/http/tracked-fetch";
 
 const IDLE_MS = 30 * 60 * 1000;
 
@@ -26,8 +30,13 @@ export default function IdleTracker() {
             if (!last) return;
 
             if (Date.now() - last > IDLE_MS) {
-                await supabase.auth.signOut();
-                window.location.href = "/login?reason=idle";
+                beginTrackedOperation();
+                try {
+                    await supabase.auth.signOut();
+                    window.location.href = "/login?reason=idle";
+                } finally {
+                    endTrackedOperation();
+                }
             }
         }, 60_000);
 

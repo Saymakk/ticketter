@@ -200,12 +200,16 @@
       "deleteError": "Could not delete user",
       "deleteSuccess": "User deleted",
       "newPasswordOptional": "New password (optional)",
-      "newPasswordPh": "At least 8 characters"
+      "newPasswordPh": "At least 8 characters",
+      "canEditTicketsLabel": "Create and edit tickets",
+      "canEditTicketsHint": "If unchecked, the user can only view tickets and use the scanner (check-in).",
+      "ticketsReadOnlyBadge": "Tickets: view and scanner only"
     },
     "tickets": {
       "backEvents": "To events",
       "title": "Event tickets",
       "subtitle": "Edit, delete, bulk QR download.",
+      "readOnlyBanner": "View-only mode: creating and editing tickets is disabled. You can still browse the list, open a ticket, and use the scanner.",
       "selectAll": "Select all",
       "deselectAll": "Clear selection",
       "downloadZip": "Download QR (zip)",
@@ -267,7 +271,9 @@
       "createdOk": "Ticket created",
       "createdWithUuid": "Ticket created. UUID: {uuid}",
       "createFailed": "Could not create ticket",
-      "eventPastBlocked": "This event has ended. Creating tickets is not allowed."
+      "eventPastBlocked": "This event has ended. Creating tickets is not allowed.",
+      "readOnlyBlockedTitle": "Cannot create tickets",
+      "readOnlyBlockedBody": "Your account cannot create or edit tickets. You can still view tickets and use the scanner."
     },
     "ticketCard": {
       "back": "Back to ticket list",

@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useLocaleContext } from "@/components/locale-provider";
+import { trackedFetch } from "@/lib/http/tracked-fetch";
 import {
   AppCard,
   AppShell,
@@ -71,8 +72,8 @@ export default function EventFieldsPage() {
     setMessage("");
     try {
       const [res, eventRes] = await Promise.all([
-        fetch(`/api/super-admin/events/${eventId}/fields`, { cache: "no-store" }),
-        fetch(`/api/admin/events/${eventId}`, { cache: "no-store" }),
+        trackedFetch(`/api/super-admin/events/${eventId}/fields`, { cache: "no-store" }),
+        trackedFetch(`/api/admin/events/${eventId}`, { cache: "no-store" }),
       ]);
       const eventJson = await eventRes.json();
       if (eventRes.ok) {
@@ -139,7 +140,7 @@ export default function EventFieldsPage() {
     setSaving(true);
     setMessage("");
     try {
-      const res = await fetch(`/api/super-admin/events/${eventId}/fields`, {
+      const res = await trackedFetch(`/api/super-admin/events/${eventId}/fields`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -189,7 +190,7 @@ export default function EventFieldsPage() {
     setSaving(true);
     setMessage("");
     try {
-      const res = await fetch(`/api/super-admin/events/${eventId}/fields/${fieldId}`, {
+      const res = await trackedFetch(`/api/super-admin/events/${eventId}/fields/${fieldId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -220,7 +221,7 @@ export default function EventFieldsPage() {
     if (!ok) return;
     setMessage("");
     try {
-      const res = await fetch(`/api/super-admin/events/${eventId}/fields/${fieldId}`, {
+      const res = await trackedFetch(`/api/super-admin/events/${eventId}/fields/${fieldId}`, {
         method: "DELETE",
       });
       const json = await res.json();

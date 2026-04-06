@@ -4,7 +4,17 @@ import { FormEvent, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { useLocaleContext } from "@/components/locale-provider";
-import { btnPrimary, btnSecondary, inputClass, labelClass } from "@/components/ui/app-shell";
+import {
+  btnPrimary,
+  btnSecondary,
+  CircularProgress,
+  inputClass,
+  labelClass,
+} from "@/components/ui/app-shell";
+import {
+  beginTrackedOperation,
+  endTrackedOperation,
+} from "@/lib/http/tracked-fetch";
 
 export default function AccountSettingsButton() {
   const { t } = useLocaleContext();
@@ -55,6 +65,7 @@ export default function AccountSettingsButton() {
     } catch {
       setMsg(t("account.error"));
     } finally {
+      endTrackedOperation();
       setLoading(false);
     }
   }
@@ -130,8 +141,19 @@ export default function AccountSettingsButton() {
                     <p className={`text-sm ${msgOk ? "text-teal-800" : "text-red-700"}`}>{msg}</p>
                   ) : null}
                   <div className="flex flex-wrap gap-2 pt-1">
-                    <button type="submit" disabled={loading} className={btnPrimary}>
-                      {loading ? t("common.loading") : t("account.submit")}
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className={`${btnPrimary} inline-flex items-center gap-2`}
+                    >
+                      {loading ? (
+                        <>
+                          <CircularProgress size="sm" className="border-white/35 border-t-white" />
+                          {t("common.loading")}
+                        </>
+                      ) : (
+                        t("account.submit")
+                      )}
                     </button>
                     <button type="button" onClick={close} className={btnSecondary}>
                       {t("account.close")}

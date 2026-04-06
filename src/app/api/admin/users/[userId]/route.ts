@@ -9,6 +9,7 @@ const patchSchema = z.object({
   region: z.string().nullable().optional(),
   role: z.enum(["user", "admin"]).optional(),
   password: z.string().min(8).optional(),
+  canEditTickets: z.boolean().optional(),
 });
 
 type Params = { params: Promise<{ userId: string }> };
@@ -70,11 +71,26 @@ export async function PATCH(request: Request, { params }: Params) {
     }
   }
 
+  const effectiveRole =
+    isSuperAdminRole(callerRole) && parsed.data.role !== undefined
+      ? parsed.data.role
+      : target.role;
+
+  if (parsed.data.canEditTickets !== undefined && effectiveRole !== "user") {
+    return NextResponse.json(
+      { error: "Право на редактирование билетов задаётся только для роли «пользователь»" },
+      { status: 400 }
+    );
+  }
+
   const payload: Record<string, unknown> = {};
   if (parsed.data.fullName !== undefined) payload.full_name = parsed.data.fullName;
   if (parsed.data.region !== undefined) payload.region = parsed.data.region;
   if (isSuperAdminRole(callerRole) && parsed.data.role !== undefined) {
     payload.role = parsed.data.role;
+  }
+  if (parsed.data.canEditTickets !== undefined && effectiveRole === "user") {
+    payload.can_edit_tickets = parsed.data.canEditTickets;
   }
 
   if (Object.keys(payload).length > 0) {

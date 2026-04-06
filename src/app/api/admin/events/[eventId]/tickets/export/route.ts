@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { ensureEventAccess } from "@/lib/auth/event-access";
+import { ensureTicketMutationAccess } from "@/lib/auth/event-access";
 
 type Params = { params: Promise<{ eventId: string }> };
 
@@ -52,7 +52,7 @@ function ticketBaseColumns(tickets: Record<string, unknown>[]): string[] {
 
 export async function GET(request: Request, { params }: Params) {
   const { eventId } = await params;
-  const check = await ensureEventAccess(eventId);
+  const check = await ensureTicketMutationAccess(eventId);
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
   const url = new URL(request.url);

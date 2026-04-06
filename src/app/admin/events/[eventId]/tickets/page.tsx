@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useLocaleContext } from "@/components/locale-provider";
 import { formatEventDateTimeLine } from "@/lib/event-date";
+import { trackedFetch } from "@/lib/http/tracked-fetch";
 import { ticketStatusLabel } from "@/lib/ticket-status-label";
 import {
   AppCard,
@@ -74,6 +75,7 @@ export default function TicketsPage() {
   const [successMsg, setSuccessMsg] = useState("");
   const [eventHead, setEventHead] = useState<EventHead | null>(null);
   const [ticketStats, setTicketStats] = useState<TicketStats | null>(null);
+  const [canEditTickets, setCanEditTickets] = useState(true);
 
   const [editTicketId, setEditTicketId] = useState<number | null>(null);
   const [editBuyerName, setEditBuyerName] = useState("");
@@ -81,10 +83,29 @@ export default function TicketsPage() {
   const [editRegion, setEditRegion] = useState("");
 
   const eventPast = eventHead?.isPast === true;
+  const canMutateTickets = canEditTickets && !eventPast;
 
   useEffect(() => {
     if (eventId) loadTickets();
   }, [eventId]);
+
+  useEffect(() => {
+    void (async () => {
+      const res = await trackedFetch("/api/auth/role", { cache: "no-store" });
+      const j = await res.json();
+      if (res.ok) setCanEditTickets(j.canEditTickets !== false);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!canEditTickets) {
+      setEditTicketId(null);
+      setEditBuyerName("");
+      setEditPhone("");
+      setEditRegion("");
+      setSelected([]);
+    }
+  }, [canEditTickets]);
 
   useEffect(() => {
     if (!exportMenuOpen) return;
@@ -108,7 +129,7 @@ export default function TicketsPage() {
     setListLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/events/${eventId}/tickets`, { cache: "no-store" });
+      const res = await trackedFetch(`/api/admin/events/${eventId}/tickets`, { cache: "no-store" });
       const json = await res.json();
 
       if (!res.ok) {
@@ -134,7 +155,7 @@ export default function TicketsPage() {
   }
 
   function startEditTicket(ticket: TicketItem) {
-    if (eventPast) return;
+    if (!canMutateTickets) return;
     setEditTicketId(ticket.id);
     setEditBuyerName(ticket.buyer_name ?? "");
     setEditPhone(ticket.phone ?? "");
@@ -149,9 +170,9 @@ export default function TicketsPage() {
   }
 
   async function saveEditTicket() {
-    if (!editTicketId || eventPast) return;
+    if (!editTicketId || !canMutateTickets) return;
 
-    const res = await fetch(`/api/admin/events/${eventId}/tickets/${editTicketId}`, {
+    const res = await trackedFetch(`/api/admin/events/${eventId}/tickets/${editTicketId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -172,11 +193,11 @@ export default function TicketsPage() {
   }
 
   async function deleteTicket(ticketId: number) {
-    if (eventPast) return;
+    if (!canMutateTickets) return;
     const ok = window.confirm(t("admin.tickets.deleteConfirm"));
     if (!ok) return;
 
-    const res = await fetch(`/api/admin/events/${eventId}/tickets/${ticketId}`, {
+    const res = await trackedFetch(`/api/admin/events/${eventId}/tickets/${ticketId}`, {
       method: "DELETE",
     });
 
@@ -207,6 +228,7 @@ export default function TicketsPage() {
   }
 
   async function downloadSelectedQrZip() {
+    if (!canEditTickets) return;
     if (selected.length === 0) {
       setError(t("admin.tickets.needOneTicket"));
       return;
@@ -217,7 +239,7 @@ export default function TicketsPage() {
     setSuccessMsg("");
 
     try {
-      const res = await fetch("/api/tickets/qr-bulk", {
+      const res = await trackedFetch("/api/tickets/qr-bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uuids: selected }),
@@ -246,6 +268,7 @@ export default function TicketsPage() {
   }
 
   async function duplicateSelected() {
+    if (!canEditTickets) return;
     if (selected.length === 0) {
       setSuccessMsg("");
       setError(t("admin.tickets.needOneTicket"));
@@ -259,7 +282,7 @@ export default function TicketsPage() {
     setSuccessMsg("");
 
     try {
-      const res = await fetch(`/api/admin/events/${eventId}/tickets/duplicate`, {
+      const res = await trackedFetch(`/api/admin/events/${eventId}/tickets/duplicate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sourceUuids: selected, copies }),
@@ -282,6 +305,7 @@ export default function TicketsPage() {
   }
 
   async function deleteSelectedTickets() {
+    if (!canEditTickets) return;
     if (selected.length === 0) {
       setSuccessMsg("");
       setError(t("admin.tickets.needOneTicket"));
@@ -305,7 +329,7 @@ export default function TicketsPage() {
     setSuccessMsg("");
 
     try {
-      const res = await fetch(`/api/admin/events/${eventId}/tickets/bulk-delete`, {
+      const res = await trackedFetch(`/api/admin/events/${eventId}/tickets/bulk-delete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ticketIds: ids }),
@@ -327,10 +351,11 @@ export default function TicketsPage() {
   }
 
   async function downloadExport(format: "csv" | "xlsx") {
+    if (!canEditTickets) return;
     setExporting(format);
     setError("");
     try {
-      const res = await fetch(
+      const res = await trackedFetch(
         `/api/admin/events/${eventId}/tickets/export?format=${format}`,
         { cache: "no-store" }
       );
@@ -383,8 +408,16 @@ export default function TicketsPage() {
           </div>
         ) : null}
 
+        {!canEditTickets ? (
+          <p className="mb-4 rounded-lg border border-amber-100 bg-amber-50/90 px-3 py-2 text-sm text-amber-950">
+            {t("admin.tickets.readOnlyBanner")}
+          </p>
+        ) : null}
+
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex max-w-full flex-wrap items-center gap-2">
+            {canEditTickets ? (
+              <>
             <button
               type="button"
               onClick={toggleSelectAll}
@@ -515,11 +548,17 @@ export default function TicketsPage() {
             <span className="text-sm text-slate-600">
               {t("admin.tickets.selected", { count: selected.length })}
             </span>
+              </>
+            ) : null}
           </div>
-          {eventPast ? (
+          {eventPast || !canEditTickets ? (
             <span
               className={`${btnPrimary} inline-flex shrink-0 cursor-not-allowed select-none opacity-50`}
-              title={t("admin.tickets.newTicketDisabledPast")}
+              title={
+                !canEditTickets
+                  ? t("admin.tickets.readOnlyBanner")
+                  : t("admin.tickets.newTicketDisabledPast")
+              }
             >
               {t("admin.tickets.newTicket")}
             </span>
@@ -556,7 +595,7 @@ export default function TicketsPage() {
                 key={ticket.id}
                 className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 shadow-sm"
               >
-                {editTicketId === ticket.id ? (
+                {editTicketId === ticket.id && canMutateTickets ? (
                   <div className="grid gap-3 sm:max-w-md">
                     <input
                       className={inputClass}
@@ -588,12 +627,14 @@ export default function TicketsPage() {
                 ) : (
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="flex gap-3">
+                      {canEditTickets ? (
                       <input
                         type="checkbox"
                         className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                         checked={selected.includes(ticket.uuid)}
                         onChange={() => toggleSelected(ticket.uuid)}
                       />
+                      ) : null}
                       <div>
                         <p className="font-mono text-xs text-slate-500">{ticket.uuid}</p>
                         <p className="font-medium text-slate-900">
@@ -623,6 +664,7 @@ export default function TicketsPage() {
                       >
                         {t("admin.tickets.card")}
                       </Link>
+                      {canMutateTickets ? (
                       <button
                         type="button"
                         onClick={() => startEditTicket(ticket)}
@@ -632,6 +674,8 @@ export default function TicketsPage() {
                       >
                         {t("admin.users.edit")}
                       </button>
+                      ) : null}
+                      {canMutateTickets ? (
                       <button
                         type="button"
                         onClick={() => deleteTicket(ticket.id)}
@@ -641,6 +685,7 @@ export default function TicketsPage() {
                       >
                         {t("admin.tickets.deleteTicket")}
                       </button>
+                      ) : null}
                     </div>
                   </div>
                 )}

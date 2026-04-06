@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocaleContext } from "@/components/locale-provider";
 import { formatEventDateTimeLine, isEventPastByDateString } from "@/lib/event-date";
+import { trackedFetch } from "@/lib/http/tracked-fetch";
 import {
   AppCard,
   AppSection,
@@ -94,9 +95,9 @@ export default function ManageEventsPage() {
     setLoading(true);
     try {
       const [eventsRes, usersRes, adminsRes] = await Promise.all([
-        fetch("/api/super-admin/events", { cache: "no-store" }),
-        fetch("/api/admin/users", { cache: "no-store" }),
-        fetch("/api/admin/assignable-admins", { cache: "no-store" }),
+        trackedFetch("/api/super-admin/events", { cache: "no-store" }),
+        trackedFetch("/api/admin/users", { cache: "no-store" }),
+        trackedFetch("/api/admin/assignable-admins", { cache: "no-store" }),
       ]);
 
       const eventsJson =
@@ -184,7 +185,7 @@ export default function ManageEventsPage() {
 
   const pullEventAccess = useCallback(async (eventId: string) => {
     try {
-      const res = await fetch(
+      const res = await trackedFetch(
         `/api/super-admin/events/${encodeURIComponent(eventId)}/access-holders`,
         { cache: "no-store" }
       );
@@ -290,7 +291,7 @@ export default function ManageEventsPage() {
     }
 
     try {
-      const res = await fetch("/api/super-admin/events/create", {
+      const res = await trackedFetch("/api/super-admin/events/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -345,7 +346,7 @@ export default function ManageEventsPage() {
     setResult(t("admin.manage.resultAssigning"));
 
     try {
-      const res = await fetch("/api/super-admin/events/assign-user", {
+      const res = await trackedFetch("/api/super-admin/events/assign-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -416,7 +417,7 @@ export default function ManageEventsPage() {
     setRevokingUserId(targetUserId);
     setResult(t("admin.manage.resultRevoking"));
     try {
-      const res = await fetch("/api/super-admin/events/revoke-access", {
+      const res = await trackedFetch("/api/super-admin/events/revoke-access", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -494,7 +495,7 @@ export default function ManageEventsPage() {
     if (!editEventId) return;
     setResult(t("admin.manage.resultSaving"));
 
-    const res = await fetch(`/api/super-admin/events/${editEventId}`, {
+    const res = await trackedFetch(`/api/super-admin/events/${editEventId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -526,7 +527,7 @@ export default function ManageEventsPage() {
     if (!ok) return;
 
     setResult(t("admin.manage.resultDeleting"));
-    const res = await fetch(`/api/super-admin/events/${eventId}`, {
+    const res = await trackedFetch(`/api/super-admin/events/${eventId}`, {
       method: "DELETE",
     });
 

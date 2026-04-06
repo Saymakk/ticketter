@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { isEventManagerRole } from "@/lib/auth/roles";
 import { qrImageFileName } from "@/lib/qr-filename";
-import { canAdminAccessEvent } from "@/lib/auth/event-access";
+import { canAdminAccessEvent, TICKET_EDIT_FORBIDDEN_MESSAGE } from "@/lib/auth/event-access";
 
 const bodySchema = z.object({
     uuids: z.array(z.string().uuid()).min(1),
@@ -42,12 +42,16 @@ export async function POST(request: Request) {
 
     const { data: profile } = await supabase
         .from("profiles")
-        .select("role")
+        .select("role, can_edit_tickets")
         .eq("id", user.id)
         .single();
 
     const isManager = isEventManagerRole(profile?.role);
     const isAdmin = profile?.role === "admin";
+
+    if (profile?.role === "user" && profile?.can_edit_tickets === false) {
+        return NextResponse.json({ error: TICKET_EDIT_FORBIDDEN_MESSAGE }, { status: 403 });
+    }
 
     if (isAdmin) {
         const eventIds = [...new Set(tickets.map((t) => t.event_id))];

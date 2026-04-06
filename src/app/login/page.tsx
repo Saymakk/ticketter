@@ -11,11 +11,16 @@ import {
   AppCard,
   AppShellCenter,
   btnPrimary,
+  CircularProgress,
   FormStack,
   inputClass,
   labelClass,
   ListLoading,
 } from "@/components/ui/app-shell";
+import {
+  beginTrackedOperation,
+  endTrackedOperation,
+} from "@/lib/http/tracked-fetch";
 
 function LoginSuspenseFallback() {
   const { t } = useLocaleContext();
@@ -37,6 +42,7 @@ function LoginForm() {
     e.preventDefault();
     setErrorText("");
     setLoading(true);
+    beginTrackedOperation();
 
     try {
       const { email } = resolveAuthEmail(login);
@@ -89,6 +95,7 @@ function LoginForm() {
     } catch {
       setErrorText(t("login.errorFormat"));
     } finally {
+      endTrackedOperation();
       setLoading(false);
     }
   }
@@ -126,8 +133,19 @@ function LoginForm() {
               />
             </label>
 
-            <button type="submit" disabled={loading} className={`${btnPrimary} w-full`}>
-              {loading ? t("login.submitting") : t("login.submit")}
+            <button
+              type="submit"
+              disabled={loading}
+              className={`${btnPrimary} inline-flex w-full items-center justify-center gap-2`}
+            >
+              {loading ? (
+                <>
+                  <CircularProgress size="sm" className="border-white/35 border-t-white" />
+                  {t("login.submitting")}
+                </>
+              ) : (
+                t("login.submit")
+              )}
             </button>
           </FormStack>
         </form>

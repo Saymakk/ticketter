@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useLocaleContext } from "@/components/locale-provider";
+import { trackedFetch } from "@/lib/http/tracked-fetch";
 import {
   AppCard,
   AppShell,
@@ -54,7 +55,7 @@ export default function SuperAdminAdminsPage() {
   async function loadAdmins() {
     setListLoading(true);
     try {
-      const res = await fetch("/api/super-admin/admins", { cache: "no-store" });
+      const res = await trackedFetch("/api/super-admin/admins", { cache: "no-store" });
       const json = await res.json();
       if (res.ok) setAdmins(json.admins ?? []);
     } finally {
@@ -70,7 +71,7 @@ export default function SuperAdminAdminsPage() {
     e.preventDefault();
     setResultText(t("super.admins.creating"));
 
-    const res = await fetch("/api/admin/users/create", {
+    const res = await trackedFetch("/api/admin/users/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -114,7 +115,7 @@ export default function SuperAdminAdminsPage() {
   async function deleteAdmin(id: string) {
     const ok = window.confirm(t("super.admins.deleteConfirm"));
     if (!ok) return;
-    const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+    const res = await trackedFetch(`/api/admin/users/${id}`, { method: "DELETE" });
     const json = await res.json();
     if (!res.ok) {
       setResultText(json.error ?? t("super.admins.deleteError"));
@@ -149,7 +150,7 @@ export default function SuperAdminAdminsPage() {
       body.password = editPassword.trim();
     }
 
-    const res = await fetch(`/api/admin/users/${editId}`, {
+    const res = await trackedFetch(`/api/admin/users/${editId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

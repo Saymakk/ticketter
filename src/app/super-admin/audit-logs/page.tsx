@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLocaleContext } from "@/components/locale-provider";
+import { trackedFetch } from "@/lib/http/tracked-fetch";
 import {
   AppCard,
   AppShell,
@@ -51,7 +52,7 @@ export default function AuditLogsPage() {
       sp.set("offset", String(nextOffset));
       if (actorFilter.trim()) sp.set("actorId", actorFilter.trim());
       if (actionFilter.trim()) sp.set("action", actionFilter.trim());
-      const res = await fetch(`/api/super-admin/audit-logs?${sp}`, { cache: "no-store" });
+      const res = await trackedFetch(`/api/super-admin/audit-logs?${sp}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) {
         setError(json.error ?? t("admin.audit.loadError"));

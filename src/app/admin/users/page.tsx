@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useLocaleContext } from "@/components/locale-provider";
+import { trackedFetch } from "@/lib/http/tracked-fetch";
 import {
   AppCard,
   AppShell,
@@ -22,6 +23,7 @@ type UserRow = {
   phone: string | null;
   region: string | null;
   created_by: string | null;
+  can_edit_tickets?: boolean | null;
 };
 
 type ApiOk = {
@@ -48,6 +50,7 @@ export default function AdminUsersPage() {
   const [editRegion, setEditRegion] = useState("");
   const [editRole, setEditRole] = useState<"user" | "admin">("user");
   const [editPassword, setEditPassword] = useState("");
+  const [editCanEditTickets, setEditCanEditTickets] = useState(true);
   const [isSuper, setIsSuper] = useState(false);
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(true);
@@ -55,7 +58,7 @@ export default function AdminUsersPage() {
   async function loadUsers() {
     setListLoading(true);
     try {
-      const res = await fetch("/api/admin/users", { cache: "no-store" });
+      const res = await trackedFetch("/api/admin/users", { cache: "no-store" });
       const json = await res.json();
       if (res.ok) setUsers(json.users ?? []);
     } finally {
@@ -64,7 +67,7 @@ export default function AdminUsersPage() {
   }
 
   async function loadMe() {
-    const res = await fetch("/api/auth/role", { cache: "no-store" });
+    const res = await trackedFetch("/api/auth/role", { cache: "no-store" });
     const json = await res.json();
     if (res.ok) {
       if (json.role === "super_admin") setIsSuper(true);
@@ -87,7 +90,7 @@ export default function AdminUsersPage() {
     e.preventDefault();
     setResultText(t("admin.users.creating"));
 
-    const res = await fetch("/api/admin/users/create", {
+    const res = await trackedFetch("/api/admin/users/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -131,6 +134,7 @@ export default function AdminUsersPage() {
     setEditRegion(u.region ?? "");
     setEditRole("user");
     setEditPassword("");
+    setEditCanEditTickets(u.can_edit_tickets !== false);
   }
 
   function cancelEdit() {
@@ -145,11 +149,14 @@ export default function AdminUsersPage() {
       region: editRegion || null,
       ...(isSuper ? { role: editRole } : {}),
     };
+    if (editRole === "user") {
+      body.canEditTickets = editCanEditTickets;
+    }
     if (isSuper && editPassword.trim().length >= 8) {
       body.password = editPassword.trim();
     }
 
-    const res = await fetch(`/api/admin/users/${editId}`, {
+    const res = await trackedFetch(`/api/admin/users/${editId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -167,7 +174,7 @@ export default function AdminUsersPage() {
   async function removeUser(userId: string) {
     const ok = window.confirm(t("admin.users.deleteConfirm"));
     if (!ok) return;
-    const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+    const res = await trackedFetch(`/api/admin/users/${userId}`, { method: "DELETE" });
     const json = await res.json();
     if (!res.ok) {
       setResultText(json.error ?? t("admin.users.deleteError"));
@@ -287,6 +294,22 @@ export default function AdminUsersPage() {
                           </label>
                         </>
                       )}
+                      {editRole === "user" ? (
+                        <label className="flex cursor-pointer items-start gap-2 text-sm text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={editCanEditTickets}
+                            onChange={(e) => setEditCanEditTickets(e.target.checked)}
+                            className="mt-0.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                          />
+                          <span>
+                            <span className="font-medium">{t("admin.users.canEditTicketsLabel")}</span>
+                            <span className="mt-0.5 block text-xs font-normal text-slate-500">
+                              {t("admin.users.canEditTicketsHint")}
+                            </span>
+                          </span>
+                        </label>
+                      ) : null}
                       <div className="flex flex-wrap gap-2">
                         <button type="button" onClick={saveEdit} className={btnPrimary}>
                           {t("common.save")}
@@ -304,6 +327,11 @@ export default function AdminUsersPage() {
                           {u.phone ?? "—"}
                           {u.region ? ` · ${u.region}` : ""}
                         </p>
+                        {u.can_edit_tickets === false ? (
+                          <p className="mt-1 text-xs font-medium text-amber-800/90">
+                            {t("admin.users.ticketsReadOnlyBadge")}
+                          </p>
+                        ) : null}
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <button type="button" onClick={() => startEdit(u)} className={btnSecondary}>

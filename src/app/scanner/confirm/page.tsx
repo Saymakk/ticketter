@@ -3,6 +3,7 @@
 import { FormEvent, Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocaleContext } from "@/components/locale-provider";
+import { trackedFetch } from "@/lib/http/tracked-fetch";
 import {
   isScannerFromPanelParam,
   scannerListHref,
@@ -83,7 +84,7 @@ function ConfirmContent() {
       setLoading(true);
       setMessage("");
 
-      const res = await fetch(
+      const res = await trackedFetch(
         `/api/scanner/tickets/by-uuid?uuid=${encodeURIComponent(uuid)}&eventId=${encodeURIComponent(eventId)}`,
         { cache: "no-store" }
       );
@@ -121,7 +122,7 @@ function ConfirmContent() {
     setMessage("");
 
     try {
-      const res = await fetch("/api/scanner/check-in", {
+      const res = await trackedFetch("/api/scanner/check-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uuid: ticket.uuid, eventId }),

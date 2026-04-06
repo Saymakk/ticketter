@@ -8,6 +8,10 @@ import AccountSettingsButton from "@/components/account-settings-button";
 import LanguageSwitcher from "@/components/language-switcher";
 import UserIdentityBar from "@/components/user-identity-bar";
 import { useLocaleContext } from "@/components/locale-provider";
+import {
+  beginTrackedOperation,
+  endTrackedOperation,
+} from "@/lib/http/tracked-fetch";
 
 export default function LogoutBar() {
   const pathname = usePathname();
@@ -23,10 +27,15 @@ export default function LogoutBar() {
   }
 
   async function handleLogout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.replace("/login");
-    router.refresh();
+    beginTrackedOperation();
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.replace("/login");
+      router.refresh();
+    } finally {
+      endTrackedOperation();
+    }
   }
 
   return (
