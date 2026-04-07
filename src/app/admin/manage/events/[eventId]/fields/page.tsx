@@ -7,7 +7,7 @@ import { trackedFetch } from "@/lib/http/tracked-fetch";
 import {
   AppCard,
   AppShell,
-  BackNav,
+  PageHeaderWithBack,
   btnDanger,
   btnPrimary,
   btnSecondary,
@@ -238,8 +238,12 @@ export default function EventFieldsPage() {
 
   return (
     <AppShell maxWidth="max-w-2xl">
-      <BackNav href="/admin/manage/events">{t("fields.back")}</BackNav>
-      <AppCard title={t("fields.title")} subtitle={t("fields.subtitle")}>
+      <PageHeaderWithBack
+        backHref="/admin/manage/events"
+        backLabel={t("fields.back")}
+        title={t("fields.title")}
+      />
+      <AppCard>
         {eventPast && !loading ? (
           <p className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
             {t("fields.eventPastReadOnly")}

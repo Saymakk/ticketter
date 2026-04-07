@@ -8,7 +8,7 @@ import { formatEventDateTimeLine, isEventPastByDateString } from "@/lib/event-da
 import {
   AppCard,
   AppShell,
-  BackNav,
+  PageHeaderWithBack,
   linkClass,
   ListLoading,
 } from "@/components/ui/app-shell";
@@ -51,8 +51,12 @@ export default function AdminEventsPage() {
 
   return (
     <AppShell>
-      <BackNav href="/admin">{t("common.toPanel")}</BackNav>
-      <AppCard title={t("admin.events.title")} subtitle={t("admin.events.subtitle")}>
+      <PageHeaderWithBack
+        backHref="/admin"
+        backLabel={t("common.toPanel")}
+        title={t("admin.events.title")}
+      />
+      <AppCard>
         {error && (
           <p className="mb-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-800">
             {error}

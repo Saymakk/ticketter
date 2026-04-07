@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import type { Result } from "@zxing/library";
@@ -13,7 +14,7 @@ import { trackedFetch } from "@/lib/http/tracked-fetch";
 import {
   AppCard,
   AppShell,
-  BackNav,
+  PageHeaderWithBack,
   btnPrimary,
   btnSecondary,
   ListLoading,
@@ -32,15 +33,70 @@ type EventItem = {
   city: string;
   event_date: string;
   event_time?: string | null;
+  tickets_total?: number;
+  tickets_checked_in?: number;
 };
 
 type CheckedInItem = {
   uuid: string;
   buyer_name: string | null;
+  phone: string | null;
+  region: string | null;
+  ticket_type: string | null;
+  custom_data: Record<string, unknown> | null;
   checked_in_at: string | null;
 };
 
 type ApiError = { error?: string };
+
+function checkedInContactLines(
+  row: CheckedInItem,
+  t: (key: string, vars?: Record<string, string | number>) => string
+) {
+  const out: ReactNode[] = [];
+  const phone = row.phone?.trim();
+  if (phone) {
+    out.push(
+      <span key="phone" className="block text-sm text-slate-700">
+        <span className="text-slate-500">{t("admin.ticketCard.rowPhone")}: </span>
+        {phone}
+      </span>
+    );
+  }
+  const region = row.region?.trim();
+  if (region) {
+    out.push(
+      <span key="region" className="block text-sm text-slate-700">
+        <span className="text-slate-500">{t("admin.ticketCard.rowRegion")}: </span>
+        {region}
+      </span>
+    );
+  }
+  const ttype = row.ticket_type?.trim();
+  if (ttype) {
+    out.push(
+      <span key="type" className="block text-sm text-slate-700">
+        <span className="text-slate-500">{t("admin.ticketCard.rowType")}: </span>
+        {ttype}
+      </span>
+    );
+  }
+  const cd = row.custom_data;
+  if (cd && typeof cd === "object" && !Array.isArray(cd)) {
+    for (const [k, v] of Object.entries(cd)) {
+      if (v === null || v === undefined) continue;
+      const s = typeof v === "string" ? v.trim() : String(v);
+      if (!s) continue;
+      out.push(
+        <span key={`c-${k}`} className="block text-sm text-slate-700">
+          <span className="text-slate-500">{k}: </span>
+          {s}
+        </span>
+      );
+    }
+  }
+  return out;
+}
 
 async function safeReadJson<T>(res: Response): Promise<T | null> {
   const text = await res.text();
@@ -67,6 +123,8 @@ function ScannerPageContent() {
 
   const [checkedInTickets, setCheckedInTickets] = useState<CheckedInItem[]>([]);
   const [loadingCheckedIn, setLoadingCheckedIn] = useState(false);
+  /** Обновление по кнопке — без глобального спиннера, только анимация иконки */
+  const [refreshCheckedInOnly, setRefreshCheckedInOnly] = useState(false);
 
   type ScannerTab = "event" | "scan" | "checked";
   const [tab, setTab] = useState<ScannerTab>("event");
@@ -148,11 +206,14 @@ function ScannerPageContent() {
     }
   }
 
-  async function loadCheckedInTickets(eventId: string) {
+  async function loadCheckedInTickets(eventId: string, opts?: { refresh?: boolean }) {
+    const isRefresh = opts?.refresh === true;
+    setRefreshCheckedInOnly(isRefresh);
     setLoadingCheckedIn(true);
     try {
-      const res = await trackedFetch(`/api/scanner/events/${eventId}/checked-in`, {
+      const res = await fetch(`/api/scanner/events/${eventId}/checked-in`, {
         cache: "no-store",
+        credentials: "include",
       });
       const json = (await safeReadJson<{ tickets?: CheckedInItem[] } & ApiError>(res)) ?? {};
 
@@ -165,11 +226,18 @@ function ScannerPageContent() {
         return;
       }
 
-      setCheckedInTickets(json.tickets ?? []);
+      const list = json.tickets ?? [];
+      setCheckedInTickets(list);
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === eventId ? { ...e, tickets_checked_in: list.length } : e
+        )
+      );
     } catch {
       setMessage(t("scanner.errLoadCheckedNet"));
     } finally {
       setLoadingCheckedIn(false);
+      setRefreshCheckedInOnly(false);
     }
   }
 
@@ -280,7 +348,13 @@ function ScannerPageContent() {
           <AccountSettingsButton />
         </div>
       </div>
-      {fromPanel ? <BackNav href="/admin">{t("scanner.backPanel")}</BackNav> : null}
+      {fromPanel ? (
+        <PageHeaderWithBack
+          backHref="/admin"
+          backLabel={t("scanner.backPanel")}
+          title={t("scanner.title")}
+        />
+      ) : null}
       <AppCard>
         <div
           className="mb-6 grid grid-cols-3 gap-1.5 rounded-2xl border border-slate-200/90 bg-slate-100/80 p-1.5 shadow-inner"
@@ -347,34 +421,27 @@ function ScannerPageContent() {
                   </select>
                 )}
                 {selectedEvent && (
-                  <p className="mt-3 rounded-xl border border-teal-100/90 bg-teal-50/90 px-3.5 py-3 text-sm text-slate-700 shadow-sm">
-                    <span className="font-medium text-slate-900">{selectedEvent.title}</span>
-                    <span className="text-slate-600">
-                      {" "}
-                      · {selectedEvent.city} ·{" "}
-                      {formatEventDateTimeLine(selectedEvent.event_date, selectedEvent.event_time)}
-                    </span>
-                  </p>
+                  <div className="mt-3 space-y-2">
+                    <p className="rounded-xl border border-teal-100/90 bg-teal-50/90 px-3.5 py-3 text-sm text-slate-700 shadow-sm">
+                      <span className="font-medium text-slate-900">{selectedEvent.title}</span>
+                      <span className="text-slate-600">
+                        {" "}
+                        · {selectedEvent.city} ·{" "}
+                        {formatEventDateTimeLine(selectedEvent.event_date, selectedEvent.event_time)}
+                      </span>
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      {t("scanner.eventTicketsTotal", {
+                        total: selectedEvent.tickets_total ?? 0,
+                      })}
+                      {" · "}
+                      {t("scanner.eventTicketsPunched", {
+                        count: selectedEvent.tickets_checked_in ?? 0,
+                      })}
+                    </p>
+                  </div>
                 )}
               </section>
-              <div className="flex flex-wrap gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setTab("scan")}
-                  disabled={!selectedEventId}
-                  className={btnPrimary}
-                >
-                  {t("scanner.tabScan")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTab("checked")}
-                  disabled={!selectedEventId}
-                  className={btnSecondary}
-                >
-                  {t("scanner.tabChecked")}
-                </button>
-              </div>
             </div>
           ) : null}
 
@@ -449,11 +516,28 @@ function ScannerPageContent() {
                 {selectedEventId ? (
                   <button
                     type="button"
-                    onClick={() => void loadCheckedInTickets(selectedEventId)}
+                    onClick={() => void loadCheckedInTickets(selectedEventId, { refresh: true })}
                     disabled={loadingCheckedIn}
-                    className={btnSecondary}
+                    className={`${btnSecondary} inline-flex items-center justify-center p-2`}
+                    aria-label={t("scanner.refreshList")}
+                    aria-busy={refreshCheckedInOnly}
                   >
-                    {t("scanner.refreshList")}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`h-5 w-5 ${refreshCheckedInOnly ? "animate-spin" : ""}`}
+                      aria-hidden
+                    >
+                      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                      <path d="M3 3v5h5" />
+                      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                      <path d="M16 21h5v-5" />
+                    </svg>
                   </button>
                 ) : null}
               </div>
@@ -464,25 +548,33 @@ function ScannerPageContent() {
               ) : loadingCheckedIn ? (
                 <ListLoading label={t("scanner.loadingCheckedIn")} className="py-8" />
               ) : checkedInTickets.length === 0 ? (
-                <p className="text-sm text-slate-600">{t("scanner.checkedEmpty")}</p>
+                <div className="flex min-h-[min(14rem,40vh)] items-center justify-center rounded-xl border border-slate-100 bg-slate-50/90 px-4 py-8">
+                  <p className="text-center text-sm text-slate-600">
+                    {t("scanner.checkedEmpty")}
+                  </p>
+                </div>
               ) : (
                 <ul className="max-h-[min(55vh,24rem)] space-y-2 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50/90 p-3 shadow-inner">
-                  {checkedInTickets.map((row) => (
-                    <li key={row.uuid}>
-                      <button
-                        type="button"
-                        onClick={() => goToConfirm(row.uuid)}
-                        className="w-full rounded-lg px-2 py-2 text-left transition hover:bg-white hover:shadow-sm"
-                      >
-                        <span className="block truncate text-sm font-medium text-slate-900">
-                          {row.buyer_name?.trim() || "—"}
-                        </span>
-                        <span className="mt-0.5 block truncate font-mono text-xs text-teal-700">
-                          {row.uuid}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
+                  {checkedInTickets.map((row) => {
+                    const contactLines = checkedInContactLines(row, t);
+                    return (
+                      <li key={row.uuid}>
+                        <button
+                          type="button"
+                          onClick={() => goToConfirm(row.uuid)}
+                          className="w-full rounded-lg px-2 py-2 text-left transition hover:bg-white hover:shadow-sm"
+                        >
+                          <span className="block break-all font-mono text-xs text-teal-800">{row.uuid}</span>
+                          <span className="mt-1.5 block text-sm font-medium text-slate-900">
+                            {row.buyer_name?.trim() || "—"}
+                          </span>
+                          {contactLines.length > 0 ? (
+                            <div className="mt-1.5 flex flex-col gap-0.5">{contactLines}</div>
+                          ) : null}
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>

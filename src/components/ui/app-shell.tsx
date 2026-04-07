@@ -152,6 +152,33 @@ export function BackNav({
   );
 }
 
+/** Заголовок экрана в одной строке с BackNav (единый стиль с экраном «Мероприятия»). */
+export function PageHeaderWithBack({
+  backHref,
+  backLabel,
+  title,
+  description,
+}: {
+  backHref: string;
+  backLabel: ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+}) {
+  return (
+    <header className="mb-6 flex flex-col gap-2 border-b border-slate-100 pb-5 [&_nav]:mb-0">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <BackNav href={backHref}>{backLabel}</BackNav>
+        <h1 className="min-w-0 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+          {title}
+        </h1>
+      </div>
+      {description != null ? (
+        <div className="text-sm leading-relaxed text-slate-600">{description}</div>
+      ) : null}
+    </header>
+  );
+}
+
 export function ButtonRow({ children }: { children: ReactNode }) {
   return <div className="mt-4 flex flex-wrap gap-2">{children}</div>;
 }

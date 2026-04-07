@@ -8,7 +8,7 @@ import { trackedFetch } from "@/lib/http/tracked-fetch";
 import {
   AppCard,
   AppShell,
-  BackNav,
+  PageHeaderWithBack,
   btnPrimary,
   FormStack,
   inputClass,
@@ -152,10 +152,12 @@ export default function NewTicketPage() {
   if (!accessChecked) {
     return (
       <AppShell maxWidth="max-w-2xl">
-        <BackNav href={eventId ? `/admin/events/${eventId}/tickets` : "/admin/events"}>
-          {t("admin.ticketNew.back")}
-        </BackNav>
-        <AppCard title={t("admin.ticketNew.title")}>
+        <PageHeaderWithBack
+          backHref={eventId ? `/admin/events/${eventId}/tickets` : "/admin/events"}
+          backLabel={t("admin.ticketNew.back")}
+          title={t("admin.ticketNew.title")}
+        />
+        <AppCard>
           <ListLoading label={t("common.loading")} className="py-10" />
         </AppCard>
       </AppShell>
@@ -165,8 +167,12 @@ export default function NewTicketPage() {
   if (readOnlyBlocked) {
     return (
       <AppShell maxWidth="max-w-2xl">
-        <BackNav href={`/admin/events/${eventId}/tickets`}>{t("admin.ticketNew.back")}</BackNav>
-        <AppCard title={t("admin.ticketNew.readOnlyBlockedTitle")}>
+        <PageHeaderWithBack
+          backHref={`/admin/events/${eventId}/tickets`}
+          backLabel={t("admin.ticketNew.back")}
+          title={t("admin.ticketNew.readOnlyBlockedTitle")}
+        />
+        <AppCard>
           <p className="text-sm text-slate-700">{t("admin.ticketNew.readOnlyBlockedBody")}</p>
           <Link
             href={`/admin/events/${eventId}/tickets`}
@@ -182,8 +188,12 @@ export default function NewTicketPage() {
   if (eventPastBlocked) {
     return (
       <AppShell maxWidth="max-w-2xl">
-        <BackNav href={`/admin/events/${eventId}/tickets`}>{t("admin.ticketNew.back")}</BackNav>
-        <AppCard title={t("admin.ticketNew.title")}>
+        <PageHeaderWithBack
+          backHref={`/admin/events/${eventId}/tickets`}
+          backLabel={t("admin.ticketNew.back")}
+          title={t("admin.ticketNew.title")}
+        />
+        <AppCard>
           <p className="text-sm text-slate-700">{t("admin.ticketNew.eventPastBlocked")}</p>
         </AppCard>
       </AppShell>
@@ -192,8 +202,13 @@ export default function NewTicketPage() {
 
   return (
     <AppShell maxWidth="max-w-2xl">
-      <BackNav href={`/admin/events/${eventId}/tickets`}>{t("admin.ticketNew.back")}</BackNav>
-      <AppCard title={t("admin.ticketNew.title")} subtitle={t("admin.ticketNew.subtitle")}>
+      <PageHeaderWithBack
+        backHref={`/admin/events/${eventId}/tickets`}
+        backLabel={t("admin.ticketNew.back")}
+        title={t("admin.ticketNew.title")}
+        description={t("admin.ticketNew.subtitle")}
+      />
+      <AppCard>
         <form onSubmit={onSubmit}>
           <FormStack>
             <label className={labelClass}>

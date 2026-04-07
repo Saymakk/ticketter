@@ -10,7 +10,7 @@ import { ticketStatusLabel } from "@/lib/ticket-status-label";
 import {
   AppCard,
   AppShell,
-  BackNav,
+  PageHeaderWithBack,
   btnDanger,
   btnPrimary,
   btnSecondary,
@@ -382,8 +382,12 @@ export default function TicketsPage() {
 
   return (
     <AppShell maxWidth="max-w-4xl">
-      <BackNav href="/admin/events">{t("admin.tickets.backEvents")}</BackNav>
-      <AppCard title={t("admin.tickets.title")} subtitle={t("admin.tickets.subtitle")}>
+      <PageHeaderWithBack
+        backHref="/admin/events"
+        backLabel={t("admin.tickets.backEvents")}
+        title={t("admin.tickets.title")}
+      />
+      <AppCard>
         {eventHead && !listLoading && !error ? (
           <div className="mb-5 rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -415,139 +419,141 @@ export default function TicketsPage() {
         ) : null}
 
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex max-w-full flex-wrap items-center gap-2">
+          <div className="flex min-w-0 max-w-full flex-1 flex-col gap-3">
             {canEditTickets ? (
               <>
-            <button
-              type="button"
-              onClick={toggleSelectAll}
-              disabled={tickets.length === 0}
-              className={btnSecondary}
-            >
-              {allSelected ? t("admin.tickets.deselectAll") : t("admin.tickets.selectAll")}
-            </button>
-            <button
-              type="button"
-              onClick={downloadSelectedQrZip}
-              disabled={loadingZip || selected.length === 0}
-              className={`${btnPrimary} inline-flex items-center gap-2`}
-            >
-              {loadingZip ? (
-                <>
-                  <CircularProgress size="sm" className="border-white/35 border-t-white" />
-                  {t("admin.tickets.downloading")}
-                </>
-              ) : (
-                t("admin.tickets.downloadZip")
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => void deleteSelectedTickets()}
-              disabled={deleteBulkLoading || selected.length === 0 || eventPast}
-              className={`${btnDanger} inline-flex items-center gap-2`}
-            >
-              {deleteBulkLoading ? (
-                <>
-                  <CircularProgress size="sm" className="border-white/35 border-t-white" />
-                  {t("admin.tickets.deleteSelectedProgress")}
-                </>
-              ) : (
-                t("admin.tickets.deleteSelected")
-              )}
-            </button>
-            <div className="relative inline-block" ref={exportMenuRef}>
-              <button
-                type="button"
-                onClick={() => setExportMenuOpen((o) => !o)}
-                disabled={!!exporting}
-                className={`${btnSecondary} inline-flex items-center gap-1.5`}
-                aria-expanded={exportMenuOpen}
-                aria-haspopup="menu"
-              >
-                {exporting ? (
-                  <>
-                    <CircularProgress size="sm" />
-                    {t("admin.tickets.exporting")}
-                  </>
-                ) : (
-                  <>
-                    {t("admin.tickets.exportReport")}
-                    <span className="text-slate-500" aria-hidden>
-                      ▾
-                    </span>
-                  </>
-                )}
-              </button>
-              {exportMenuOpen && !exporting ? (
-                <div
-                  role="menu"
-                  className="absolute left-0 top-full z-20 mt-1 min-w-[11rem] rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
-                >
+                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
                   <button
                     type="button"
-                    role="menuitem"
-                    className="block w-full px-3 py-2 text-left text-sm text-slate-800 hover:bg-slate-50"
-                    onClick={() => {
-                      setExportMenuOpen(false);
-                      void downloadExport("xlsx");
-                    }}
+                    onClick={toggleSelectAll}
+                    disabled={tickets.length === 0}
+                    className={`${btnSecondary} flex min-h-[2.75rem] w-full items-center justify-center px-2 text-center text-sm sm:min-h-0 sm:w-auto sm:px-3.5`}
                   >
-                    {t("admin.tickets.exportXlsx")}
+                    {allSelected ? t("admin.tickets.deselectAll") : t("admin.tickets.selectAll")}
                   </button>
                   <button
                     type="button"
-                    role="menuitem"
-                    className="block w-full px-3 py-2 text-left text-sm text-slate-800 hover:bg-slate-50"
-                    onClick={() => {
-                      setExportMenuOpen(false);
-                      void downloadExport("csv");
-                    }}
+                    onClick={downloadSelectedQrZip}
+                    disabled={loadingZip || selected.length === 0}
+                    className={`${btnPrimary} flex min-h-[2.75rem] w-full items-center justify-center gap-2 px-2 text-center text-sm sm:min-h-0 sm:w-auto sm:px-3.5`}
                   >
-                    {t("admin.tickets.exportCsv")}
+                    {loadingZip ? (
+                      <>
+                        <CircularProgress size="sm" className="border-white/35 border-t-white" />
+                        <span className="leading-tight">{t("admin.tickets.downloading")}</span>
+                      </>
+                    ) : (
+                      <span className="leading-tight">{t("admin.tickets.downloadZip")}</span>
+                    )}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => void deleteSelectedTickets()}
+                    disabled={deleteBulkLoading || selected.length === 0 || eventPast}
+                    className={`${btnDanger} flex min-h-[2.75rem] w-full items-center justify-center gap-2 px-2 text-center text-sm sm:min-h-0 sm:w-auto sm:px-3.5`}
+                  >
+                    {deleteBulkLoading ? (
+                      <>
+                        <CircularProgress size="sm" className="border-white/35 border-t-white" />
+                        <span className="leading-tight">{t("admin.tickets.deleteSelectedProgress")}</span>
+                      </>
+                    ) : (
+                      <span className="leading-tight">{t("admin.tickets.deleteSelected")}</span>
+                    )}
+                  </button>
+                  <div className="relative w-full sm:w-auto" ref={exportMenuRef}>
+                    <button
+                      type="button"
+                      onClick={() => setExportMenuOpen((o) => !o)}
+                      disabled={!!exporting}
+                      className={`${btnSecondary} flex min-h-[2.75rem] w-full items-center justify-center gap-1.5 px-2 text-center text-sm sm:min-h-0 sm:w-auto sm:px-3.5`}
+                      aria-expanded={exportMenuOpen}
+                      aria-haspopup="menu"
+                    >
+                      {exporting ? (
+                        <>
+                          <CircularProgress size="sm" />
+                          <span className="leading-tight">{t("admin.tickets.exporting")}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="leading-tight">{t("admin.tickets.exportReport")}</span>
+                          <span className="text-slate-500" aria-hidden>
+                            ▾
+                          </span>
+                        </>
+                      )}
+                    </button>
+                    {exportMenuOpen && !exporting ? (
+                      <div
+                        role="menu"
+                        className="absolute left-0 right-0 top-full z-20 mt-1 min-w-[11rem] rounded-lg border border-slate-200 bg-white py-1 shadow-lg sm:left-0 sm:right-auto"
+                      >
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="block w-full px-3 py-2 text-left text-sm text-slate-800 hover:bg-slate-50"
+                          onClick={() => {
+                            setExportMenuOpen(false);
+                            void downloadExport("xlsx");
+                          }}
+                        >
+                          {t("admin.tickets.exportXlsx")}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="block w-full px-3 py-2 text-left text-sm text-slate-800 hover:bg-slate-50"
+                          onClick={() => {
+                            setExportMenuOpen(false);
+                            void downloadExport("csv");
+                          }}
+                        >
+                          {t("admin.tickets.exportCsv")}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap items-center gap-1.5 sm:border-l sm:border-slate-200 sm:pl-2">
-              <span className="text-sm text-slate-600">{t("admin.tickets.duplicateCopiesShort")}</span>
-              <input
-                type="number"
-                min={1}
-                max={30}
-                title={t("admin.tickets.duplicateCopiesShort")}
-                className={`${inputClass} !mt-0 !w-16 !max-w-16 shrink-0 px-1 py-1.5 text-center text-sm tabular-nums`}
-                value={dupCopies}
-                onChange={(e) => {
-                  const n = parseInt(e.target.value, 10);
-                  if (Number.isNaN(n)) setDupCopies(1);
-                  else setDupCopies(Math.min(30, Math.max(1, n)));
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => void duplicateSelected()}
-                disabled={
-                  dupLoading ||
-                  selected.length === 0 ||
-                  tickets.length === 0 ||
-                  eventPast
-                }
-                className={`${btnSecondary} inline-flex items-center gap-1.5 px-3 py-1.5 text-sm`}
-              >
-                {dupLoading ? (
-                  <>
-                    <CircularProgress size="sm" />
-                    <span className="hidden sm:inline">{t("admin.tickets.duplicating")}</span>
-                  </>
-                ) : (
-                  t("admin.tickets.duplicateButton")
-                )}
-              </button>
-            </div>
-            <span className="text-sm text-slate-600">
-              {t("admin.tickets.selected", { count: selected.length })}
-            </span>
+                <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 sm:border-t-0 sm:border-l sm:border-slate-200 sm:pt-0 sm:pl-2">
+                  <span className="text-sm text-slate-600">{t("admin.tickets.duplicateCopiesShort")}</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={30}
+                    title={t("admin.tickets.duplicateCopiesShort")}
+                    className={`${inputClass} !mt-0 !w-16 !max-w-16 shrink-0 px-1 py-1.5 text-center text-sm tabular-nums`}
+                    value={dupCopies}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value, 10);
+                      if (Number.isNaN(n)) setDupCopies(1);
+                      else setDupCopies(Math.min(30, Math.max(1, n)));
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void duplicateSelected()}
+                    disabled={
+                      dupLoading ||
+                      selected.length === 0 ||
+                      tickets.length === 0 ||
+                      eventPast
+                    }
+                    className={`${btnSecondary} inline-flex items-center gap-1.5 px-3 py-1.5 text-sm`}
+                  >
+                    {dupLoading ? (
+                      <>
+                        <CircularProgress size="sm" />
+                        <span className="hidden sm:inline">{t("admin.tickets.duplicating")}</span>
+                      </>
+                    ) : (
+                      t("admin.tickets.duplicateButton")
+                    )}
+                  </button>
+                  <span className="text-sm text-slate-600">
+                    {t("admin.tickets.selected", { count: selected.length })}
+                  </span>
+                </div>
               </>
             ) : null}
           </div>

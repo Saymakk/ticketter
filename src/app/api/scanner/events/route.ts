@@ -2,6 +2,57 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getAdminVisibleEventIds } from "@/lib/auth/event-access";
 
+type ScannerEventRow = {
+    id: string;
+    title: string;
+    city: string;
+    event_date: string;
+    event_time?: string | null;
+};
+
+async function enrichEventsWithTicketStats(
+    supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+    events: ScannerEventRow[]
+): Promise<
+    | { ok: true; events: (ScannerEventRow & { tickets_total: number; tickets_checked_in: number })[] }
+    | { ok: false; response: NextResponse }
+> {
+    if (events.length === 0) {
+        return { ok: true, events: [] };
+    }
+
+    const ids = events.map((e) => e.id);
+    const { data: ticketRows, error } = await supabase
+        .from("tickets")
+        .select("event_id,status")
+        .in("event_id", ids);
+
+    if (error) {
+        return { ok: false, response: NextResponse.json({ error: error.message }, { status: 400 }) };
+    }
+
+    const counts = new Map<string, { total: number; checkedIn: number }>();
+    for (const id of ids) {
+        counts.set(id, { total: 0, checkedIn: 0 });
+    }
+    for (const row of ticketRows ?? []) {
+        const eid = row.event_id as string;
+        const cur = counts.get(eid);
+        if (!cur) continue;
+        cur.total++;
+        if (row.status === "checked_in") cur.checkedIn++;
+    }
+
+    return {
+        ok: true,
+        events: events.map((ev) => ({
+            ...ev,
+            tickets_total: counts.get(ev.id)?.total ?? 0,
+            tickets_checked_in: counts.get(ev.id)?.checkedIn ?? 0,
+        })),
+    };
+}
+
 export async function GET() {
     const supabase = await createServerSupabaseClient();
 
@@ -33,7 +84,9 @@ export async function GET() {
             .order("event_date", { ascending: true });
 
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-        return NextResponse.json({ events: data ?? [] });
+        const enriched = await enrichEventsWithTicketStats(supabase, data ?? []);
+        if (!enriched.ok) return enriched.response;
+        return NextResponse.json({ events: enriched.events });
     }
 
     if (profile.role === "admin") {
@@ -47,7 +100,9 @@ export async function GET() {
             .order("event_date", { ascending: true });
 
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-        return NextResponse.json({ events: data ?? [] });
+        const enriched = await enrichEventsWithTicketStats(supabase, data ?? []);
+        if (!enriched.ok) return enriched.response;
+        return NextResponse.json({ events: enriched.events });
     }
 
     const { data, error } = await supabase
@@ -58,6 +113,8 @@ export async function GET() {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-    const events = (data ?? []).map((r: any) => r.event).filter(Boolean);
-    return NextResponse.json({ events });
+    const events = (data ?? []).map((r: any) => r.event).filter(Boolean) as ScannerEventRow[];
+    const enriched = await enrichEventsWithTicketStats(supabase, events);
+    if (!enriched.ok) return enriched.response;
+    return NextResponse.json({ events: enriched.events });
 }

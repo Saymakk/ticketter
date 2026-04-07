@@ -12,7 +12,7 @@ export async function GET(_: Request, { params }: Params) {
 
     const { data, error } = await supabase
         .from("tickets")
-        .select("uuid,buyer_name,checked_in_at")
+        .select("uuid,buyer_name,phone,region,ticket_type,custom_data,checked_in_at")
         .eq("event_id", eventId)
         .eq("status", "checked_in")
         .order("checked_in_at", { ascending: false });

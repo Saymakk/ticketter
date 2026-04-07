@@ -13,7 +13,7 @@ import { ticketStatusLabel } from "@/lib/ticket-status-label";
 import {
   AppCard,
   AppShell,
-  BackNav,
+  PageHeaderWithBack,
   btnPrimary,
   btnSecondary,
   ListLoading,
@@ -151,8 +151,12 @@ function ConfirmContent() {
   if (!eventId || !uuid) {
     return (
       <AppShell maxWidth="max-w-md">
-        <BackNav href={scannerListPath}>{t("scanner.confirm.back")}</BackNav>
-        <AppCard title={t("scanner.confirm.errorTitle")}>
+        <PageHeaderWithBack
+          backHref={scannerListPath}
+          backLabel={t("scanner.confirm.back")}
+          title={t("scanner.confirm.errorTitle")}
+        />
+        <AppCard>
           <p className="text-sm text-slate-600">{t("scanner.confirm.errorLink")}</p>
           <button type="button" onClick={() => router.replace(scannerListPath)} className={`${btnPrimary} mt-4`}>
             {t("scanner.confirm.toScanner")}
@@ -165,8 +169,12 @@ function ConfirmContent() {
   if (loading) {
     return (
       <AppShell maxWidth="max-w-md">
-        <BackNav href={scannerListPath}>{t("scanner.confirm.back")}</BackNav>
-        <AppCard title={t("scanner.confirm.loadTitle")}>
+        <PageHeaderWithBack
+          backHref={scannerListPath}
+          backLabel={t("scanner.confirm.back")}
+          title={t("scanner.confirm.loadTitle")}
+        />
+        <AppCard>
           <ListLoading label={t("scanner.confirm.loading")} />
         </AppCard>
       </AppShell>
@@ -176,8 +184,12 @@ function ConfirmContent() {
   if (!ticket) {
     return (
       <AppShell maxWidth="max-w-md">
-        <BackNav href={scannerListPath}>{t("scanner.confirm.back")}</BackNav>
-        <AppCard title={t("scanner.confirm.notFound")}>
+        <PageHeaderWithBack
+          backHref={scannerListPath}
+          backLabel={t("scanner.confirm.back")}
+          title={t("scanner.confirm.notFound")}
+        />
+        <AppCard>
           <p className="text-sm text-red-800">{message || t("scanner.confirm.notFound")}</p>
           <button type="button" onClick={() => router.replace(scannerListPath)} className={`${btnSecondary} mt-4`}>
             {t("scanner.confirm.backScanner")}
@@ -201,8 +213,9 @@ function ConfirmContent() {
 
   return (
     <AppShell maxWidth="max-w-lg">
-      <BackNav href={scannerListPath}>{t("scanner.confirm.back")}</BackNav>
-      <AppCard
+      <PageHeaderWithBack
+        backHref={scannerListPath}
+        backLabel={t("scanner.confirm.back")}
         title={
           eventPast
             ? t("scanner.confirm.titleEventEnded")
@@ -210,8 +223,11 @@ function ConfirmContent() {
               ? t("scanner.confirm.titleChecked")
               : t("scanner.confirm.titlePending")
         }
-        subtitle={eventPast ? t("scanner.confirm.subtitleEventEnded") : t("scanner.confirm.subtitle")}
-      >
+        description={
+          eventPast ? t("scanner.confirm.subtitleEventEnded") : t("scanner.confirm.subtitle")
+        }
+      />
+      <AppCard>
         {eventPast ? (
           <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
             {t("scanner.confirm.ticketNotValid")}

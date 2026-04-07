@@ -6,7 +6,7 @@ import { trackedFetch } from "@/lib/http/tracked-fetch";
 import {
   AppCard,
   AppShell,
-  BackNav,
+  PageHeaderWithBack,
   btnPrimary,
   inputClass,
   ListLoading,
@@ -76,8 +76,12 @@ export default function AuditLogsPage() {
 
   return (
     <AppShell maxWidth="max-w-6xl">
-      <BackNav href="/admin">{t("common.toPanel")}</BackNav>
-      <AppCard title={t("admin.audit.title")} subtitle={t("admin.audit.subtitle")}>
+      <PageHeaderWithBack
+        backHref="/admin"
+        backLabel={t("common.toPanel")}
+        title={t("admin.audit.title")}
+      />
+      <AppCard>
         <form
           className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
           onSubmit={(e) => {

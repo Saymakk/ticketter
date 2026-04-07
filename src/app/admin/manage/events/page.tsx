@@ -9,7 +9,7 @@ import {
   AppCard,
   AppSection,
   AppShell,
-  BackNav,
+  PageHeaderWithBack,
   btnDanger,
   btnPrimary,
   btnSecondary,
@@ -545,34 +545,45 @@ export default function ManageEventsPage() {
     await loadData();
   }
 
-  const tabBtn = (id: ManageTab, label: string) => (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={activeTab === id}
-      onClick={() => setActiveTab(id)}
-      className={`relative shrink-0 border-b-2 px-2 pb-2.5 text-xs font-medium transition sm:px-3 sm:text-sm ${
-        activeTab === id
-          ? "border-teal-600 text-teal-800"
-          : "border-transparent text-slate-500 hover:text-slate-800"
-      }`}
-    >
-      {label}
-    </button>
-  );
-
   return (
     <AppShell maxWidth="max-w-4xl">
-      <BackNav href="/admin">{t("common.toPanel")}</BackNav>
-      <AppCard title={t("admin.manage.title")} subtitle={t("admin.manage.subtitle")}>
+      <PageHeaderWithBack
+        backHref="/admin"
+        backLabel={t("common.toPanel")}
+        title={t("admin.manage.title")}
+      />
+      <AppCard>
         <div
-          className="mb-5 flex gap-0.5 overflow-x-auto border-b border-slate-200"
+          className="mb-6 grid grid-cols-3 gap-1.5 rounded-2xl border border-slate-200/90 bg-slate-100/80 p-1.5 shadow-inner"
           role="tablist"
           aria-label={t("admin.manage.tabsAria")}
         >
-          {tabBtn("create", t("admin.manage.tabCreate"))}
-          {tabBtn("assign", t("admin.manage.tabAssign"))}
-          {tabBtn("list", t("admin.manage.tabList"))}
+          {(
+            [
+              { id: "create" as const, label: t("admin.manage.tabCreate") },
+              { id: "assign" as const, label: t("admin.manage.tabAssign") },
+              { id: "list" as const, label: t("admin.manage.tabList") },
+            ] as const
+          ).map((item) => {
+            const active = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                id={`manage-tab-${item.id}`}
+                onClick={() => setActiveTab(item.id)}
+                className={`min-h-[3rem] rounded-xl px-1.5 py-2.5 text-center text-[0.8125rem] font-semibold leading-snug tracking-tight transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 sm:px-3 sm:text-sm ${
+                  active
+                    ? "bg-teal-600 text-white shadow-md ring-1 ring-teal-700/20"
+                    : "text-slate-600 hover:bg-white/90 hover:text-slate-900"
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
 
         {activeTab === "create" && (

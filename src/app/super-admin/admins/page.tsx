@@ -6,7 +6,7 @@ import { trackedFetch } from "@/lib/http/tracked-fetch";
 import {
   AppCard,
   AppShell,
-  BackNav,
+  PageHeaderWithBack,
   btnDanger,
   btnPrimary,
   btnSecondary,
@@ -167,8 +167,12 @@ export default function SuperAdminAdminsPage() {
 
   return (
     <AppShell maxWidth="max-w-2xl">
-      <BackNav href="/admin">{t("common.toPanel")}</BackNav>
-      <AppCard title={t("super.admins.title")} subtitle={t("super.admins.subtitle")}>
+      <PageHeaderWithBack
+        backHref="/admin"
+        backLabel={t("common.toPanel")}
+        title={t("super.admins.title")}
+      />
+      <AppCard>
         <form onSubmit={onCreateAdmin}>
           <FormStack>
             <label className={labelClass}>

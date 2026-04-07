@@ -8,7 +8,7 @@ import { ticketStatusLabel } from "@/lib/ticket-status-label";
 import {
   AppCard,
   AppShell,
-  BackNav,
+  PageHeaderWithBack,
   btnPrimary,
   btnSecondary,
   ListLoading,
@@ -100,10 +100,12 @@ export default function TicketCardPage() {
   if (error) {
     return (
       <AppShell maxWidth="max-w-lg">
-        <BackNav href={eventId ? `/admin/events/${eventId}/tickets` : "/admin/events"}>
-          {t("admin.ticketCard.back")}
-        </BackNav>
-        <AppCard title={t("common.error")}>
+        <PageHeaderWithBack
+          backHref={eventId ? `/admin/events/${eventId}/tickets` : "/admin/events"}
+          backLabel={t("admin.ticketCard.back")}
+          title={t("common.error")}
+        />
+        <AppCard>
           <p className="text-sm text-red-800">{error}</p>
         </AppCard>
       </AppShell>
@@ -113,10 +115,12 @@ export default function TicketCardPage() {
   if (!ticket) {
     return (
       <AppShell maxWidth="max-w-lg">
-        <BackNav href={eventId ? `/admin/events/${eventId}/tickets` : "/admin/events"}>
-          {t("admin.ticketCard.back")}
-        </BackNav>
-        <AppCard title={t("admin.ticketCard.title")}>
+        <PageHeaderWithBack
+          backHref={eventId ? `/admin/events/${eventId}/tickets` : "/admin/events"}
+          backLabel={t("admin.ticketCard.back")}
+          title={t("admin.ticketCard.title")}
+        />
+        <AppCard>
           <ListLoading label={t("admin.ticketCard.loading")} />
         </AppCard>
       </AppShell>
@@ -132,8 +136,15 @@ export default function TicketCardPage() {
 
   return (
     <AppShell maxWidth="max-w-lg">
-      <BackNav href={`/admin/events/${eventId}/tickets`}>{t("admin.ticketCard.back")}</BackNav>
-      <AppCard title={t("admin.ticketCard.title")} subtitle={ticket.uuid}>
+      <PageHeaderWithBack
+        backHref={`/admin/events/${eventId}/tickets`}
+        backLabel={t("admin.ticketCard.back")}
+        title={t("admin.ticketCard.title")}
+        description={
+          <span className="font-mono text-xs text-slate-500 break-all">{ticket.uuid}</span>
+        }
+      />
+      <AppCard>
         <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3">
           {row(t("admin.ticketCard.rowFio"), ticket.buyer_name ?? "—")}
           {row(t("admin.ticketCard.rowPhone"), ticket.phone ?? "—")}

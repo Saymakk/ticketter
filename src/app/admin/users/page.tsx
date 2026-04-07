@@ -6,7 +6,7 @@ import { trackedFetch } from "@/lib/http/tracked-fetch";
 import {
   AppCard,
   AppShell,
-  BackNav,
+  PageHeaderWithBack,
   btnDanger,
   btnPrimary,
   btnSecondary,
@@ -187,8 +187,12 @@ export default function AdminUsersPage() {
 
   return (
     <AppShell maxWidth="max-w-2xl">
-      <BackNav href="/admin">{t("common.toPanel")}</BackNav>
-      <AppCard title={t("admin.users.title")} subtitle={t("admin.users.subtitle")}>
+      <PageHeaderWithBack
+        backHref="/admin"
+        backLabel={t("common.toPanel")}
+        title={t("admin.users.title")}
+      />
+      <AppCard>
         <form onSubmit={onCreate}>
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-teal-800/90">
             {t("admin.users.sectionNew")}
