@@ -207,18 +207,13 @@ export function ScannerTicketConfirmModal({
         className="my-auto w-full max-w-lg max-h-[min(90vh,720px)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <h2 id="scanner-ticket-modal-title" className="text-lg font-semibold text-slate-900">
-              {title}
-            </h2>
-            {!loading && ticket && description ? (
-              <p className="mt-1 text-sm text-slate-600">{description}</p>
-            ) : null}
-          </div>
-          <button type="button" onClick={onClose} className={`${btnSecondary} shrink-0`}>
-            {t("scanner.confirm.cancel")}
-          </button>
+        <div className="border-b border-slate-100 pb-4">
+          <h2 id="scanner-ticket-modal-title" className="text-lg font-semibold text-slate-900">
+            {title}
+          </h2>
+          {!loading && ticket && description ? (
+            <p className="mt-1 text-sm text-slate-600">{description}</p>
+          ) : null}
         </div>
 
         <div className="mt-4">
@@ -254,6 +249,9 @@ export function ScannerTicketConfirmModal({
                     className={btnPrimary}
                   >
                     {checkingIn ? t("scanner.confirm.checkingIn") : t("scanner.confirm.checkIn")}
+                  </button>
+                  <button type="button" onClick={onClose} className={btnSecondary}>
+                    {t("scanner.confirm.cancel")}
                   </button>
                 </form>
               )}

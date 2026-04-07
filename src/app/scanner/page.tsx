@@ -133,6 +133,10 @@ function ScannerPageContent() {
 
   type ScannerTab = "event" | "scan" | "checked";
   const [tab, setTab] = useState<ScannerTab>("event");
+  const tabRef = useRef<ScannerTab>(tab);
+  useEffect(() => {
+    tabRef.current = tab;
+  }, [tab]);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
@@ -140,6 +144,8 @@ function ScannerPageContent() {
 
   const lastUuidRef = useRef("");
   const lastScanAtRef = useRef(0);
+  /** После закрытия модалки снова запустить камеру (вкладка «Сканер» была с активной камерой). */
+  const scannerResumeAfterModalRef = useRef(false);
 
   const selectedEvent = useMemo(
     () => events.find((e) => e.id === selectedEventId) ?? null,
@@ -189,10 +195,20 @@ function ScannerPageContent() {
     q.delete("uuid");
     const qs = q.toString();
     router.replace(`/scanner${qs ? `?${qs}` : ""}`, { scroll: false });
+    lastUuidRef.current = "";
+    lastScanAtRef.current = 0;
+    const resume = scannerResumeAfterModalRef.current;
+    scannerResumeAfterModalRef.current = false;
+    if (resume) {
+      setTimeout(() => {
+        if (tabRef.current === "scan") void startScanner();
+      }, 0);
+    }
   }
 
   function goToConfirm(uuid: string) {
     if (!selectedEventId) return;
+    scannerResumeAfterModalRef.current = tab === "scan" && isScannerOpen;
     stopScanner();
     router.replace(scannerConfirmHref(selectedEventId, uuid, fromPanel));
   }
@@ -318,6 +334,7 @@ function ScannerPageContent() {
 
         const uuid = result.getText().trim();
         if (!uuid) return;
+        /** Пока модалка закрыта — игнорируем повтор того же кадра; после закрытия модалки lastUuid сбрасывается — тот же QR можно сканировать снова. */
         if (uuid === lastUuidRef.current) return;
 
         lastUuidRef.current = uuid;
