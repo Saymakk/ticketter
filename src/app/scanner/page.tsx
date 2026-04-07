@@ -146,6 +146,8 @@ function ScannerPageContent() {
   const lastScanAtRef = useRef(0);
   /** После закрытия модалки снова запустить камеру (вкладка «Сканер» была с активной камерой). */
   const scannerResumeAfterModalRef = useRef(false);
+  const startScannerRef = useRef<() => Promise<void>>(async () => {});
+  const prevTicketModalOpenRef = useRef(false);
 
   const selectedEvent = useMemo(
     () => events.find((e) => e.id === selectedEventId) ?? null,
@@ -197,13 +199,6 @@ function ScannerPageContent() {
     router.replace(`/scanner${qs ? `?${qs}` : ""}`, { scroll: false });
     lastUuidRef.current = "";
     lastScanAtRef.current = 0;
-    const resume = scannerResumeAfterModalRef.current;
-    scannerResumeAfterModalRef.current = false;
-    if (resume) {
-      setTimeout(() => {
-        if (tabRef.current === "scan") void startScanner();
-      }, 0);
-    }
   }
 
   function goToConfirm(uuid: string) {
@@ -376,6 +371,29 @@ function ScannerPageContent() {
     readerRef.current = null;
     setIsScannerOpen(false);
   }
+
+  startScannerRef.current = startScanner;
+
+  useEffect(() => {
+    const open = isTicketModalOpen;
+    if (
+      prevTicketModalOpenRef.current &&
+      !open &&
+      scannerResumeAfterModalRef.current
+    ) {
+      scannerResumeAfterModalRef.current = false;
+      lastUuidRef.current = "";
+      lastScanAtRef.current = 0;
+      if (tabRef.current === "scan") {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            void startScannerRef.current();
+          });
+        });
+      }
+    }
+    prevTicketModalOpenRef.current = open;
+  }, [isTicketModalOpen]);
 
   return (
     <AppShell maxWidth="max-w-2xl">
