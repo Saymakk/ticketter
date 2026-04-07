@@ -12,11 +12,12 @@ export function scannerListHref(fromPanel: boolean): string {
     : "/scanner";
 }
 
+/** Открывает модалку билета на `/scanner` (без ухода со страницы — сохраняется вкладка и выбор мероприятия). */
 export function scannerConfirmHref(eventId: string, uuid: string, fromPanel: boolean): string {
   const q = new URLSearchParams({
     eventId,
     uuid,
   });
   if (fromPanel) q.set(SCANNER_FROM_PANEL_PARAM, SCANNER_FROM_PANEL_VALUE);
-  return `/scanner/confirm?${q.toString()}`;
+  return `/scanner?${q.toString()}`;
 }

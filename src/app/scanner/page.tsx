@@ -20,6 +20,7 @@ import {
   ListLoading,
   selectClass,
 } from "@/components/ui/app-shell";
+import { ScannerTicketConfirmModal } from "@/components/scanner/scanner-ticket-confirm-modal";
 import {
   isScannerFromPanelParam,
   scannerConfirmHref,
@@ -114,6 +115,10 @@ function ScannerPageContent() {
   const searchParams = useSearchParams();
   const fromPanel = isScannerFromPanelParam(searchParams.get(SCANNER_FROM_PANEL_PARAM));
 
+  const modalEventId = searchParams.get("eventId");
+  const modalUuid = searchParams.get("uuid");
+  const isTicketModalOpen = Boolean(modalEventId && modalUuid);
+
   const [events, setEvents] = useState<EventItem[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
   const [message, setMessage] = useState("");
@@ -150,6 +155,14 @@ function ScannerPageContent() {
   }, []);
 
   useEffect(() => {
+    const eid = searchParams.get("eventId");
+    const uid = searchParams.get("uuid");
+    if (eid && uid) {
+      setSelectedEventId(eid);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     stopScanner();
     setMessage("");
     lastUuidRef.current = "";
@@ -170,10 +183,18 @@ function ScannerPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
+  function closeTicketModal() {
+    const q = new URLSearchParams(searchParams.toString());
+    q.delete("eventId");
+    q.delete("uuid");
+    const qs = q.toString();
+    router.replace(`/scanner${qs ? `?${qs}` : ""}`, { scroll: false });
+  }
+
   function goToConfirm(uuid: string) {
     if (!selectedEventId) return;
     stopScanner();
-    router.push(scannerConfirmHref(selectedEventId, uuid, fromPanel));
+    router.replace(scannerConfirmHref(selectedEventId, uuid, fromPanel));
   }
 
   async function loadEvents() {
@@ -197,7 +218,7 @@ function ScannerPageContent() {
       setEvents(list);
 
       if (list.length === 1) {
-        setSelectedEventId(list[0].id);
+        setSelectedEventId((prev) => prev || list[0].id);
       }
     } catch {
       setMessage(t("scanner.errLoadEventsNet"));
@@ -587,6 +608,15 @@ function ScannerPageContent() {
           </p>
         ) : null}
       </AppCard>
+
+      {isTicketModalOpen && modalEventId && modalUuid ? (
+        <ScannerTicketConfirmModal
+          eventId={modalEventId}
+          uuid={modalUuid}
+          onClose={closeTicketModal}
+          onCheckInSuccess={() => void loadCheckedInTickets(modalEventId)}
+        />
+      ) : null}
     </AppShell>
   );
 }
