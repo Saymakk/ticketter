@@ -68,6 +68,9 @@ function ScannerPageContent() {
   const [checkedInTickets, setCheckedInTickets] = useState<CheckedInItem[]>([]);
   const [loadingCheckedIn, setLoadingCheckedIn] = useState(false);
 
+  type ScannerTab = "event" | "scan" | "checked";
+  const [tab, setTab] = useState<ScannerTab>("event");
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
@@ -81,7 +84,7 @@ function ScannerPageContent() {
   );
 
   useEffect(() => {
-    loadEvents();
+    void loadEvents();
     return () => {
       stopScanner();
     };
@@ -101,6 +104,13 @@ function ScannerPageContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEventId]);
+
+  useEffect(() => {
+    if (tab !== "scan") {
+      stopScanner();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   function goToConfirm(uuid: string) {
     if (!selectedEventId) return;
@@ -271,117 +281,219 @@ function ScannerPageContent() {
         </div>
       </div>
       {fromPanel ? <BackNav href="/admin">{t("scanner.backPanel")}</BackNav> : null}
-      <AppCard title={t("scanner.title")} subtitle={t("scanner.subtitle")}>
-        <div className="space-y-8">
-          <PwaInstallPrompt />
-          <section>
-            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-teal-800/90">
-              {t("scanner.stepEvent")}
-            </h3>
-            {loadingEvents ? (
-              <ListLoading label={t("scanner.loadingEvents")} className="py-6" />
-            ) : events.length === 0 ? (
-              <p className="text-sm text-slate-600">{t("scanner.noEvents")}</p>
-            ) : (
-              <select
-                className={selectClass}
-                value={selectedEventId}
-                onChange={(e) => setSelectedEventId(e.target.value)}
-              >
-                <option value="">{t("scanner.pickEvent")}</option>
-                {events.map((ev) => (
-                  <option key={ev.id} value={ev.id}>
-                    {ev.title} / {ev.city} /{" "}
-                    {formatEventDateTimeLine(ev.event_date, ev.event_time)}
-                  </option>
-                ))}
-              </select>
-            )}
-            {selectedEvent && (
-              <p className="mt-3 rounded-lg bg-teal-50/80 px-3 py-2 text-sm text-slate-700">
-                <span className="font-medium text-slate-900">{selectedEvent.title}</span>
-                <span className="text-slate-600">
-                  {" "}
-                  · {selectedEvent.city} ·{" "}
-                  {formatEventDateTimeLine(selectedEvent.event_date, selectedEvent.event_time)}
-                </span>
-              </p>
-            )}
-          </section>
-
-          <section>
-            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-teal-800/90">
-              {t("scanner.stepCamera")}
-            </h3>
-            <div className="flex flex-wrap gap-2">
+      <AppCard>
+        <div
+          className="mb-6 grid grid-cols-3 gap-1.5 rounded-2xl border border-slate-200/90 bg-slate-100/80 p-1.5 shadow-inner"
+          role="tablist"
+          aria-label={t("scanner.tabsAria")}
+        >
+          {(
+            [
+              { id: "event" as const, label: t("scanner.tabEvent") },
+              { id: "scan" as const, label: t("scanner.tabScan") },
+              { id: "checked" as const, label: t("scanner.tabChecked") },
+            ] as const
+          ).map((item) => {
+            const active = tab === item.id;
+            return (
               <button
+                key={item.id}
                 type="button"
-                onClick={startScanner}
-                disabled={!selectedEventId || isScannerOpen}
-                className={btnPrimary}
+                role="tab"
+                aria-selected={active}
+                id={`scanner-tab-${item.id}`}
+                onClick={() => setTab(item.id)}
+                className={`min-h-[3rem] rounded-xl px-1.5 py-2.5 text-center text-[0.8125rem] font-semibold leading-snug tracking-tight transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 sm:px-3 sm:text-sm ${
+                  active
+                    ? "bg-teal-600 text-white shadow-md ring-1 ring-teal-700/20"
+                    : "text-slate-600 hover:bg-white/90 hover:text-slate-900"
+                }`}
               >
-                {isScannerOpen ? t("scanner.scanning") : t("scanner.scan")}
+                {item.label}
               </button>
-              <button
-                type="button"
-                onClick={stopScanner}
-                disabled={!isScannerOpen}
-                className={btnSecondary}
-              >
-                {t("scanner.stop")}
-              </button>
-            </div>
-
-            <div className="mt-4 overflow-hidden rounded-xl border border-slate-800 bg-black shadow-inner">
-              <video
-                ref={videoRef}
-                className={isScannerOpen ? "block w-full max-h-[320px] object-cover" : "hidden"}
-                playsInline
-              />
-              {!isScannerOpen && (
-                <p className="px-4 py-8 text-center text-sm text-slate-400">
-                  {t("scanner.cameraOff")}
-                </p>
-              )}
-            </div>
-          </section>
-
-          <section>
-            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-teal-800/90">
-              {t("scanner.checkedIn")}
-            </h3>
-            {loadingCheckedIn ? (
-              <ListLoading label={t("scanner.loadingEvents")} className="py-6" />
-            ) : checkedInTickets.length === 0 ? (
-              <p className="text-sm text-slate-600">{t("scanner.checkedEmpty")}</p>
-            ) : (
-              <ul className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50/80 p-3">
-                {checkedInTickets.map((row) => (
-                  <li key={row.uuid}>
-                    <button
-                      type="button"
-                      onClick={() => goToConfirm(row.uuid)}
-                      className="w-full text-left underline decoration-teal-700/30 hover:text-teal-900"
-                    >
-                      <span className="block truncate text-sm font-medium text-slate-900">
-                        {row.buyer_name?.trim() || "—"}
-                      </span>
-                      <span className="mt-0.5 block truncate font-mono text-xs text-teal-700">
-                        {row.uuid}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+            );
+          })}
         </div>
 
-        {message && (
+        <div className="min-h-[12rem]">
+          {tab === "event" ? (
+            <div
+              role="tabpanel"
+              aria-labelledby="scanner-tab-event"
+              className="space-y-6"
+            >
+              <PwaInstallPrompt />
+              <section>
+                <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-teal-800/90">
+                  {t("scanner.stepEvent")}
+                </h3>
+                {loadingEvents ? (
+                  <ListLoading label={t("scanner.loadingEvents")} className="py-6" />
+                ) : events.length === 0 ? (
+                  <p className="text-sm text-slate-600">{t("scanner.noEvents")}</p>
+                ) : (
+                  <select
+                    className={selectClass}
+                    value={selectedEventId}
+                    onChange={(e) => setSelectedEventId(e.target.value)}
+                  >
+                    <option value="">{t("scanner.pickEvent")}</option>
+                    {events.map((ev) => (
+                      <option key={ev.id} value={ev.id}>
+                        {ev.title} / {ev.city} /{" "}
+                        {formatEventDateTimeLine(ev.event_date, ev.event_time)}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {selectedEvent && (
+                  <p className="mt-3 rounded-xl border border-teal-100/90 bg-teal-50/90 px-3.5 py-3 text-sm text-slate-700 shadow-sm">
+                    <span className="font-medium text-slate-900">{selectedEvent.title}</span>
+                    <span className="text-slate-600">
+                      {" "}
+                      · {selectedEvent.city} ·{" "}
+                      {formatEventDateTimeLine(selectedEvent.event_date, selectedEvent.event_time)}
+                    </span>
+                  </p>
+                )}
+              </section>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setTab("scan")}
+                  disabled={!selectedEventId}
+                  className={btnPrimary}
+                >
+                  {t("scanner.tabScan")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTab("checked")}
+                  disabled={!selectedEventId}
+                  className={btnSecondary}
+                >
+                  {t("scanner.tabChecked")}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {tab === "scan" ? (
+            <div
+              role="tabpanel"
+              aria-labelledby="scanner-tab-scan"
+              className="space-y-4"
+            >
+              {!selectedEventId ? (
+                <div className="rounded-xl border border-amber-100 bg-amber-50/90 px-4 py-5 text-sm text-amber-950">
+                  <p className="leading-relaxed">{t("scanner.selectEventForScanTab")}</p>
+                  <button
+                    type="button"
+                    onClick={() => setTab("event")}
+                    className={`${btnPrimary} mt-4`}
+                  >
+                    {t("scanner.tabEvent")}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-teal-800/90">
+                    {t("scanner.stepCamera")}
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={startScanner}
+                      disabled={!selectedEventId || isScannerOpen}
+                      className={btnPrimary}
+                    >
+                      {isScannerOpen ? t("scanner.scanning") : t("scanner.scan")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={stopScanner}
+                      disabled={!isScannerOpen}
+                      className={btnSecondary}
+                    >
+                      {t("scanner.stop")}
+                    </button>
+                  </div>
+
+                  <div className="overflow-hidden rounded-2xl border border-slate-800/90 bg-black shadow-inner ring-1 ring-slate-900/20">
+                    <video
+                      ref={videoRef}
+                      className={isScannerOpen ? "block w-full max-h-[min(50vh,22rem)] object-cover" : "hidden"}
+                      playsInline
+                    />
+                    {!isScannerOpen && (
+                      <p className="px-4 py-10 text-center text-sm text-slate-400">
+                        {t("scanner.cameraOff")}
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          ) : null}
+
+          {tab === "checked" ? (
+            <div
+              role="tabpanel"
+              aria-labelledby="scanner-tab-checked"
+              className="space-y-4"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-teal-800/90">
+                  {t("scanner.checkedIn")}
+                </h3>
+                {selectedEventId ? (
+                  <button
+                    type="button"
+                    onClick={() => void loadCheckedInTickets(selectedEventId)}
+                    disabled={loadingCheckedIn}
+                    className={btnSecondary}
+                  >
+                    {t("scanner.refreshList")}
+                  </button>
+                ) : null}
+              </div>
+              {!selectedEventId ? (
+                <p className="rounded-xl border border-slate-100 bg-slate-50/90 px-4 py-5 text-sm text-slate-600">
+                  {t("scanner.selectEventForCheckedTab")}
+                </p>
+              ) : loadingCheckedIn ? (
+                <ListLoading label={t("scanner.loadingCheckedIn")} className="py-8" />
+              ) : checkedInTickets.length === 0 ? (
+                <p className="text-sm text-slate-600">{t("scanner.checkedEmpty")}</p>
+              ) : (
+                <ul className="max-h-[min(55vh,24rem)] space-y-2 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50/90 p-3 shadow-inner">
+                  {checkedInTickets.map((row) => (
+                    <li key={row.uuid}>
+                      <button
+                        type="button"
+                        onClick={() => goToConfirm(row.uuid)}
+                        className="w-full rounded-lg px-2 py-2 text-left transition hover:bg-white hover:shadow-sm"
+                      >
+                        <span className="block truncate text-sm font-medium text-slate-900">
+                          {row.buyer_name?.trim() || "—"}
+                        </span>
+                        <span className="mt-0.5 block truncate font-mono text-xs text-teal-700">
+                          {row.uuid}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
+        </div>
+
+        {message ? (
           <p className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             {message}
           </p>
-        )}
+        ) : null}
       </AppCard>
     </AppShell>
   );
