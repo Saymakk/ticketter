@@ -316,14 +316,6 @@ export default function SuperAdminAdminsPage() {
               ))}
             </ul>
           )}
-          <button
-            type="button"
-            onClick={() => void loadAdmins()}
-            disabled={listLoading}
-            className={`${btnSecondary} mt-4`}
-          >
-            {t("super.admins.refreshList")}
-          </button>
         </div>
       </AppCard>
     </AppShell>

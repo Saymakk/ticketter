@@ -60,6 +60,31 @@ async function safeReadJson<T>(res: Response): Promise<T | null> {
 
 type ManageTab = "create" | "assign" | "list";
 
+type ManageEventsPageCache = {
+  events: EventItem[];
+  assignees: AssigneeItem[];
+  updatedAt: number;
+};
+
+const MANAGE_EVENTS_CACHE_TTL_MS = 5 * 60 * 1000;
+let manageEventsPageCache: ManageEventsPageCache | null = null;
+
+function readManageEventsPageCache(): ManageEventsPageCache | null {
+  if (!manageEventsPageCache) return null;
+  if (Date.now() - manageEventsPageCache.updatedAt > MANAGE_EVENTS_CACHE_TTL_MS) {
+    return null;
+  }
+  return manageEventsPageCache;
+}
+
+function writeManageEventsPageCache(events: EventItem[], assignees: AssigneeItem[]) {
+  manageEventsPageCache = {
+    events,
+    assignees,
+    updatedAt: Date.now(),
+  };
+}
+
 export default function ManageEventsPage() {
   const { t } = useLocaleContext();
   const [activeTab, setActiveTab] = useState<ManageTab>("create");
@@ -98,13 +123,23 @@ export default function ManageEventsPage() {
 
   const [draftFields, setDraftFields] = useState<DraftField[]>([]);
 
-  async function loadData() {
-    setLoading(true);
+  async function loadData(opts?: { silent?: boolean }) {
+    const silent = opts?.silent === true;
+    if (!silent) setLoading(true);
     try {
       const [eventsRes, usersRes, adminsRes] = await Promise.all([
-        trackedFetch("/api/super-admin/events", { cache: "no-store" }),
-        trackedFetch("/api/admin/users", { cache: "no-store" }),
-        trackedFetch("/api/admin/assignable-admins", { cache: "no-store" }),
+        trackedFetch("/api/super-admin/events", {
+          cache: "no-store",
+          trackGlobalLoading: false,
+        }),
+        trackedFetch("/api/admin/users", {
+          cache: "no-store",
+          trackGlobalLoading: false,
+        }),
+        trackedFetch("/api/admin/assignable-admins", {
+          cache: "no-store",
+          trackGlobalLoading: false,
+        }),
       ]);
 
       const eventsJson =
@@ -114,9 +149,10 @@ export default function ManageEventsPage() {
       const adminsJson =
           (await safeReadJson<{ admins?: AssigneeItem[] } & ApiError>(adminsRes)) ?? {};
 
+      const nextEvents = eventsRes.ok ? eventsJson.events ?? [] : events;
       if (eventsRes.ok) {
-        setEvents(eventsJson.events ?? []);
-      } else {
+        setEvents(nextEvents);
+      } else if (!silent) {
         setEvents([]);
         setResult(
           t("admin.manage.loadEventsFailed", {
@@ -134,8 +170,9 @@ export default function ManageEventsPage() {
         }));
         const uniq = Array.from(new Map(merged.map((x) => [x.id, x])).values());
         setAssignees(uniq);
+        writeManageEventsPageCache(nextEvents, uniq);
       } else {
-        setAssignees([]);
+        if (!silent) setAssignees([]);
         setResult(
           t("admin.manage.loadUsersFailed", {
             detail: String(usersJson.error ?? `HTTP ${usersRes.status}`),
@@ -145,17 +182,26 @@ export default function ManageEventsPage() {
     } catch {
       setResult(t("admin.manage.loadError"));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadData();
+    const cached = readManageEventsPageCache();
+    if (cached) {
+      setEvents(cached.events);
+      setAssignees(cached.assignees);
+      setLoading(false);
+      void loadData({ silent: true });
+      return;
+    }
+    void loadData();
   }, []);
 
   useEffect(() => {
     if (activeTab === "assign" || activeTab === "list") {
-      void loadData();
+      const hasCached = events.length > 0 || assignees.length > 0;
+      void loadData({ silent: hasCached });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- обновляем списки при входе на вкладку
   }, [activeTab]);
@@ -701,9 +747,6 @@ export default function ManageEventsPage() {
 
         {activeTab === "assign" && (
           <div role="tabpanel">
-            {loading ? (
-              <ListLoading label={t("common.loading")} />
-            ) : (
             <AppSection title={t("admin.manage.sectionAssign")}>
               <p className="mb-4 text-xs text-slate-600">{t("admin.manage.assignHint")}</p>
               <form onSubmit={onAssign}>
@@ -728,6 +771,9 @@ export default function ManageEventsPage() {
                       })}
                     </select>
                     <p className="mt-2 text-xs text-slate-600">{t("admin.manage.assignPastHint")}</p>
+                    {loading ? (
+                      <p className="mt-2 text-xs text-slate-500">{t("common.loading")}</p>
+                    ) : null}
                   </div>
                   <div>
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-teal-800/90">
@@ -737,7 +783,9 @@ export default function ManageEventsPage() {
                       <p className="mb-2 text-xs text-slate-500">{t("admin.manage.assignAccessLoading")}</p>
                     ) : null}
                     <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/60 p-2">
-                      {assignees.length === 0 ? (
+                      {loading && assignees.length === 0 ? (
+                        <ListLoading label={t("common.loading")} className="py-4" />
+                      ) : assignees.length === 0 ? (
                         <p className="px-2 py-3 text-sm text-slate-600">{t("admin.manage.assignNoAssignees")}</p>
                       ) : (
                         assignees.map((u) => {
@@ -839,7 +887,6 @@ export default function ManageEventsPage() {
                 </FormStack>
               </form>
             </AppSection>
-            )}
           </div>
         )}
 
@@ -849,11 +896,15 @@ export default function ManageEventsPage() {
             role="tabpanel"
           >
             <AppSection title={t("admin.manage.sectionList")}>
-              {loading ? (
+              {loading && events.length === 0 ? (
                 <ListLoading label={t("common.loading")} className="py-6" />
               ) : events.length === 0 ? (
                 <p className="text-sm text-slate-600">{t("admin.manage.listEmpty")}</p>
               ) : (
+                <>
+                {loading ? (
+                  <p className="mb-3 text-xs text-slate-500">{t("common.loading")}</p>
+                ) : null}
                 <ul className="space-y-4">
                   {events.map((ev) => (
                     <li
@@ -956,6 +1007,7 @@ export default function ManageEventsPage() {
                     </li>
                   ))}
                 </ul>
+                </>
               )}
             </AppSection>
           </div>

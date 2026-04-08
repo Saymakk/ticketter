@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLocaleContext } from "@/components/locale-provider";
 import { trackedFetch } from "@/lib/http/tracked-fetch";
+import {
+  readCachedClientRole,
+  writeCachedClientRole,
+} from "@/lib/auth/client-role-cache";
 import { scannerListHref } from "@/lib/scanner/from-panel";
 import {
   AppCard,
@@ -33,13 +37,17 @@ function HomeNavTile({
 
 export default function AdminPage() {
   const { t } = useLocaleContext();
-  const [role, setRole] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null | undefined>(() => readCachedClientRole());
 
   useEffect(() => {
-    void trackedFetch("/api/auth/role", { cache: "no-store" })
+    void trackedFetch("/api/auth/role", { cache: "no-store", trackGlobalLoading: false })
       .then((r) => r.json())
-      .then((j) => setRole(j.role ?? null))
-      .catch(() => setRole(null));
+      .then((j) => {
+        const nextRole = j.role ?? null;
+        setRole(nextRole);
+        writeCachedClientRole(nextRole);
+      })
+      .catch(() => setRole((prev) => (prev === undefined ? null : prev)));
   }, []);
 
   const isManager = role === "admin" || role === "super_admin";
@@ -49,7 +57,7 @@ export default function AdminPage() {
       <AppCard
         title={t("admin.home.title")}
         subtitle={
-          role === null
+          role == null
             ? t("admin.home.subtitleLoading")
             : role === "user"
               ? t("admin.home.subtitleUser")

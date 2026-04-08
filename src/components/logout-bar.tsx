@@ -12,6 +12,7 @@ import {
   beginTrackedOperation,
   endTrackedOperation,
 } from "@/lib/http/tracked-fetch";
+import { clearCachedClientRole } from "@/lib/auth/client-role-cache";
 
 export default function LogoutBar() {
   const pathname = usePathname();
@@ -31,6 +32,7 @@ export default function LogoutBar() {
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
+      clearCachedClientRole();
       router.replace("/login");
       router.refresh();
     } finally {

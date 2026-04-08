@@ -32,19 +32,30 @@ export function endTrackedOperation(): void {
 }
 
 /**
- * Обёртка над fetch: увеличивает счётчик активных запросов (глобальный спиннер).
- * Использовать в клиентских компонентах вместо fetch для запросов к API.
+ * Обёртка над fetch.
+ * По умолчанию глобальный спиннер включается только для не-GET/HEAD запросов.
+ * Для чтения данных можно явно включить/выключить через trackGlobalLoading.
  */
 export async function trackedFetch(
   input: RequestInfo | URL,
-  init?: RequestInit
+  init?: (RequestInit & { trackGlobalLoading?: boolean })
 ): Promise<Response> {
-  inFlight += 1;
-  emit();
-  try {
-    return await nativeFetch(input, init);
-  } finally {
-    inFlight -= 1;
+  const method = (init?.method ?? "GET").toUpperCase();
+  const defaultTrack = method !== "GET" && method !== "HEAD";
+  const shouldTrack = init?.trackGlobalLoading ?? defaultTrack;
+  if (shouldTrack) {
+    inFlight += 1;
     emit();
+  }
+  const requestInit: RequestInit | undefined = init
+    ? (({ trackGlobalLoading, ...rest }) => rest)(init)
+    : undefined;
+  try {
+    return await nativeFetch(input, requestInit);
+  } finally {
+    if (shouldTrack) {
+      inFlight -= 1;
+      emit();
+    }
   }
 }
