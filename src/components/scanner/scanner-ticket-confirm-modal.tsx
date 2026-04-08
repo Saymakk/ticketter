@@ -224,7 +224,11 @@ export function ScannerTicketConfirmModal({
           ) : !ticket ? (
             <>
               <p className="text-sm text-red-800">{message || t("scanner.confirm.notFound")}</p>
-              <button type="button" onClick={onClose} className={`${btnSecondary} mt-4`}>
+              <button
+                type="button"
+                onClick={onClose}
+                className={`${btnSecondary} mt-4 min-h-12 w-full text-base font-semibold sm:min-h-10 sm:w-auto sm:text-sm`}
+              >
                 {t("scanner.confirm.backScanner")}
               </button>
             </>
@@ -238,7 +242,11 @@ export function ScannerTicketConfirmModal({
               {ticketRows}
 
               {eventPast ? (
-                <button type="button" onClick={onClose} className={`${btnSecondary} mt-6`}>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className={`${btnSecondary} mt-6 min-h-12 w-full text-base font-semibold sm:min-h-10 sm:w-auto sm:text-sm`}
+                >
                   {t("scanner.confirm.cancel")}
                 </button>
               ) : (
@@ -246,11 +254,15 @@ export function ScannerTicketConfirmModal({
                   <button
                     type="submit"
                     disabled={checkingIn || ticket.status === "checked_in"}
-                    className={btnPrimary}
+                    className={`${btnPrimary} min-h-12 flex-1 text-base font-semibold shadow-md sm:min-h-10 sm:flex-none sm:text-sm`}
                   >
                     {checkingIn ? t("scanner.confirm.checkingIn") : t("scanner.confirm.checkIn")}
                   </button>
-                  <button type="button" onClick={onClose} className={btnSecondary}>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className={`${btnSecondary} min-h-12 flex-1 text-base font-semibold sm:min-h-10 sm:flex-none sm:text-sm`}
+                  >
                     {t("scanner.confirm.cancel")}
                   </button>
                 </form>

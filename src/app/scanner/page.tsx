@@ -118,6 +118,8 @@ function ScannerPageContent() {
   const modalEventId = searchParams.get("eventId");
   const modalUuid = searchParams.get("uuid");
   const isTicketModalOpen = Boolean(modalEventId && modalUuid);
+  const [ticketModalHidden, setTicketModalHidden] = useState(false);
+  const modalVisibleRef = useRef(false);
 
   const [events, setEvents] = useState<EventItem[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
@@ -133,10 +135,6 @@ function ScannerPageContent() {
 
   type ScannerTab = "event" | "scan" | "checked";
   const [tab, setTab] = useState<ScannerTab>("event");
-  const tabRef = useRef<ScannerTab>(tab);
-  useEffect(() => {
-    tabRef.current = tab;
-  }, [tab]);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
@@ -144,10 +142,6 @@ function ScannerPageContent() {
 
   const lastUuidRef = useRef("");
   const lastScanAtRef = useRef(0);
-  /** После закрытия модалки снова запустить камеру (вкладка «Сканер» была с активной камерой). */
-  const scannerResumeAfterModalRef = useRef(false);
-  const startScannerRef = useRef<() => Promise<void>>(async () => {});
-  const prevTicketModalOpenRef = useRef(false);
 
   const selectedEvent = useMemo(
     () => events.find((e) => e.id === selectedEventId) ?? null,
@@ -167,8 +161,13 @@ function ScannerPageContent() {
     const uid = searchParams.get("uuid");
     if (eid && uid) {
       setSelectedEventId(eid);
+      setTicketModalHidden(false);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    modalVisibleRef.current = isTicketModalOpen && !ticketModalHidden;
+  }, [isTicketModalOpen, ticketModalHidden]);
 
   useEffect(() => {
     stopScanner();
@@ -192,6 +191,7 @@ function ScannerPageContent() {
   }, [tab]);
 
   function closeTicketModal() {
+    setTicketModalHidden(true);
     const q = new URLSearchParams(searchParams.toString());
     q.delete("eventId");
     q.delete("uuid");
@@ -203,8 +203,7 @@ function ScannerPageContent() {
 
   function goToConfirm(uuid: string) {
     if (!selectedEventId) return;
-    scannerResumeAfterModalRef.current = tab === "scan" && isScannerOpen;
-    stopScanner();
+    setTicketModalHidden(false);
     router.replace(scannerConfirmHref(selectedEventId, uuid, fromPanel));
   }
 
@@ -322,6 +321,7 @@ function ScannerPageContent() {
 
       const onDecode = async (result?: Result) => {
         if (!result) return;
+        if (modalVisibleRef.current) return;
 
         const now = Date.now();
         if (now - lastScanAtRef.current < 700) return;
@@ -329,7 +329,7 @@ function ScannerPageContent() {
 
         const uuid = result.getText().trim();
         if (!uuid) return;
-        /** Пока модалка закрыта — игнорируем повтор того же кадра; после закрытия модалки lastUuid сбрасывается — тот же QR можно сканировать снова. */
+        /** Игнорируем дубли в одном открытии модалки; после закрытия lastUuid сбрасывается. */
         if (uuid === lastUuidRef.current) return;
 
         lastUuidRef.current = uuid;
@@ -371,29 +371,6 @@ function ScannerPageContent() {
     readerRef.current = null;
     setIsScannerOpen(false);
   }
-
-  startScannerRef.current = startScanner;
-
-  useEffect(() => {
-    const open = isTicketModalOpen;
-    if (
-      prevTicketModalOpenRef.current &&
-      !open &&
-      scannerResumeAfterModalRef.current
-    ) {
-      scannerResumeAfterModalRef.current = false;
-      lastUuidRef.current = "";
-      lastScanAtRef.current = 0;
-      if (tabRef.current === "scan") {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            void startScannerRef.current();
-          });
-        });
-      }
-    }
-    prevTicketModalOpenRef.current = open;
-  }, [isTicketModalOpen]);
 
   return (
     <AppShell maxWidth="max-w-2xl">
@@ -644,7 +621,7 @@ function ScannerPageContent() {
         ) : null}
       </AppCard>
 
-      {isTicketModalOpen && modalEventId && modalUuid ? (
+      {isTicketModalOpen && !ticketModalHidden && modalEventId && modalUuid ? (
         <ScannerTicketConfirmModal
           eventId={modalEventId}
           uuid={modalUuid}

@@ -378,7 +378,7 @@
     "pwaBannerOther": "Install the app using the icon in the address bar.",
     "pwaContinue": "Continue",
     "pwaInstallNoPrompt": "No install dialog appeared. Open the browser menu (⋮) and choose “Install app” or “Add to Home screen”.",
-    "pwaInstallDevHint": "In development (npm run dev) install prompts are often unavailable. Try a production build or use the browser menu (⋮).",
+    "pwaInstallDevHint": "Open the browser menu (⋮) and choose “Install app” or “Add to Home screen”.",
     "confirm": {
       "back": "To scanner",
       "errorLink": "Invalid link.",
