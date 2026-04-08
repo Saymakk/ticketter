@@ -5,6 +5,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocaleContext } from "@/components/locale-provider";
 import { formatEventDateTimeLine, isEventPastByDateString } from "@/lib/event-date";
 import { trackedFetch } from "@/lib/http/tracked-fetch";
+import { useHorizontalSwipeTabs } from "@/lib/ui/use-horizontal-swipe-tabs";
 import {
   AppCard,
   AppSection,
@@ -62,6 +63,12 @@ type ManageTab = "create" | "assign" | "list";
 export default function ManageEventsPage() {
   const { t } = useLocaleContext();
   const [activeTab, setActiveTab] = useState<ManageTab>("create");
+  const manageTabOrder: readonly ManageTab[] = ["create", "assign", "list"];
+  const manageSwipeHandlers = useHorizontalSwipeTabs<ManageTab>({
+    tabs: manageTabOrder,
+    activeTab,
+    onChange: setActiveTab,
+  });
   const [events, setEvents] = useState<EventItem[]>([]);
   const [assignees, setAssignees] = useState<AssigneeItem[]>([]);
   const [result, setResult] = useState("");
@@ -586,6 +593,7 @@ export default function ManageEventsPage() {
           })}
         </div>
 
+        <div style={{ touchAction: "pan-y" }} {...manageSwipeHandlers}>
         {activeTab === "create" && (
           <div className="space-y-8" role="tabpanel">
             <AppSection title={t("admin.manage.sectionNew")}>
@@ -952,6 +960,7 @@ export default function ManageEventsPage() {
             </AppSection>
           </div>
         )}
+        </div>
 
         {result && (
           <p className="mt-6 rounded-lg border border-slate-200 bg-amber-50/80 px-3 py-2 text-sm text-slate-800">

@@ -27,6 +27,7 @@ import {
   SCANNER_FROM_PANEL_PARAM,
 } from "@/lib/scanner/from-panel";
 import { formatEventDateTimeLine } from "@/lib/event-date";
+import { useHorizontalSwipeTabs } from "@/lib/ui/use-horizontal-swipe-tabs";
 
 type EventItem = {
   id: string;
@@ -135,6 +136,13 @@ function ScannerPageContent() {
 
   type ScannerTab = "event" | "scan" | "checked";
   const [tab, setTab] = useState<ScannerTab>("event");
+  const scannerTabOrder: readonly ScannerTab[] = ["event", "scan", "checked"];
+  const scannerSwipeHandlers = useHorizontalSwipeTabs<ScannerTab>({
+    tabs: scannerTabOrder,
+    activeTab: tab,
+    onChange: setTab,
+    enabled: !isTicketModalOpen,
+  });
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
@@ -422,7 +430,11 @@ function ScannerPageContent() {
           })}
         </div>
 
-        <div className="min-h-[12rem]">
+        <div
+          className="min-h-[12rem]"
+          style={{ touchAction: "pan-y" }}
+          {...scannerSwipeHandlers}
+        >
           {tab === "event" ? (
             <div
               role="tabpanel"
