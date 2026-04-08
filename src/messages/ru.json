@@ -357,6 +357,7 @@
     "refreshList": "Обновить список",
     "checkedIn": "Просмотри пробитые билеты",
     "checkedEmpty": "Пока нет пробитых билетов",
+    "checkedInAt": "Пробит",
     "errLoadEvents": "Ошибка загрузки мероприятий ({detail})",
     "errLoadEventsNet": "Сетевая ошибка при загрузке мероприятий",
     "errLoadChecked": "Ошибка загрузки пробитых билетов ({detail})",

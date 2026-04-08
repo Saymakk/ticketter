@@ -55,9 +55,9 @@ export default function LogoutBar() {
             />
             {t("logoutBar.brand")}
           </span>
-          <UserIdentityBar className="min-w-0 flex-1 basis-full text-left sm:basis-[min(100%,20rem)] sm:text-right" />
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
+          <UserIdentityBar className="min-w-0 basis-full text-right sm:basis-auto" />
           <LanguageSwitcher />
           <AccountSettingsButton />
           <button

@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { ReactNode, TouchEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import type { Result } from "@zxing/library";
@@ -142,11 +142,14 @@ function ScannerPageContent() {
     activeTab: tab,
     onChange: setTab,
     enabled: !isTicketModalOpen,
+    blockInteractiveTargets: false,
   });
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+  const checkedListRef = useRef<HTMLUListElement | null>(null);
+  const [checkedListTouchAction, setCheckedListTouchAction] = useState<"pan-x" | "pan-y">("pan-y");
 
   const lastUuidRef = useRef("");
   const lastScanAtRef = useRef(0);
@@ -380,6 +383,24 @@ function ScannerPageContent() {
     setIsScannerOpen(false);
   }
 
+  function onCheckedListTouchStart(e: TouchEvent<HTMLUListElement>) {
+    const touch = e.touches[0];
+    if (!touch) return;
+    const rect = checkedListRef.current?.getBoundingClientRect();
+    if (!rect) {
+      setCheckedListTouchAction("pan-x");
+      return;
+    }
+    const edge = 24;
+    const fromLeft = touch.clientX - rect.left;
+    const fromRight = rect.right - touch.clientX;
+    setCheckedListTouchAction(fromLeft <= edge || fromRight <= edge ? "pan-y" : "pan-x");
+  }
+
+  function onCheckedListTouchEnd() {
+    setCheckedListTouchAction("pan-y");
+  }
+
   return (
     <AppShell maxWidth="max-w-2xl">
       <div className="mx-auto -mt-5 mb-1 flex max-w-2xl flex-wrap items-center justify-between gap-3 px-4 sm:-mt-6 sm:px-6">
@@ -430,11 +451,8 @@ function ScannerPageContent() {
           })}
         </div>
 
-        <div
-          className="min-h-[12rem]"
-          style={{ touchAction: "pan-y" }}
-          {...scannerSwipeHandlers}
-        >
+        <div style={{ touchAction: "pan-y" }} {...scannerSwipeHandlers}>
+        <div className="min-h-[12rem]">
           {tab === "event" ? (
             <div
               role="tabpanel"
@@ -599,7 +617,14 @@ function ScannerPageContent() {
                   </p>
                 </div>
               ) : (
-                <ul className="max-h-[min(55vh,24rem)] space-y-2 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50/90 p-3 shadow-inner">
+                <ul
+                  ref={checkedListRef}
+                  className="max-h-[min(55vh,24rem)] space-y-2 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50/90 p-3 shadow-inner"
+                  onTouchStart={onCheckedListTouchStart}
+                  onTouchEnd={onCheckedListTouchEnd}
+                  onTouchCancel={onCheckedListTouchEnd}
+                  style={{ touchAction: checkedListTouchAction }}
+                >
                   {checkedInTickets.map((row) => {
                     const contactLines = checkedInContactLines(row, t);
                     return (
@@ -613,6 +638,11 @@ function ScannerPageContent() {
                           <span className="mt-1.5 block text-sm font-medium text-slate-900">
                             {row.buyer_name?.trim() || "—"}
                           </span>
+                          {row.checked_in_at ? (
+                            <span className="mt-1 block text-xs text-slate-500">
+                              {t("scanner.checkedInAt")}: {new Date(row.checked_in_at).toLocaleString()}
+                            </span>
+                          ) : null}
                           {contactLines.length > 0 ? (
                             <div className="mt-1.5 flex flex-col gap-0.5">{contactLines}</div>
                           ) : null}
@@ -631,6 +661,7 @@ function ScannerPageContent() {
             {message}
           </p>
         ) : null}
+        </div>
       </AppCard>
 
       {isTicketModalOpen && !ticketModalHidden && modalEventId && modalUuid ? (

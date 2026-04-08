@@ -8,6 +8,7 @@ type UseHorizontalSwipeTabsParams<T extends string> = {
   activeTab: T;
   onChange: (next: T) => void;
   enabled?: boolean;
+  blockInteractiveTargets?: boolean;
 };
 
 type SwipeHandlers = {
@@ -30,6 +31,7 @@ export function useHorizontalSwipeTabs<T extends string>({
   activeTab,
   onChange,
   enabled = true,
+  blockInteractiveTargets = true,
 }: UseHorizontalSwipeTabsParams<T>): SwipeHandlers {
   const startXRef = useRef<number | null>(null);
   const startYRef = useRef<number | null>(null);
@@ -39,7 +41,7 @@ export function useHorizontalSwipeTabs<T extends string>({
     () => ({
       onTouchStart: (e) => {
         if (!enabled) return;
-        blockedRef.current = isInteractiveTarget(e.target);
+        blockedRef.current = blockInteractiveTargets && isInteractiveTarget(e.target);
         if (blockedRef.current) return;
         const t = e.touches[0];
         if (!t) return;
@@ -77,7 +79,7 @@ export function useHorizontalSwipeTabs<T extends string>({
         }
       },
     }),
-    [activeTab, enabled, onChange, tabs]
+    [activeTab, blockInteractiveTargets, enabled, onChange, tabs]
   );
 }
 

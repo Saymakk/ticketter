@@ -1012,13 +1012,12 @@ export default function ManageEventsPage() {
             </AppSection>
           </div>
         )}
-        </div>
-
         {result && (
           <p className="mt-6 rounded-lg border border-slate-200 bg-amber-50/80 px-3 py-2 text-sm text-slate-800">
             {result}
           </p>
         )}
+        </div>
       </AppCard>
     </AppShell>
   );

@@ -357,6 +357,7 @@
     "refreshList": "Refresh list",
     "checkedIn": "View checked-in tickets",
     "checkedEmpty": "No checked-in tickets yet",
+    "checkedInAt": "Checked in",
     "errLoadEvents": "Failed to load events ({detail})",
     "errLoadEventsNet": "Network error while loading events",
     "errLoadChecked": "Failed to load checked-in tickets ({detail})",

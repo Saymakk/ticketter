@@ -5,6 +5,7 @@ import GlobalRequestLoadingProvider from "@/components/global-request-loading-pr
 import IdleTracker from "@/components/idle-tracker";
 import { LocaleProvider } from "@/components/locale-provider";
 import LogoutBar from "@/components/logout-bar";
+import AuthGuard from "@/components/auth-guard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,6 +41,7 @@ export default function RootLayout({
       <body className="min-h-full font-sans antialiased">
         <LocaleProvider>
           <GlobalRequestLoadingProvider>
+            <AuthGuard />
             <IdleTracker />
             <LogoutBar />
             {children}
