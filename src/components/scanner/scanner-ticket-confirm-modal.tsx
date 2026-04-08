@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useLocaleContext } from "@/components/locale-provider";
 import { trackedFetch } from "@/lib/http/tracked-fetch";
@@ -17,6 +17,7 @@ type Ticket = {
   region: string | null;
   status: "new" | "checked_in";
   created_at: string;
+  checked_in_at: string | null;
   custom_data: Record<string, unknown>;
 };
 
@@ -32,15 +33,67 @@ async function safeReadJson<T>(res: Response): Promise<T | null> {
   }
 }
 
-function row(label: string, value: string) {
+function row(rowKey: string, label: string, value: string) {
   return (
-    <div className="flex flex-col gap-0.5 border-b border-slate-100 py-2 last:border-0 sm:flex-row sm:items-baseline sm:gap-4">
+    <div
+      key={rowKey}
+      className="flex flex-col gap-0.5 border-b border-slate-100 py-2 last:border-0 sm:flex-row sm:items-baseline sm:gap-4"
+    >
       <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
         {label}
       </span>
       <span className="text-sm text-slate-900">{value}</span>
     </div>
   );
+}
+
+function ticketDetailRows(
+  ticket: Ticket,
+  t: (key: string) => string
+): ReactNode[] {
+  const fmt = (iso: string) => new Date(iso).toLocaleString();
+  const out: ReactNode[] = [
+    row("uuid", t("scanner.confirm.rowUuid"), ticket.uuid),
+  ];
+  if (ticket.buyer_name?.trim()) {
+    out.push(row("fio", t("admin.ticketCard.rowFio"), ticket.buyer_name.trim()));
+  }
+  if (ticket.phone?.trim()) {
+    out.push(row("phone", t("admin.ticketCard.rowPhone"), ticket.phone.trim()));
+  }
+  if (ticket.ticket_type?.trim()) {
+    out.push(
+      row("type", t("admin.ticketCard.rowType"), ticket.ticket_type.trim())
+    );
+  }
+  if (ticket.region?.trim()) {
+    out.push(
+      row("region", t("admin.ticketCard.rowRegion"), ticket.region.trim())
+    );
+  }
+  out.push(
+    row("status", t("admin.ticketCard.rowStatus"), ticketStatusLabel(ticket.status, t))
+  );
+  out.push(row("createdAt", t("scanner.confirm.rowCreatedAt"), fmt(ticket.created_at)));
+  if (ticket.status === "checked_in" && ticket.checked_in_at) {
+    out.push(
+      row(
+        "checkedInAt",
+        t("scanner.confirm.rowCheckedInAt"),
+        fmt(ticket.checked_in_at)
+      )
+    );
+  }
+  const cd = ticket.custom_data;
+  if (cd && typeof cd === "object" && !Array.isArray(cd)) {
+    for (const [k, v] of Object.entries(cd)) {
+      if (v === null || v === undefined) continue;
+      const s = typeof v === "string" ? v.trim() : String(v);
+      if (!s) continue;
+      out.push(row(`custom:${k}`, k, s));
+    }
+  }
+  return out;
 }
 
 type Props = {
@@ -184,13 +237,7 @@ export function ScannerTicketConfirmModal({
 
   const ticketRows = ticket ? (
     <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3">
-      {row(t("scanner.confirm.rowUuid"), ticket.uuid)}
-      {row(t("admin.ticketCard.rowFio"), ticket.buyer_name ?? "—")}
-      {row(t("admin.ticketCard.rowPhone"), ticket.phone ?? "—")}
-      {ticket.ticket_type ? row(t("admin.ticketCard.rowType"), ticket.ticket_type) : null}
-      {row(t("admin.ticketCard.rowRegion"), ticket.region ?? "—")}
-      {row(t("admin.ticketCard.rowStatus"), ticketStatusLabel(ticket.status, t))}
-      {row(t("scanner.confirm.rowDate"), new Date(ticket.created_at).toLocaleString())}
+      {ticketDetailRows(ticket, t)}
     </div>
   ) : null;
 
