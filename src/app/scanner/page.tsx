@@ -5,7 +5,6 @@ import type { ReactNode, TouchEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import type { Result } from "@zxing/library";
-import AccountSettingsButton from "@/components/account-settings-button";
 import LanguageSwitcher from "@/components/language-switcher";
 import UserIdentityBar from "@/components/user-identity-bar";
 import PwaInstallPrompt from "@/components/pwa-install-prompt";
@@ -407,7 +406,6 @@ function ScannerPageContent() {
         <UserIdentityBar className="min-w-0 flex-1 basis-full sm:basis-0 sm:text-right" />
         <div className="flex shrink-0 items-center gap-3 sm:ml-auto">
           <LanguageSwitcher />
-          <AccountSettingsButton />
         </div>
       </div>
       {fromPanel ? (
