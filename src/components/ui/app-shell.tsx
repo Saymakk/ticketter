@@ -158,19 +158,27 @@ export function PageHeaderWithBack({
   backLabel,
   title,
   description,
+  end,
 }: {
   backHref: string;
   backLabel: ReactNode;
   title: ReactNode;
   description?: ReactNode;
+  /** Доп. действие справа (напр. вторая навигационная кнопка). */
+  end?: ReactNode;
 }) {
   return (
     <header className="mb-6 flex flex-col gap-2 border-b border-slate-100 pb-5 [&_nav]:mb-0">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <BackNav href={backHref}>{backLabel}</BackNav>
-        <h1 className="min-w-0 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
-          {title}
-        </h1>
+      <div className="flex flex-wrap items-start justify-between gap-3 gap-y-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">
+          <BackNav href={backHref}>{backLabel}</BackNav>
+          <h1 className="min-w-0 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+            {title}
+          </h1>
+        </div>
+        {end != null ? (
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">{end}</div>
+        ) : null}
       </div>
       {description != null ? (
         <div className="text-sm leading-relaxed text-slate-600">{description}</div>

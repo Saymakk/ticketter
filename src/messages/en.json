@@ -6,6 +6,7 @@
     "error": "Error",
     "save": "Save",
     "cancel": "Cancel",
+    "close": "Close",
     "delete": "Delete",
     "edit": "Edit",
     "toPanel": "To dashboard",
@@ -89,7 +90,7 @@
       "next": "Next"
     },
     "events": {
-      "title": "My events",
+      "title": "Working with tickets",
       "subtitle": "Events you have access to.",
       "empty": "No assigned events",
       "tickets": "Tickets",
@@ -98,6 +99,7 @@
     },
     "manage": {
       "title": "Events",
+      "toTickets": "To tickets",
       "subtitle": "Create, assign users, list and edit.",
       "tabCreate": "Create events",
       "tabAssign": "Assign responsible users",
@@ -214,6 +216,16 @@
       "deselectAll": "Clear selection",
       "downloadZip": "Download QR (zip)",
       "downloading": "Downloading…",
+      "bulkSendEmail": "Send QR by email",
+      "bulkSendWhatsApp": "WhatsApp links",
+      "bulkSendEmailProgress": "Sending email…",
+      "bulkSendWhatsAppProgress": "Preparing links…",
+      "bulkSendEmailResult": "Emails sent: {success} of {total}.",
+      "bulkSendWhatsAppResult": "WhatsApp links: {success} of {total}.",
+      "bulkSendEmailErrors": "Failed: {detail}",
+      "bulkWaModalTitle": "WhatsApp: open chats one by one",
+      "bulkWaModalHint": "Tap each link and send the message to the guest.",
+      "bulkWaModalClose": "Close",
       "selected": "Selected: {count}",
       "newTicket": "New ticket",
       "needOneTicket": "Select at least one ticket",
@@ -292,7 +304,18 @@
       "closeQrBackdrop": "Close QR preview",
       "qrDialogAria": "Ticket QR code",
       "qrSheetTitle": "QR code",
-      "qrAlt": "Ticket QR code"
+      "qrAlt": "Ticket QR code",
+      "sendQrEmail": "Email (QR)",
+      "sendQrWhatsApp": "WhatsApp",
+      "sendQrEmailSending": "Sending…",
+      "sendQrWhatsAppSending": "Opening…",
+      "sendQrEmailTitle": "Send QR to email from ticket fields",
+      "sendQrWhatsAppTitle": "Open WhatsApp with ticket text",
+      "sendQrDoneEmail": "Email with QR sent to {email}.",
+      "sendQrEmailResendMissing": "Email not sent: set RESEND_API_KEY and MAIL_FROM on the server and verify your domain in Resend.",
+      "sendQrEmailFailed": "Email error: {detail}",
+      "sendQrWhatsAppOpened": "WhatsApp opened — send the message to the guest.",
+      "sendQrError": "Could not send."
     }
   },
   "super": {

@@ -34,7 +34,7 @@ export async function GET(_: Request, { params }: Params) {
 
     const { data, error } = await admin
         .from("tickets")
-        .select("id,uuid,buyer_name,phone,ticket_type,region,status,created_at")
+        .select("id,uuid,buyer_name,phone,ticket_type,region,status,created_at,custom_data")
         .eq("event_id", eventId)
         .order("created_at", { ascending: false });
 

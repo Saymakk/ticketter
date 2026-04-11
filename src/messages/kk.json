@@ -6,6 +6,7 @@
     "error": "Қате",
     "save": "Сақтау",
     "cancel": "Болдырмау",
+    "close": "Жабу",
     "delete": "Жою",
     "edit": "Өңдеу",
     "toPanel": "Панельге",
@@ -89,7 +90,7 @@
       "next": "Алға"
     },
     "events": {
-      "title": "Менің іс-шараларым",
+      "title": "Билеттермен жұмыс",
       "subtitle": "Сізде қолжетімі бар оқиғалар.",
       "empty": "Тағайындалған іс-шара жоқ",
       "tickets": "Билеттер",
@@ -98,6 +99,7 @@
     },
     "manage": {
       "title": "Іс-шаралар",
+      "toTickets": "Билеттерге",
       "subtitle": "Жасау, пайдаланушыларды тағайындау, тізім және өзгерістер.",
       "tabCreate": "Іс-шараларды жасау",
       "tabAssign": "Жауапты пайдаланушыларды тағайындау",
@@ -214,6 +216,16 @@
       "deselectAll": "Таңдауды алу",
       "downloadZip": "QR жүктеу (zip)",
       "downloading": "Жүктелуде…",
+      "bulkSendEmail": "Email-ға QR жіберу",
+      "bulkSendWhatsApp": "WhatsApp сілтемелері",
+      "bulkSendEmailProgress": "Поштаға жіберілуде…",
+      "bulkSendWhatsAppProgress": "Сілтемелер дайындалуда…",
+      "bulkSendEmailResult": "Хаттар жіберілді: {success} / {total}.",
+      "bulkSendWhatsAppResult": "WhatsApp сілтемелері: {success} / {total}.",
+      "bulkSendEmailErrors": "Сәтсіз: {detail}",
+      "bulkWaModalTitle": "WhatsApp: чаттарды кезекпен ашыңыз",
+      "bulkWaModalHint": "Әр сілтемені басып, қонаққа хабарлама жіберіңіз.",
+      "bulkWaModalClose": "Жабу",
       "selected": "Таңдалған: {count}",
       "newTicket": "Жаңа билет",
       "needOneTicket": "Кемінде бір билетті таңдаңыз",
@@ -292,7 +304,18 @@
       "closeQrBackdrop": "QR қарауды жабу",
       "qrDialogAria": "Билеттің QR коды",
       "qrSheetTitle": "QR код",
-      "qrAlt": "Билеттің QR коды"
+      "qrAlt": "Билеттің QR коды",
+      "sendQrEmail": "Email (QR)",
+      "sendQrWhatsApp": "WhatsApp",
+      "sendQrEmailSending": "Жіберілуде…",
+      "sendQrWhatsAppSending": "Ашылуда…",
+      "sendQrEmailTitle": "Билет өрістеріндегі email-ға QR жіберу",
+      "sendQrWhatsAppTitle": "Билет мәтінімен WhatsApp ашу",
+      "sendQrDoneEmail": "QR бар хат {email} адресіне жіберілді.",
+      "sendQrEmailResendMissing": "Хат жіберілмеді: серверде RESEND_API_KEY және MAIL_FROM орнатыңыз, Resend ішінде доменді тексеріңіз.",
+      "sendQrEmailFailed": "Пошта қатесі: {detail}",
+      "sendQrWhatsAppOpened": "WhatsApp ашылды — қонаққа хабарлама жіберіңіз.",
+      "sendQrError": "Жіберу сәтсіз аяқталды."
     }
   },
   "super": {

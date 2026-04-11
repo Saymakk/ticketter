@@ -37,9 +37,14 @@ function HomeNavTile({
 
 export default function AdminPage() {
   const { t } = useLocaleContext();
-  const [role, setRole] = useState<string | null | undefined>(() => readCachedClientRole());
+  /** Не читаем sessionStorage в useState — иначе SSR «Загрузка…», клиент сразу с ролью → hydration mismatch. */
+  const [role, setRole] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
+    const cached = readCachedClientRole();
+    if (cached !== undefined) {
+      setRole(cached);
+    }
     void trackedFetch("/api/auth/role", { cache: "no-store", trackGlobalLoading: false })
       .then((r) => r.json())
       .then((j) => {

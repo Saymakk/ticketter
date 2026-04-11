@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
+import { AdminTicketDetailModal } from "@/components/admin/admin-ticket-detail-modal";
+import { MailSendIcon, WhatsAppSendIcon } from "@/components/admin/send-qr-icons";
+import { TicketSendQrButtons } from "@/components/admin/ticket-send-qr-buttons";
 import { useLocaleContext } from "@/components/locale-provider";
 import { formatEventDateTimeLine } from "@/lib/event-date";
+import {
+  extractEmailFromCustomData,
+  normalizePhoneForWhatsAppLink,
+} from "@/lib/ticket-contact";
 import { trackedFetch } from "@/lib/http/tracked-fetch";
 import { ticketStatusLabel } from "@/lib/ticket-status-label";
 import {
@@ -54,12 +61,17 @@ type TicketItem = {
   region: string | null;
   status: string;
   created_at: string;
+  custom_data: Record<string, unknown> | null;
 };
 
-export default function TicketsPage() {
+function TicketsPageContent() {
   const { t } = useLocaleContext();
   const params = useParams<{ eventId: string }>();
   const eventId = params.eventId;
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const ticketModalUuid = searchParams.get("ticket");
 
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -76,6 +88,11 @@ export default function TicketsPage() {
   const [eventHead, setEventHead] = useState<EventHead | null>(null);
   const [ticketStats, setTicketStats] = useState<TicketStats | null>(null);
   const [canEditTickets, setCanEditTickets] = useState(true);
+  const [bulkEmailLoading, setBulkEmailLoading] = useState(false);
+  const [bulkWaLoading, setBulkWaLoading] = useState(false);
+  const [waBulkItems, setWaBulkItems] = useState<
+    { uuid: string; url: string; label: string }[] | null
+  >(null);
 
   const [editTicketId, setEditTicketId] = useState<number | null>(null);
   const [editBuyerName, setEditBuyerName] = useState("");
@@ -84,6 +101,19 @@ export default function TicketsPage() {
 
   const eventPast = eventHead?.isPast === true;
   const canMutateTickets = canEditTickets && !eventPast;
+
+  function openTicketModal(uuid: string) {
+    const q = new URLSearchParams(searchParams.toString());
+    q.set("ticket", uuid);
+    router.push(`${pathname}?${q.toString()}`);
+  }
+
+  function closeTicketModal() {
+    const q = new URLSearchParams(searchParams.toString());
+    q.delete("ticket");
+    const s = q.toString();
+    router.replace(s ? `${pathname}?${s}` : pathname);
+  }
 
   useEffect(() => {
     if (eventId) loadTickets();
@@ -216,14 +246,13 @@ export default function TicketsPage() {
     );
   }
 
-  const allSelected =
-    tickets.length > 0 && selected.length === tickets.length;
+  const allSelected = tickets.length > 0 && selected.length === tickets.length;
 
   function toggleSelectAll() {
     if (allSelected) {
       setSelected([]);
     } else {
-      setSelected(tickets.map((t) => t.uuid));
+      setSelected(tickets.map((x) => x.uuid));
     }
   }
 
@@ -264,6 +293,78 @@ export default function TicketsPage() {
       setError(t("admin.tickets.zipNetworkError"));
     } finally {
       setLoadingZip(false);
+    }
+  }
+
+  async function bulkSendQr(channel: "email" | "whatsapp") {
+    if (!canEditTickets) return;
+    if (selected.length === 0) {
+      setSuccessMsg("");
+      setError(t("admin.tickets.needOneTicket"));
+      return;
+    }
+
+    setError("");
+    setSuccessMsg("");
+    setWaBulkItems(null);
+    if (channel === "email") setBulkEmailLoading(true);
+    else setBulkWaLoading(true);
+
+    try {
+      const res = await trackedFetch("/api/tickets/send-qr-bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uuids: selected, channel }),
+      });
+      const json = (await res.json()) as {
+        error?: string;
+        successCount?: number;
+        processed?: number;
+        failedCount?: number;
+        results?: { uuid: string; ok: boolean; error?: string; whatsappUrl?: string }[];
+      };
+
+      if (!res.ok) {
+        setError(String(json.error ?? t("admin.ticketCard.sendQrError")));
+        return;
+      }
+
+      const success = json.successCount ?? 0;
+      const total = json.processed ?? 0;
+
+      if (channel === "email") {
+        setSuccessMsg(t("admin.tickets.bulkSendEmailResult", { success, total }));
+        if ((json.failedCount ?? 0) > 0 && json.results) {
+          const fails = json.results
+            .filter((r) => !r.ok)
+            .map((r) => `${r.uuid.slice(0, 8)}… ${r.error ?? ""}`)
+            .join("; ");
+          setError(t("admin.tickets.bulkSendEmailErrors", { detail: fails }));
+        }
+      } else {
+        setSuccessMsg(t("admin.tickets.bulkSendWhatsAppResult", { success, total }));
+        const items =
+          json.results
+            ?.filter((r) => r.ok && r.whatsappUrl)
+            .map((r) => ({
+              uuid: r.uuid,
+              url: r.whatsappUrl!,
+              label: `${r.uuid.slice(0, 8)}…`,
+            })) ?? [];
+        if (items.length) setWaBulkItems(items);
+        if ((json.failedCount ?? 0) > 0 && json.results) {
+          const fails = json.results
+            .filter((r) => !r.ok)
+            .map((r) => `${r.uuid.slice(0, 8)}… ${r.error ?? ""}`)
+            .join("; ");
+          setError(t("admin.tickets.bulkSendEmailErrors", { detail: fails }));
+        }
+      }
+    } catch {
+      setError(t("admin.ticketCard.sendQrError"));
+    } finally {
+      setBulkEmailLoading(false);
+      setBulkWaLoading(false);
     }
   }
 
@@ -448,6 +549,34 @@ export default function TicketsPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => void bulkSendQr("email")}
+                    disabled={bulkEmailLoading || selected.length === 0}
+                    className={`${btnSecondary} flex min-h-[2.75rem] min-w-[2.75rem] w-full items-center justify-center px-2 sm:min-h-0 sm:w-auto sm:px-3`}
+                    title={t("admin.tickets.bulkSendEmail")}
+                    aria-label={t("admin.tickets.bulkSendEmail")}
+                  >
+                    {bulkEmailLoading ? (
+                      <CircularProgress size="sm" />
+                    ) : (
+                      <MailSendIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void bulkSendQr("whatsapp")}
+                    disabled={bulkWaLoading || selected.length === 0}
+                    className={`${btnSecondary} flex min-h-[2.75rem] min-w-[2.75rem] w-full items-center justify-center px-2 sm:min-h-0 sm:w-auto sm:px-3`}
+                    title={t("admin.tickets.bulkSendWhatsApp")}
+                    aria-label={t("admin.tickets.bulkSendWhatsApp")}
+                  >
+                    {bulkWaLoading ? (
+                      <CircularProgress size="sm" />
+                    ) : (
+                      <WhatsAppSendIcon className="h-5 w-5 text-emerald-600" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => void deleteSelectedTickets()}
                     disabled={deleteBulkLoading || selected.length === 0 || eventPast}
                     className={`${btnDanger} flex min-h-[2.75rem] w-full items-center justify-center gap-2 px-2 text-center text-sm sm:min-h-0 sm:w-auto sm:px-3.5`}
@@ -596,110 +725,186 @@ export default function TicketsPage() {
           <p className="text-sm text-slate-600">{t("admin.tickets.listEmpty")}</p>
         ) : (
           <ul className="space-y-4">
-            {tickets.map((ticket) => (
-              <li
-                key={ticket.id}
-                className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 shadow-sm"
-              >
-                {editTicketId === ticket.id && canMutateTickets ? (
-                  <div className="grid gap-3 sm:max-w-md">
-                    <input
-                      className={inputClass}
-                      value={editBuyerName}
-                      onChange={(e) => setEditBuyerName(e.target.value)}
-                      placeholder={t("admin.tickets.placeholderName")}
-                    />
-                    <input
-                      className={inputClass}
-                      value={editPhone}
-                      onChange={(e) => setEditPhone(e.target.value)}
-                      placeholder={t("admin.tickets.placeholderPhone")}
-                    />
-                    <input
-                      className={inputClass}
-                      value={editRegion}
-                      onChange={(e) => setEditRegion(e.target.value)}
-                      placeholder={t("admin.tickets.placeholderRegion")}
-                    />
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" onClick={saveEditTicket} className={btnPrimary}>
-                        {t("common.save")}
-                      </button>
-                      <button type="button" onClick={cancelEditTicket} className={btnSecondary}>
-                        {t("common.cancel")}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="flex gap-3">
-                      {canEditTickets ? (
+            {tickets.map((ticket) => {
+              const rowEmail = extractEmailFromCustomData(ticket.custom_data);
+              const rowWa = normalizePhoneForWhatsAppLink(ticket.phone);
+              return (
+                <li
+                  key={ticket.id}
+                  className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 shadow-sm"
+                >
+                  {editTicketId === ticket.id && canMutateTickets ? (
+                    <div className="grid gap-3 sm:max-w-md">
                       <input
-                        type="checkbox"
-                        className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                        checked={selected.includes(ticket.uuid)}
-                        onChange={() => toggleSelected(ticket.uuid)}
+                        className={inputClass}
+                        value={editBuyerName}
+                        onChange={(e) => setEditBuyerName(e.target.value)}
+                        placeholder={t("admin.tickets.placeholderName")}
                       />
-                      ) : null}
-                      <div>
-                        <p className="font-mono text-xs text-slate-500">{ticket.uuid}</p>
-                        <p className="font-medium text-slate-900">
-                          {ticket.buyer_name ?? "—"} · {ticket.phone ?? "—"}
-                        </p>
-                        <p className="text-sm text-slate-600">
-                          {ticket.ticket_type ? (
-                            <>
-                              {ticket.ticket_type}
-                              {" · "}
-                            </>
-                          ) : null}
-                          <span
-                            className={
-                              ticket.status === "checked_in" ? "text-teal-700" : "text-slate-500"
-                            }
-                          >
-                            {ticketStatusLabel(ticket.status, t)}
-                          </span>
-                        </p>
+                      <input
+                        className={inputClass}
+                        value={editPhone}
+                        onChange={(e) => setEditPhone(e.target.value)}
+                        placeholder={t("admin.tickets.placeholderPhone")}
+                      />
+                      <input
+                        className={inputClass}
+                        value={editRegion}
+                        onChange={(e) => setEditRegion(e.target.value)}
+                        placeholder={t("admin.tickets.placeholderRegion")}
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={saveEditTicket} className={btnPrimary}>
+                          {t("common.save")}
+                        </button>
+                        <button type="button" onClick={cancelEditTicket} className={btnSecondary}>
+                          {t("common.cancel")}
+                        </button>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Link
-                        href={`/admin/events/${eventId}/tickets/${ticket.uuid}`}
-                        className={`${linkClass} rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm no-underline`}
-                      >
-                        {t("admin.tickets.card")}
-                      </Link>
-                      {canMutateTickets ? (
-                      <button
-                        type="button"
-                        onClick={() => startEditTicket(ticket)}
-                        disabled={eventPast}
-                        title={eventPast ? t("admin.tickets.lockedActionsPast") : undefined}
-                        className={`${btnSecondary} disabled:cursor-not-allowed disabled:opacity-50`}
-                      >
-                        {t("admin.users.edit")}
-                      </button>
-                      ) : null}
-                      {canMutateTickets ? (
-                      <button
-                        type="button"
-                        onClick={() => deleteTicket(ticket.id)}
-                        disabled={eventPast}
-                        title={eventPast ? t("admin.tickets.lockedActionsPast") : undefined}
-                        className={`${btnDanger} disabled:cursor-not-allowed disabled:opacity-50`}
-                      >
-                        {t("admin.tickets.deleteTicket")}
-                      </button>
-                      ) : null}
+                  ) : (
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="flex gap-3">
+                        {canEditTickets ? (
+                          <input
+                            type="checkbox"
+                            className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                            checked={selected.includes(ticket.uuid)}
+                            onChange={() => toggleSelected(ticket.uuid)}
+                          />
+                        ) : null}
+                        <div>
+                          <p className="font-mono text-xs text-slate-500">{ticket.uuid}</p>
+                          <p className="font-medium text-slate-900">
+                            {ticket.buyer_name ?? "—"} · {ticket.phone ?? "—"}
+                          </p>
+                          <p className="text-sm text-slate-600">
+                            {ticket.ticket_type ? (
+                              <>
+                                {ticket.ticket_type}
+                                {" · "}
+                              </>
+                            ) : null}
+                            <span
+                              className={
+                                ticket.status === "checked_in" ? "text-teal-700" : "text-slate-500"
+                              }
+                            >
+                              {ticketStatusLabel(ticket.status, t)}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openTicketModal(ticket.uuid)}
+                            className={`${linkClass} rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm no-underline`}
+                          >
+                            {t("admin.tickets.card")}
+                          </button>
+                          <TicketSendQrButtons
+                            ticketUuid={ticket.uuid}
+                            canEmail={Boolean(rowEmail)}
+                            canWhatsApp={Boolean(rowWa)}
+                            variant="compact"
+                            onToast={(msg) => {
+                              setSuccessMsg(msg);
+                              setError("");
+                            }}
+                          />
+                          {canMutateTickets ? (
+                            <button
+                              type="button"
+                              onClick={() => startEditTicket(ticket)}
+                              disabled={eventPast}
+                              title={eventPast ? t("admin.tickets.lockedActionsPast") : undefined}
+                              className={`${btnSecondary} disabled:cursor-not-allowed disabled:opacity-50`}
+                            >
+                              {t("admin.users.edit")}
+                            </button>
+                          ) : null}
+                          {canMutateTickets ? (
+                            <button
+                              type="button"
+                              onClick={() => deleteTicket(ticket.id)}
+                              disabled={eventPast}
+                              title={eventPast ? t("admin.tickets.lockedActionsPast") : undefined}
+                              className={`${btnDanger} disabled:cursor-not-allowed disabled:opacity-50`}
+                            >
+                              {t("admin.tickets.deleteTicket")}
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </li>
-            ))}
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </AppCard>
+
+      {ticketModalUuid && eventId ? (
+        <AdminTicketDetailModal
+          eventId={eventId}
+          uuid={ticketModalUuid}
+          onClose={closeTicketModal}
+        />
+      ) : null}
+
+      {waBulkItems && waBulkItems.length > 0 ? (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4"
+          role="presentation"
+          onClick={() => setWaBulkItems(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulk-wa-title"
+            className="max-h-[min(80vh,520px)] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="bulk-wa-title" className="text-lg font-semibold text-slate-900">
+              {t("admin.tickets.bulkWaModalTitle")}
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">{t("admin.tickets.bulkWaModalHint")}</p>
+            <ul className="mt-4 space-y-2">
+              {waBulkItems.map((x) => (
+                <li key={x.uuid}>
+                  <a
+                    href={x.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${linkClass} inline-flex rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium no-underline`}
+                  >
+                    WhatsApp · {x.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className={`${btnSecondary} mt-6 w-full`}
+              onClick={() => setWaBulkItems(null)}
+            >
+              {t("admin.tickets.bulkWaModalClose")}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </AppShell>
+  );
+}
+
+export default function TicketsPage() {
+  const { t } = useLocaleContext();
+  return (
+    <Suspense fallback={<ListLoading label={t("common.loading")} className="py-16" />}>
+      <TicketsPageContent />
+    </Suspense>
   );
 }

@@ -604,6 +604,15 @@ export default function ManageEventsPage() {
         backHref="/admin"
         backLabel={t("common.toPanel")}
         title={t("admin.manage.title")}
+        end={
+          <Link
+            href="/admin/events"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+          >
+            {t("admin.manage.toTickets")}
+            <span aria-hidden>→</span>
+          </Link>
+        }
       />
       <AppCard>
         <div

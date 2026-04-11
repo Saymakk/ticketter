@@ -6,6 +6,7 @@
     "error": "Ошибка",
     "save": "Сохранить",
     "cancel": "Отмена",
+    "close": "Закрыть",
     "delete": "Удалить",
     "edit": "Редактировать",
     "toPanel": "К панели",
@@ -89,7 +90,7 @@
       "next": "Далее"
     },
     "events": {
-      "title": "Мои мероприятия",
+      "title": "Работа с билетами",
       "subtitle": "События, к которым у вас есть доступ.",
       "empty": "Нет назначенных мероприятий",
       "tickets": "Билеты",
@@ -98,6 +99,7 @@
     },
     "manage": {
       "title": "Мероприятия",
+      "toTickets": "К билетам",
       "subtitle": "Создание, назначение пользователей, список и правки.",
       "tabCreate": "Создание мероприятий",
       "tabAssign": "Назначение ответственных пользователей",
@@ -214,6 +216,16 @@
       "deselectAll": "Снять выбор",
       "downloadZip": "Скачать QR (zip)",
       "downloading": "Скачиваем…",
+      "bulkSendEmail": "Отправить QR на email",
+      "bulkSendWhatsApp": "Ссылки WhatsApp",
+      "bulkSendEmailProgress": "Отправляем на почту…",
+      "bulkSendWhatsAppProgress": "Готовим ссылки…",
+      "bulkSendEmailResult": "Писем отправлено: {success} из {total}.",
+      "bulkSendWhatsAppResult": "Ссылок WhatsApp: {success} из {total}.",
+      "bulkSendEmailErrors": "Не отправлено: {detail}",
+      "bulkWaModalTitle": "WhatsApp: откройте чаты по очереди",
+      "bulkWaModalHint": "Нажимайте ссылки и отправляйте сообщение каждому гостю.",
+      "bulkWaModalClose": "Закрыть",
       "selected": "Выбрано: {count}",
       "newTicket": "Новый билет",
       "needOneTicket": "Выбери хотя бы один билет",
@@ -292,7 +304,18 @@
       "closeQrBackdrop": "Закрыть просмотр QR",
       "qrDialogAria": "QR-код билета",
       "qrSheetTitle": "QR-код",
-      "qrAlt": "QR-код билета"
+      "qrAlt": "QR-код билета",
+      "sendQrEmail": "Email (QR)",
+      "sendQrWhatsApp": "WhatsApp",
+      "sendQrEmailSending": "Шлём…",
+      "sendQrWhatsAppSending": "Открываем…",
+      "sendQrEmailTitle": "Отправить QR на email из полей билета",
+      "sendQrWhatsAppTitle": "Открыть WhatsApp с текстом билета",
+      "sendQrDoneEmail": "Письмо с QR отправлено на {email}.",
+      "sendQrEmailResendMissing": "Почта не отправлена: задайте RESEND_API_KEY и MAIL_FROM на сервере и проверьте домен в Resend.",
+      "sendQrEmailFailed": "Ошибка почты: {detail}",
+      "sendQrWhatsAppOpened": "Открыт WhatsApp — отправьте сообщение гостю.",
+      "sendQrError": "Не удалось выполнить отправку."
     }
   },
   "super": {
