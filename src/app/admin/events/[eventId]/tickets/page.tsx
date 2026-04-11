@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AdminTicketDetailModal } from "@/components/admin/admin-ticket-detail-modal";
 import { MailSendIcon, WhatsAppSendIcon } from "@/components/admin/send-qr-icons";
+import { DeleteActionIcon, EditActionIcon } from "@/components/ui/action-icons";
 import { TicketSendQrButtons } from "@/components/admin/ticket-send-qr-buttons";
 import { useLocaleContext } from "@/components/locale-provider";
 import { formatEventDateTimeLine } from "@/lib/event-date";
@@ -321,7 +322,13 @@ function TicketsPageContent() {
         successCount?: number;
         processed?: number;
         failedCount?: number;
-        results?: { uuid: string; ok: boolean; error?: string; whatsappUrl?: string }[];
+        results?: {
+          uuid: string;
+          ok: boolean;
+          error?: string;
+          whatsappUrl?: string;
+          whatsappSentViaApi?: boolean;
+        }[];
       };
 
       if (!res.ok) {
@@ -342,7 +349,23 @@ function TicketsPageContent() {
           setError(t("admin.tickets.bulkSendEmailErrors", { detail: fails }));
         }
       } else {
-        setSuccessMsg(t("admin.tickets.bulkSendWhatsAppResult", { success, total }));
+        const apiCount =
+          json.results?.filter((r) => r.ok && r.whatsappSentViaApi).length ?? 0;
+        const linkCount =
+          json.results?.filter((r) => r.ok && r.whatsappUrl).length ?? 0;
+        if (apiCount > 0 && linkCount === 0) {
+          setSuccessMsg(t("admin.tickets.bulkSendWhatsAppApiOnly", { success, total }));
+        } else if (apiCount > 0 && linkCount > 0) {
+          setSuccessMsg(
+            t("admin.tickets.bulkSendWhatsAppMixed", {
+              api: apiCount,
+              links: linkCount,
+              total,
+            })
+          );
+        } else {
+          setSuccessMsg(t("admin.tickets.bulkSendWhatsAppResult", { success, total }));
+        }
         const items =
           json.results
             ?.filter((r) => r.ok && r.whatsappUrl)
@@ -819,10 +842,19 @@ function TicketsPageContent() {
                               type="button"
                               onClick={() => startEditTicket(ticket)}
                               disabled={eventPast}
-                              title={eventPast ? t("admin.tickets.lockedActionsPast") : undefined}
-                              className={`${btnSecondary} disabled:cursor-not-allowed disabled:opacity-50`}
+                              title={
+                                eventPast
+                                  ? t("admin.tickets.lockedActionsPast")
+                                  : t("admin.users.edit")
+                              }
+                              aria-label={
+                                eventPast
+                                  ? t("admin.tickets.lockedActionsPast")
+                                  : t("admin.users.edit")
+                              }
+                              className={`${btnSecondary} inline-flex min-h-9 min-w-9 items-center justify-center p-1.5 disabled:cursor-not-allowed disabled:opacity-50`}
                             >
-                              {t("admin.users.edit")}
+                              <EditActionIcon className="h-5 w-5" />
                             </button>
                           ) : null}
                           {canMutateTickets ? (
@@ -830,10 +862,19 @@ function TicketsPageContent() {
                               type="button"
                               onClick={() => deleteTicket(ticket.id)}
                               disabled={eventPast}
-                              title={eventPast ? t("admin.tickets.lockedActionsPast") : undefined}
-                              className={`${btnDanger} disabled:cursor-not-allowed disabled:opacity-50`}
+                              title={
+                                eventPast
+                                  ? t("admin.tickets.lockedActionsPast")
+                                  : t("admin.tickets.deleteTicket")
+                              }
+                              aria-label={
+                                eventPast
+                                  ? t("admin.tickets.lockedActionsPast")
+                                  : t("admin.tickets.deleteTicket")
+                              }
+                              className={`${btnDanger} inline-flex min-h-9 min-w-9 items-center justify-center p-1.5 disabled:cursor-not-allowed disabled:opacity-50`}
                             >
-                              {t("admin.tickets.deleteTicket")}
+                              <DeleteActionIcon />
                             </button>
                           ) : null}
                         </div>

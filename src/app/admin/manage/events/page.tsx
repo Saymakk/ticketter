@@ -19,6 +19,7 @@ import {
   ListLoading,
   selectClass,
 } from "@/components/ui/app-shell";
+import { DeleteActionIcon, EditActionIcon } from "@/components/ui/action-icons";
 
 type EventItem = {
   id: string;
@@ -997,18 +998,25 @@ export default function ManageEventsPage() {
                               title={
                                 isEventPastByDateString(ev.event_date)
                                   ? t("admin.manage.cannotEditPast")
-                                  : undefined
+                                  : t("common.edit")
                               }
-                              className={`${btnSecondary} disabled:cursor-not-allowed disabled:opacity-50`}
+                              aria-label={
+                                isEventPastByDateString(ev.event_date)
+                                  ? t("admin.manage.cannotEditPast")
+                                  : t("common.edit")
+                              }
+                              className={`${btnSecondary} inline-flex min-h-9 min-w-9 items-center justify-center p-1.5 disabled:cursor-not-allowed disabled:opacity-50`}
                             >
-                              {t("common.edit")}
+                              <EditActionIcon className="h-5 w-5" />
                             </button>
                             <button
                               type="button"
                               onClick={() => deleteEvent(ev.id)}
-                              className={btnDanger}
+                              title={t("common.delete")}
+                              aria-label={t("common.delete")}
+                              className={`${btnDanger} inline-flex min-h-9 min-w-9 items-center justify-center p-1.5`}
                             >
-                              {t("common.delete")}
+                              <DeleteActionIcon />
                             </button>
                           </div>
                         </div>

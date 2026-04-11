@@ -222,6 +222,8 @@
       "bulkSendWhatsAppProgress": "Preparing links…",
       "bulkSendEmailResult": "Emails sent: {success} of {total}.",
       "bulkSendWhatsAppResult": "WhatsApp links: {success} of {total}.",
+      "bulkSendWhatsAppApiOnly": "QR sent via WhatsApp: {success} of {total}.",
+      "bulkSendWhatsAppMixed": "WhatsApp: {api} delivered as image via API, {links} with chat link ({total} total).",
       "bulkSendEmailErrors": "Failed: {detail}",
       "bulkWaModalTitle": "WhatsApp: open chats one by one",
       "bulkWaModalHint": "Tap each link and send the message to the guest.",
@@ -315,6 +317,8 @@
       "sendQrEmailResendMissing": "Email not sent: set RESEND_API_KEY and MAIL_FROM on the server and verify your domain in Resend.",
       "sendQrEmailFailed": "Email error: {detail}",
       "sendQrWhatsAppOpened": "WhatsApp opened — send the message to the guest.",
+      "sendQrWhatsAppApiDone": "QR image sent to the recipient on WhatsApp.",
+      "sendQrWhatsAppOpenedApiFallback": "Could not send the image via WhatsApp API. Chat opened — the message includes a link to the QR image.",
       "sendQrError": "Could not send."
     }
   },

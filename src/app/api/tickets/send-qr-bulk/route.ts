@@ -28,6 +28,7 @@ export async function POST(request: Request) {
     error?: string;
     email?: { to: string | null; sent: boolean };
     whatsappUrl?: string | null;
+    whatsappSentViaApi?: boolean;
   }[] = [];
 
   for (const uuid of uuids) {
@@ -61,9 +62,11 @@ export async function POST(request: Request) {
         results.push({ uuid, ok: false, error: "Письмо не отправлено" });
       }
     } else {
-      const url = r.data.whatsapp.url;
-      if (url) {
-        results.push({ uuid, ok: true, whatsappUrl: url });
+      const w = r.data.whatsapp;
+      if (w.sentViaApi) {
+        results.push({ uuid, ok: true, whatsappSentViaApi: true, whatsappUrl: null });
+      } else if (w.url) {
+        results.push({ uuid, ok: true, whatsappUrl: w.url });
       } else {
         results.push({
           uuid,

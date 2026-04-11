@@ -222,6 +222,8 @@
       "bulkSendWhatsAppProgress": "Готовим ссылки…",
       "bulkSendEmailResult": "Писем отправлено: {success} из {total}.",
       "bulkSendWhatsAppResult": "Ссылок WhatsApp: {success} из {total}.",
+      "bulkSendWhatsAppApiOnly": "QR отправлен в WhatsApp: {success} из {total}.",
+      "bulkSendWhatsAppMixed": "WhatsApp: {api} с картинкой по API, {links} со ссылкой в чате (всего {total}).",
       "bulkSendEmailErrors": "Не отправлено: {detail}",
       "bulkWaModalTitle": "WhatsApp: откройте чаты по очереди",
       "bulkWaModalHint": "Нажимайте ссылки и отправляйте сообщение каждому гостю.",
@@ -315,6 +317,8 @@
       "sendQrEmailResendMissing": "Почта не отправлена: задайте RESEND_API_KEY и MAIL_FROM на сервере и проверьте домен в Resend.",
       "sendQrEmailFailed": "Ошибка почты: {detail}",
       "sendQrWhatsAppOpened": "Открыт WhatsApp — отправьте сообщение гостю.",
+      "sendQrWhatsAppApiDone": "QR-код отправлен в WhatsApp получателю (изображение).",
+      "sendQrWhatsAppOpenedApiFallback": "Не удалось отправить картинку через WhatsApp API. Открыт чат — в тексте есть ссылка на QR-изображение.",
       "sendQrError": "Не удалось выполнить отправку."
     }
   },

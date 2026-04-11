@@ -17,6 +17,7 @@ import {
   ListLoading,
   selectClass,
 } from "@/components/ui/app-shell";
+import { DeleteActionIcon, EditActionIcon } from "@/components/ui/action-icons";
 
 type EventField = {
   id: string;
@@ -339,11 +340,23 @@ export default function EventFieldsPage() {
                       </div>
                       {!eventPast ? (
                         <div className="flex flex-wrap gap-2">
-                          <button type="button" onClick={() => startEdit(f)} className={btnSecondary}>
-                            {t("admin.users.edit")}
+                          <button
+                            type="button"
+                            onClick={() => startEdit(f)}
+                            title={t("admin.users.edit")}
+                            aria-label={t("admin.users.edit")}
+                            className={`${btnSecondary} inline-flex min-h-9 min-w-9 items-center justify-center p-1.5`}
+                          >
+                            <EditActionIcon className="h-5 w-5" />
                           </button>
-                          <button type="button" onClick={() => onDelete(f.id)} className={btnDanger}>
-                            {t("common.delete")}
+                          <button
+                            type="button"
+                            onClick={() => onDelete(f.id)}
+                            title={t("common.delete")}
+                            aria-label={t("common.delete")}
+                            className={`${btnDanger} inline-flex min-h-9 min-w-9 items-center justify-center p-1.5`}
+                          >
+                            <DeleteActionIcon />
                           </button>
                         </div>
                       ) : null}

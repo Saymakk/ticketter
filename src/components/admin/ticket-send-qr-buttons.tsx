@@ -13,7 +13,7 @@ type SendQrResponse = {
     skippedReason: "no_email" | "not_configured" | "api_error" | null;
     errorDetail: string | null;
   };
-  whatsapp?: { url: string | null };
+  whatsapp?: { url: string | null; sentViaApi?: boolean; apiError?: string | null };
 };
 
 type Props = {
@@ -75,10 +75,16 @@ export function TicketSendQrButtons({
           show(t("admin.ticketCard.sendQrError"));
         }
       } else {
-        const waUrl = json.whatsapp?.url;
-        if (waUrl) {
-          window.open(waUrl, "_blank", "noopener,noreferrer");
-          show(t("admin.ticketCard.sendQrWhatsAppOpened"));
+        const wa = json.whatsapp;
+        if (wa?.sentViaApi) {
+          show(t("admin.ticketCard.sendQrWhatsAppApiDone"));
+        } else if (wa?.url) {
+          window.open(wa.url, "_blank", "noopener,noreferrer");
+          if (wa.apiError) {
+            show(t("admin.ticketCard.sendQrWhatsAppOpenedApiFallback"));
+          } else {
+            show(t("admin.ticketCard.sendQrWhatsAppOpened"));
+          }
         } else {
           show(t("admin.ticketCard.sendQrError"));
         }

@@ -44,3 +44,19 @@ export function isValidOptionalEventTime(s: string | null | undefined): boolean 
   if (s == null || s === "") return true;
   return /^\d{2}:\d{2}$/.test(s.trim());
 }
+
+/**
+ * Unix-время (сек), до которого действует публичная ссылка на PNG QR:
+ * конец календарного дня UTC на «день после даты мероприятия» (включительно).
+ * Согласовано со сравнением дат как строк YYYY-MM-DD в UTC.
+ * Если дата не задана или некорректна — запасной срок 7 суток от текущего момента.
+ */
+export function qrPublicLinkExpiryUnixUtc(eventDate: string | null | undefined): number {
+  const d = eventDate?.slice(0, 10);
+  if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+    return Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
+  }
+  const [y, mo, da] = d.split("-").map(Number);
+  const expMs = Date.UTC(y, mo - 1, da + 1, 23, 59, 59, 999);
+  return Math.floor(expMs / 1000);
+}

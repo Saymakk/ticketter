@@ -10,7 +10,8 @@ const bodySchema = z.object({
 
 /**
  * POST JSON { "channel": "email" | "whatsapp" }
- * — только email с QR во вложении или только ссылка WhatsApp.
+ * Email — QR во вложении. WhatsApp — при настроенном Cloud API изображение уходит получателю;
+ * иначе открывается wa.me с текстом и (при TICKET_QR_LINK_SECRET + публичном URL) ссылкой на PNG QR.
  */
 export async function POST(request: Request, { params }: Params) {
   const { uuid } = await params;

@@ -16,6 +16,7 @@ import {
   ListLoading,
   selectClass,
 } from "@/components/ui/app-shell";
+import { DeleteActionIcon, EditActionIcon } from "@/components/ui/action-icons";
 
 type AdminRow = {
   id: string;
@@ -299,15 +300,23 @@ export default function SuperAdminAdminsPage() {
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <button type="button" onClick={() => startEdit(a)} className={btnSecondary}>
-                          {t("admin.users.edit")}
+                        <button
+                          type="button"
+                          onClick={() => startEdit(a)}
+                          title={t("admin.users.edit")}
+                          aria-label={t("admin.users.edit")}
+                          className={`${btnSecondary} inline-flex min-h-9 min-w-9 items-center justify-center p-1.5`}
+                        >
+                          <EditActionIcon className="h-5 w-5" />
                         </button>
                         <button
                           type="button"
                           onClick={() => void deleteAdmin(a.id)}
-                          className={btnDanger}
+                          title={t("common.delete")}
+                          aria-label={t("common.delete")}
+                          className={`${btnDanger} inline-flex min-h-9 min-w-9 items-center justify-center p-1.5`}
                         >
-                          {t("common.delete")}
+                          <DeleteActionIcon />
                         </button>
                       </div>
                     </div>

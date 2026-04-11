@@ -222,6 +222,8 @@
       "bulkSendWhatsAppProgress": "Сілтемелер дайындалуда…",
       "bulkSendEmailResult": "Хаттар жіберілді: {success} / {total}.",
       "bulkSendWhatsAppResult": "WhatsApp сілтемелері: {success} / {total}.",
+      "bulkSendWhatsAppApiOnly": "QR WhatsApp арқылы жіберілді: {success} / {total}.",
+      "bulkSendWhatsAppMixed": "WhatsApp: {api} сурет API арқылы, {links} чатта сілтемемен (барлығы {total}).",
       "bulkSendEmailErrors": "Сәтсіз: {detail}",
       "bulkWaModalTitle": "WhatsApp: чаттарды кезекпен ашыңыз",
       "bulkWaModalHint": "Әр сілтемені басып, қонаққа хабарлама жіберіңіз.",
@@ -315,6 +317,8 @@
       "sendQrEmailResendMissing": "Хат жіберілмеді: серверде RESEND_API_KEY және MAIL_FROM орнатыңыз, Resend ішінде доменді тексеріңіз.",
       "sendQrEmailFailed": "Пошта қатесі: {detail}",
       "sendQrWhatsAppOpened": "WhatsApp ашылды — қонаққа хабарлама жіберіңіз.",
+      "sendQrWhatsAppApiDone": "QR суреті алушыға WhatsApp арқылы жіберілді.",
+      "sendQrWhatsAppOpenedApiFallback": "WhatsApp API арқылы сурет жіберілмеді. Чат ашылды — мәтінде QR суретіне сілтеме бар.",
       "sendQrError": "Жіберу сәтсіз аяқталды."
     }
   },

@@ -1,12 +1,15 @@
 import QRCode from "qrcode";
 import { getStaffReadableTicket } from "@/lib/auth/ticket-staff-read";
 import { qrImageFileName } from "@/lib/qr-filename";
+import { publicSiteUrl } from "@/lib/site-public-url";
 import {
   extractEmailFromCustomData,
   normalizePhoneForWhatsAppLink,
 } from "@/lib/ticket-contact";
 import { sendTicketQrEmailResend } from "@/lib/send-ticket-qr-email";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { mintTicketQrLinkToken } from "@/lib/tickets/ticket-qr-link-token";
+import { isWhatsAppCloudConfigured, sendWhatsAppCloudImage } from "@/lib/whatsapp-cloud";
 
 export type SendQrChannel = "email" | "whatsapp";
 
@@ -17,7 +20,13 @@ export type SendQrExecuteResult = {
     skippedReason: "no_email" | "not_configured" | "api_error" | null;
     errorDetail: string | null;
   };
-  whatsapp: { url: string | null };
+  whatsapp: {
+    url: string | null;
+    /** Отправлено изображение через WhatsApp Cloud API */
+    sentViaApi: boolean;
+    /** Ошибка API при попытке отправить изображение (есть fallback на wa.me) */
+    apiError: string | null;
+  };
 };
 
 function mailFrom(): string {
@@ -83,11 +92,15 @@ export async function executeTicketSendQr(
   const supabase = await createServerSupabaseClient();
   const { data: ev } = await supabase
     .from("events")
-    .select("title")
+    .select("title,event_date")
     .eq("id", ticket.event_id)
     .maybeSingle();
 
   const eventTitle = ev?.title ? String(ev.title) : null;
+  const eventDate =
+    ev != null && typeof (ev as { event_date?: unknown }).event_date === "string"
+      ? (ev as { event_date: string }).event_date
+      : null;
   const pngBuffer = await QRCode.toBuffer(ticket.uuid, {
     type: "png",
     width: 512,
@@ -128,12 +141,36 @@ export async function executeTicketSendQr(
     }
   }
 
-  const whatsappUrl =
-    channel === "whatsapp" && waDigits
-      ? `https://wa.me/${waDigits}?text=${encodeURIComponent(
-          buildWhatsAppMessage(eventTitle, ticket.uuid)
-        )}`
-      : null;
+  let whatsappUrl: string | null = null;
+  let whatsappSentViaApi = false;
+  let whatsappApiError: string | null = null;
+
+  if (channel === "whatsapp" && waDigits) {
+    const caption = buildWhatsAppMessage(eventTitle, ticket.uuid);
+    const base = publicSiteUrl();
+    const token = mintTicketQrLinkToken(ticket.uuid, eventDate);
+    const publicQrUrl = base && token ? `${base}/api/public/ticket-qr/${token}` : null;
+
+    if (publicQrUrl && isWhatsAppCloudConfigured()) {
+      const waRes = await sendWhatsAppCloudImage({
+        toDigits: waDigits,
+        imageUrl: publicQrUrl,
+        caption,
+      });
+      if (waRes.ok) {
+        whatsappSentViaApi = true;
+      } else {
+        whatsappApiError = waRes.detail;
+      }
+    }
+
+    if (!whatsappSentViaApi) {
+      const textBody = publicQrUrl
+        ? `${caption}\n\nQR (изображение): ${publicQrUrl}`
+        : caption;
+      whatsappUrl = `https://wa.me/${waDigits}?text=${encodeURIComponent(textBody)}`;
+    }
+  }
 
   return {
     ok: true,
@@ -154,6 +191,8 @@ export async function executeTicketSendQr(
             },
       whatsapp: {
         url: whatsappUrl,
+        sentViaApi: whatsappSentViaApi,
+        apiError: whatsappApiError,
       },
     },
   };
