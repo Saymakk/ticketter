@@ -22,7 +22,8 @@ export default function LogoutBar() {
   if (
     pathname === "/login" ||
     pathname === "/" ||
-    pathname === "/scanner"
+    pathname === "/scanner" ||
+    pathname?.startsWith("/ticket-qr/")
   ) {
     return null;
   }

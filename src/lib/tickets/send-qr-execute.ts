@@ -149,13 +149,16 @@ export async function executeTicketSendQr(
     const caption = buildWhatsAppMessage(eventTitle, ticket.uuid);
     const base = publicSiteUrl();
     const token = mintTicketQrLinkToken(ticket.uuid, eventDate);
-    const publicQrUrl = base && token ? `${base}/api/public/ticket-qr/${token}` : null;
+    const publicTicketPageUrl = base && token ? `${base}/ticket-qr/${token}` : null;
+    const publicQrImageUrl =
+      base && token ? `${base}/api/public/ticket-qr/${token}` : null;
 
-    if (publicQrUrl && isWhatsAppCloudConfigured()) {
+    if (publicQrImageUrl && isWhatsAppCloudConfigured()) {
+      const waCaption = publicTicketPageUrl ? `${caption}\n${publicTicketPageUrl}` : caption;
       const waRes = await sendWhatsAppCloudImage({
         toDigits: waDigits,
-        imageUrl: publicQrUrl,
-        caption,
+        imageUrl: publicQrImageUrl,
+        caption: waCaption,
       });
       if (waRes.ok) {
         whatsappSentViaApi = true;
@@ -165,8 +168,8 @@ export async function executeTicketSendQr(
     }
 
     if (!whatsappSentViaApi) {
-      const textBody = publicQrUrl
-        ? `${caption}\n\nQR (изображение): ${publicQrUrl}`
+      const textBody = publicTicketPageUrl
+        ? `${caption}\n\n${publicTicketPageUrl}`
         : caption;
       whatsappUrl = `https://wa.me/${waDigits}?text=${encodeURIComponent(textBody)}`;
     }
