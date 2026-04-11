@@ -37,12 +37,12 @@ function mailFrom(): string {
   );
 }
 
-function buildWhatsAppMessage(eventTitle: string | null, ticketUuid: string): string {
+function buildWhatsAppMessage(eventTitle: string | null): string {
   const title = eventTitle?.trim();
   if (title) {
-    return `Билет: ${title}. Покажите QR на входе. Код билета: ${ticketUuid}`;
+    return `Билет: ${title}. Покажите QR по ссылке на входе.`;
   }
-  return `Покажите QR на входе. Код билета: ${ticketUuid}`;
+  return `Покажите QR по ссылке на входе.`;
 }
 
 function escapeHtml(s: string): string {
@@ -146,7 +146,7 @@ export async function executeTicketSendQr(
   let whatsappApiError: string | null = null;
 
   if (channel === "whatsapp" && waDigits) {
-    const caption = buildWhatsAppMessage(eventTitle, ticket.uuid);
+    const caption = buildWhatsAppMessage(eventTitle);
     const base = publicSiteUrl();
     const token = mintTicketQrLinkToken(ticket.uuid, eventDate);
     const publicTicketPageUrl = base && token ? `${base}/ticket-qr/${token}` : null;
