@@ -23,6 +23,7 @@ export default function LogoutBar() {
     pathname === "/login" ||
     pathname === "/" ||
     pathname === "/scanner" ||
+    pathname === "/ticket-qr" ||
     pathname?.startsWith("/ticket-qr/")
   ) {
     return null;
