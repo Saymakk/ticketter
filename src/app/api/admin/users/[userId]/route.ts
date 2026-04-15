@@ -10,6 +10,7 @@ const patchSchema = z.object({
   role: z.enum(["user", "admin"]).optional(),
   password: z.string().min(8).optional(),
   canEditTickets: z.boolean().optional(),
+  companyId: z.string().uuid().nullable().optional(),
 });
 
 type Params = { params: Promise<{ userId: string }> };
@@ -83,6 +84,13 @@ export async function PATCH(request: Request, { params }: Params) {
     );
   }
 
+  if (parsed.data.companyId !== undefined && !isSuperAdminRole(callerRole)) {
+    return NextResponse.json(
+      { error: "Только суперадминистратор может менять привязку к компании" },
+      { status: 403 }
+    );
+  }
+
   const payload: Record<string, unknown> = {};
   if (parsed.data.fullName !== undefined) payload.full_name = parsed.data.fullName;
   if (parsed.data.region !== undefined) payload.region = parsed.data.region;
@@ -91,6 +99,9 @@ export async function PATCH(request: Request, { params }: Params) {
   }
   if (parsed.data.canEditTickets !== undefined && effectiveRole === "user") {
     payload.can_edit_tickets = parsed.data.canEditTickets;
+  }
+  if (isSuperAdminRole(callerRole) && parsed.data.companyId !== undefined) {
+    payload.company_id = parsed.data.companyId;
   }
 
   if (Object.keys(payload).length > 0) {

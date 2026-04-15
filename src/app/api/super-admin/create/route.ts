@@ -3,12 +3,14 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireEventManager } from "@/lib/auth/api-guards";
 import { isValidOptionalEventTime } from "@/lib/event-date";
+import { resolveEventCompanyId } from "@/lib/auth/company-access";
 
 const bodySchema = z.object({
   title: z.string().min(2),
   city: z.string().min(2),
   eventDate: z.string().min(10), // формат YYYY-MM-DD
   eventTime: z.string().optional().nullable(),
+  companyId: z.string().uuid().optional().nullable(),
 });
 
 export async function POST(request: Request) {
@@ -24,10 +26,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Некорректные данные" }, { status: 400 });
   }
 
-  const { title, city, eventDate, eventTime } = parsed.data;
+  const { title, city, eventDate, eventTime, companyId } = parsed.data;
   const timeTrim = typeof eventTime === "string" ? eventTime.trim() : "";
   if (timeTrim && !isValidOptionalEventTime(timeTrim)) {
     return NextResponse.json({ error: "Время: формат HH:MM" }, { status: 400 });
+  }
+
+  const company = await resolveEventCompanyId({
+    actorId: check.ctx.user.id,
+    requestedCompanyId: companyId,
+  });
+  if (!company.ok) {
+    return NextResponse.json({ error: company.error }, { status: company.status });
   }
 
   const admin = createAdminSupabaseClient();
@@ -39,6 +49,7 @@ export async function POST(request: Request) {
       event_date: eventDate,
       event_time: timeTrim || null,
       is_active: true,
+      company_id: company.companyId,
     })
     .select("id,title,city,event_date,event_time,is_active")
     .single();

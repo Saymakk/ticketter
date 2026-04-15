@@ -25,7 +25,9 @@ type UserRow = {
   region: string | null;
   created_by: string | null;
   can_edit_tickets?: boolean | null;
+  company_id?: string | null;
 };
+type CompanyItem = { id: string; name: string };
 
 type ApiOk = {
   ok: true;
@@ -55,6 +57,9 @@ export default function AdminUsersPage() {
   const [isSuper, setIsSuper] = useState(false);
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(true);
+  const [companies, setCompanies] = useState<CompanyItem[]>([]);
+  const [createCompanyId, setCreateCompanyId] = useState<string>("");
+  const [editCompanyId, setEditCompanyId] = useState<string>("");
 
   async function loadUsers() {
     setListLoading(true);
@@ -79,7 +84,14 @@ export default function AdminUsersPage() {
   useEffect(() => {
     void loadUsers();
     void loadMe();
+    void loadCompanies();
   }, []);
+
+  async function loadCompanies() {
+    const res = await trackedFetch("/api/companies", { cache: "no-store", trackGlobalLoading: false });
+    const json = await res.json().catch(() => ({}));
+    if (res.ok) setCompanies((json.companies ?? []) as CompanyItem[]);
+  }
 
   function canDeleteUser(u: UserRow): boolean {
     if (isSuper) return true;
@@ -100,6 +112,7 @@ export default function AdminUsersPage() {
         password,
         role: "user",
         region: region || null,
+        ...(isSuper ? { companyId: createCompanyId || null } : {}),
       }),
     });
 
@@ -126,6 +139,7 @@ export default function AdminUsersPage() {
     setLogin("");
     setPassword("");
     setRegion("");
+    setCreateCompanyId("");
     await loadUsers();
   }
 
@@ -136,6 +150,7 @@ export default function AdminUsersPage() {
     setEditRole("user");
     setEditPassword("");
     setEditCanEditTickets(u.can_edit_tickets !== false);
+    setEditCompanyId(u.company_id ?? "");
   }
 
   function cancelEdit() {
@@ -155,6 +170,9 @@ export default function AdminUsersPage() {
     }
     if (isSuper && editPassword.trim().length >= 8) {
       body.password = editPassword.trim();
+    }
+    if (isSuper) {
+      body.companyId = editCompanyId || null;
     }
 
     const res = await trackedFetch(`/api/admin/users/${editId}`, {
@@ -239,6 +257,19 @@ export default function AdminUsersPage() {
                 placeholder={t("admin.users.regionPh")}
               />
             </label>
+            {isSuper ? (
+              <label className={labelClass}>
+                {t("admin.users.company")}
+                <select className={selectClass} value={createCompanyId} onChange={(e) => setCreateCompanyId(e.target.value)}>
+                  <option value="">{t("admin.users.companyNone")}</option>
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <button type="submit" className={btnPrimary}>
               {t("admin.users.submit")}
             </button>
@@ -296,6 +327,17 @@ export default function AdminUsersPage() {
                               minLength={8}
                               autoComplete="new-password"
                             />
+                          </label>
+                          <label className={labelClass}>
+                            {t("admin.users.company")}
+                            <select className={selectClass} value={editCompanyId} onChange={(e) => setEditCompanyId(e.target.value)}>
+                              <option value="">{t("admin.users.companyNone")}</option>
+                              {companies.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </select>
                           </label>
                         </>
                       )}

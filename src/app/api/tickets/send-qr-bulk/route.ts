@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         results.push({
           uuid,
           ok: false,
-          error: "Почта не настроена (RESEND_API_KEY / MAIL_FROM)",
+          error: "Почта не настроена (SEQUENZY_SMTP_* / MAIL_FROM)",
         });
       } else if (em.skippedReason === "api_error") {
         results.push({

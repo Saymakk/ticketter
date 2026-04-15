@@ -24,7 +24,9 @@ type AdminRow = {
   phone: string | null;
   role: string;
   region: string | null;
+  company_id?: string | null;
 };
+type CompanyItem = { id: string; name: string };
 
 type ApiOk = {
   ok: true;
@@ -52,6 +54,9 @@ export default function SuperAdminAdminsPage() {
   const [editRegion, setEditRegion] = useState("");
   const [editRole, setEditRole] = useState<"user" | "admin">("admin");
   const [editPassword, setEditPassword] = useState("");
+  const [companies, setCompanies] = useState<CompanyItem[]>([]);
+  const [createCompanyId, setCreateCompanyId] = useState<string>("");
+  const [editCompanyId, setEditCompanyId] = useState<string>("");
 
   async function loadAdmins() {
     setListLoading(true);
@@ -66,7 +71,14 @@ export default function SuperAdminAdminsPage() {
 
   useEffect(() => {
     void loadAdmins();
+    void loadCompanies();
   }, []);
+
+  async function loadCompanies() {
+    const res = await trackedFetch("/api/companies", { cache: "no-store", trackGlobalLoading: false });
+    const json = await res.json().catch(() => ({}));
+    if (res.ok) setCompanies((json.companies ?? []) as CompanyItem[]);
+  }
 
   async function onCreateAdmin(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -81,6 +93,7 @@ export default function SuperAdminAdminsPage() {
         password,
         role: "admin",
         region: region || null,
+        companyId: createCompanyId || null,
       }),
     });
 
@@ -110,6 +123,7 @@ export default function SuperAdminAdminsPage() {
     setLogin("");
     setPassword("");
     setRegion("");
+    setCreateCompanyId("");
     await loadAdmins();
   }
 
@@ -133,6 +147,7 @@ export default function SuperAdminAdminsPage() {
     setEditRegion(a.region ?? "");
     setEditRole(a.role === "admin" ? "admin" : "user");
     setEditPassword("");
+    setEditCompanyId(a.company_id ?? "");
   }
 
   function cancelEdit() {
@@ -150,6 +165,7 @@ export default function SuperAdminAdminsPage() {
     if (editPassword.trim().length >= 8) {
       body.password = editPassword.trim();
     }
+    body.companyId = editCompanyId || null;
 
     const res = await trackedFetch(`/api/admin/users/${editId}`, {
       method: "PATCH",
@@ -222,6 +238,17 @@ export default function SuperAdminAdminsPage() {
                 placeholder={t("super.admins.regionPh")}
               />
             </label>
+            <label className={labelClass}>
+              {t("admin.users.company")}
+              <select className={selectClass} value={createCompanyId} onChange={(e) => setCreateCompanyId(e.target.value)}>
+                <option value="">{t("admin.users.companyNone")}</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
 
             <button type="submit" className={btnPrimary}>
               {t("super.admins.submit")}
@@ -280,6 +307,17 @@ export default function SuperAdminAdminsPage() {
                           minLength={8}
                           autoComplete="new-password"
                         />
+                      </label>
+                      <label className={labelClass}>
+                        {t("admin.users.company")}
+                        <select className={selectClass} value={editCompanyId} onChange={(e) => setEditCompanyId(e.target.value)}>
+                          <option value="">{t("admin.users.companyNone")}</option>
+                          {companies.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
                       </label>
                       <div className="flex flex-wrap gap-2">
                         <button type="button" onClick={() => void saveEdit()} className={btnPrimary}>

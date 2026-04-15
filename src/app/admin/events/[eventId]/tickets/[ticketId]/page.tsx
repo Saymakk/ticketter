@@ -73,7 +73,31 @@ export default function TicketCardPage() {
         backLabel={t("admin.ticketCard.back")}
         title={t("admin.ticketCard.title")}
         description={
-          <span className="font-mono text-xs text-slate-500 break-all">{ticket.uuid}</span>
+          <div className="space-y-1">
+            {ticket.company_name || ticket.company_image_url ? (
+              <div className="flex items-center gap-2">
+                {ticket.company_image_url ? (
+                  <img
+                    src={ticket.company_image_url}
+                    alt={ticket.company_name ?? "Company"}
+                    className="h-8 w-8 rounded-md border border-slate-200 bg-white object-cover"
+                  />
+                ) : null}
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                    {t("admin.ticketCard.rowCompany")}
+                  </p>
+                  <p className="truncate text-sm text-slate-900">{ticket.company_name ?? "—"}</p>
+                </div>
+              </div>
+            ) : null}
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                {t("admin.ticketCard.rowCode")}
+              </p>
+              <p className="font-mono text-xs text-slate-500 break-all">{ticket.uuid}</p>
+            </div>
+          </div>
         }
       />
       <AppCard>

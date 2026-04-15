@@ -72,6 +72,13 @@ export default function AdminPage() {
         <ul className="grid gap-3 sm:grid-cols-2">
           {isManager && (
             <HomeNavTile
+              href="/admin/companies"
+              title={t("admin.home.tileCompaniesTitle")}
+              description={t("admin.home.tileCompaniesDesc")}
+            />
+          )}
+          {isManager && (
+            <HomeNavTile
               href="/admin/manage/events"
               title={t("admin.home.tileManageTitle")}
               description={t("admin.home.tileManageDesc")}

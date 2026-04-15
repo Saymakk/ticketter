@@ -14,7 +14,7 @@ export async function GET() {
   if (check.ctx.profile.role === "super_admin") {
     const { data, error } = await admin
       .from("profiles")
-      .select("id,full_name,phone,role,region,created_at,created_by,can_edit_tickets")
+      .select("id,full_name,phone,role,region,created_at,created_by,can_edit_tickets,company_id")
       .eq("role", "user")
       .order("created_at", { ascending: false });
     if (error) {
@@ -29,7 +29,7 @@ export async function GET() {
   const [{ data: ownUsers, error: ownErr }, { data: superAdmins, error: saErr }] = await Promise.all([
     admin
       .from("profiles")
-      .select("id,full_name,phone,role,region,created_at,created_by,can_edit_tickets")
+      .select("id,full_name,phone,role,region,created_at,created_by,can_edit_tickets,company_id")
       .eq("role", "user")
       .eq("created_by", myId),
     admin.from("profiles").select("id").eq("role", "super_admin"),
@@ -52,7 +52,7 @@ export async function GET() {
     if (sharedIds.length > 0) {
       const { data: shared, error: sharedErr } = await admin
         .from("profiles")
-        .select("id,full_name,phone,role,region,created_at,created_by,can_edit_tickets")
+        .select("id,full_name,phone,role,region,created_at,created_by,can_edit_tickets,company_id")
         .eq("role", "user")
         .in("id", sharedIds);
       if (sharedErr) return NextResponse.json({ error: sharedErr.message }, { status: 400 });
@@ -64,7 +64,7 @@ export async function GET() {
   if (superAdminIds.length > 0) {
     const { data: supUsers, error: supUsersErr } = await admin
       .from("profiles")
-      .select("id,full_name,phone,role,region,created_at,created_by,can_edit_tickets")
+      .select("id,full_name,phone,role,region,created_at,created_by,can_edit_tickets,company_id")
       .eq("role", "user")
       .in("created_by", superAdminIds);
     if (supUsersErr) return NextResponse.json({ error: supUsersErr.message }, { status: 400 });

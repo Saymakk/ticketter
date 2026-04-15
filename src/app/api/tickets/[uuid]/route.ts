@@ -51,5 +51,29 @@ export async function GET(_: Request, { params }: Params) {
         return NextResponse.json({ error: "Нет доступа к билету" }, { status: 403 });
     }
 
-    return NextResponse.json({ ticket });
+    const { data: event } = await supabase
+        .from("events")
+        .select("company_id")
+        .eq("id", ticket.event_id)
+        .maybeSingle();
+
+    let companyName: string | null = null;
+    let companyImageUrl: string | null = null;
+    if (event?.company_id) {
+        const { data: company } = await supabase
+            .from("companies")
+            .select("name,image_url")
+            .eq("id", event.company_id)
+            .maybeSingle();
+        companyName = company?.name ?? null;
+        companyImageUrl = company?.image_url ?? null;
+    }
+
+    return NextResponse.json({
+        ticket: {
+            ...ticket,
+            company_name: companyName,
+            company_image_url: companyImageUrl,
+        },
+    });
 }

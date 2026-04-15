@@ -33,6 +33,8 @@ type EventHead = {
   city: string;
   event_date: string;
   event_time?: string | null;
+  company_name?: string | null;
+  company_image_url?: string | null;
   isPast: boolean;
 };
 
@@ -514,6 +516,18 @@ function TicketsPageContent() {
       <AppCard>
         {eventHead && !listLoading && !error ? (
           <div className="mb-5 rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3">
+            {eventHead.company_image_url ? (
+              <div className="mb-2 flex items-center gap-2">
+                <img
+                  src={eventHead.company_image_url}
+                  alt={eventHead.company_name ?? eventHead.title}
+                  className="h-8 w-8 rounded-md border border-slate-200 bg-white object-cover"
+                />
+                {eventHead.company_name ? (
+                  <span className="text-sm text-slate-600">{eventHead.company_name}</span>
+                ) : null}
+              </div>
+            ) : null}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span className="font-medium text-slate-900">{eventHead.title}</span>
               <span className="text-sm text-slate-600">

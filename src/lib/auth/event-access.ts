@@ -70,12 +70,26 @@ export async function getAuthedStaff() {
 
 export async function getAdminVisibleEventIds(adminId: string): Promise<string[]> {
   const admin = createAdminSupabaseClient();
-  const [{ data: owned }, { data: delegated }] = await Promise.all([
+  const [{ data: owned }, { data: delegated }, { data: companyAll }] = await Promise.all([
     admin.from("events").select("id").eq("created_by", adminId),
     admin.from("admin_event_access").select("event_id").eq("admin_id", adminId),
+    admin.from("admin_company_access").select("company_id").eq("admin_id", adminId).eq("all_events", true),
   ]);
 
-  return [...new Set([...(owned ?? []).map((x) => x.id), ...(delegated ?? []).map((x) => x.event_id)])];
+  let companyEventIds: string[] = [];
+  const companyIds = [...new Set((companyAll ?? []).map((x) => x.company_id))];
+  if (companyIds.length > 0) {
+    const { data: companyEvents } = await admin.from("events").select("id").in("company_id", companyIds);
+    companyEventIds = (companyEvents ?? []).map((x) => x.id);
+  }
+
+  return [
+    ...new Set([
+      ...(owned ?? []).map((x) => x.id),
+      ...(delegated ?? []).map((x) => x.event_id),
+      ...companyEventIds,
+    ]),
+  ];
 }
 
 export async function canAdminAccessEvent(adminId: string, eventId: string): Promise<boolean> {
@@ -94,7 +108,19 @@ export async function canAdminAccessEvent(adminId: string, eventId: string): Pro
     .eq("admin_id", adminId)
     .eq("event_id", eventId)
     .maybeSingle();
-  return !!delegated;
+  if (delegated) return true;
+
+  const { data: ev } = await admin.from("events").select("company_id").eq("id", eventId).maybeSingle();
+  if (!ev?.company_id) return false;
+
+  const { data: companyWide } = await admin
+    .from("admin_company_access")
+    .select("company_id")
+    .eq("admin_id", adminId)
+    .eq("company_id", ev.company_id)
+    .eq("all_events", true)
+    .maybeSingle();
+  return Boolean(companyWide);
 }
 
 export async function ensureEventAccess(eventId: string) {

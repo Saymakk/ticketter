@@ -119,7 +119,31 @@ export function AdminTicketDetailModal({ eventId, uuid, onClose }: Props) {
             {title}
           </h2>
           {!loading && ticket ? (
-            <p className="mt-1 font-mono text-xs text-slate-500 break-all">{ticket.uuid}</p>
+            <div className="mt-2 space-y-2">
+              {ticket.company_name || ticket.company_image_url ? (
+                <div className="flex items-center gap-2">
+                  {ticket.company_image_url ? (
+                    <img
+                      src={ticket.company_image_url}
+                      alt={ticket.company_name ?? "Company"}
+                      className="h-8 w-8 rounded-md border border-slate-200 bg-white object-cover"
+                    />
+                  ) : null}
+                  <div className="min-w-0">
+                    <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                      {t("admin.ticketCard.rowCompany")}
+                    </p>
+                    <p className="truncate text-sm text-slate-900">{ticket.company_name ?? "—"}</p>
+                  </div>
+                </div>
+              ) : null}
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                  {t("admin.ticketCard.rowCode")}
+                </p>
+                <p className="font-mono text-xs text-slate-500 break-all">{ticket.uuid}</p>
+              </div>
+            </div>
           ) : null}
           {toast ? (
             <p className="mt-2 text-sm text-slate-700">{toast}</p>

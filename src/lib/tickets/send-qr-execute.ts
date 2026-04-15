@@ -6,7 +6,7 @@ import {
   extractEmailFromCustomData,
   normalizePhoneForWhatsAppLink,
 } from "@/lib/ticket-contact";
-import { sendTicketQrEmailResend } from "@/lib/send-ticket-qr-email";
+import { sendTicketQrEmail } from "@/lib/send-ticket-qr-email";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { mintTicketQrLinkToken } from "@/lib/tickets/ticket-qr-link-token";
 import { isWhatsAppCloudConfigured, sendWhatsAppCloudImage } from "@/lib/whatsapp-cloud";
@@ -32,8 +32,8 @@ export type SendQrExecuteResult = {
 function mailFrom(): string {
   return (
     process.env.MAIL_FROM?.trim() ||
-    process.env.RESEND_FROM?.trim() ||
-    "Ticketter <onboarding@resend.dev>"
+    process.env.SEQUENZY_FROM?.trim() ||
+    "Ticketter <noreply@example.com>"
   );
 }
 
@@ -122,7 +122,7 @@ export async function executeTicketSendQr(
       <p style="font-size:12px;color:#64748b;">Код билета: <code>${escapeHtml(ticket.uuid)}</code></p>
     `;
 
-    const result = await sendTicketQrEmailResend({
+    const result = await sendTicketQrEmail({
       to: emailAddr,
       from: mailFrom(),
       subject,

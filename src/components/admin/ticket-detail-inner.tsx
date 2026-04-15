@@ -12,6 +12,8 @@ import { btnPrimary, btnSecondary } from "@/components/ui/app-shell";
 
 export type TicketDetailModel = {
   uuid: string;
+  company_name?: string | null;
+  company_image_url?: string | null;
   buyer_name: string | null;
   phone: string | null;
   ticket_type: string | null;

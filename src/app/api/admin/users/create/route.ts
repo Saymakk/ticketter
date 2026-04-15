@@ -5,6 +5,7 @@ import { resolveAuthEmail } from "@/lib/auth/login";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getAuthedProfile } from "@/lib/auth/api-guards";
 import { isEventManagerRole } from "@/lib/auth/roles";
+import { getActorCompanyProfile } from "@/lib/auth/company-access";
 
 const bodySchema = z.object({
   fullName: z.string().min(2),
@@ -12,6 +13,7 @@ const bodySchema = z.object({
   password: z.string().min(8),
   role: z.enum(["user", "admin"]),
   region: z.string().nullable().optional(),
+  companyId: z.string().uuid().nullable().optional(),
 });
 
 export async function POST(request: Request) {
@@ -32,7 +34,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Некорректные данные" }, { status: 400 });
     }
 
-    const { fullName, login, password, role, region } = parsed.data;
+    const { fullName, login, password, role, region, companyId } = parsed.data;
 
     if (callerRole === "admin" && role !== "user") {
       return NextResponse.json(
@@ -43,6 +45,8 @@ export async function POST(request: Request) {
 
     const { email, mode } = resolveAuthEmail(login);
     const adminSupabase = createAdminSupabaseClient();
+    const actorCompany = await getActorCompanyProfile(auth.ctx.user.id);
+    const effectiveCompanyId = actorCompany?.company_id ?? (callerRole === "super_admin" ? companyId ?? null : null);
 
     const { data: created, error: createUserError } = await adminSupabase.auth.admin.createUser({
       email,
@@ -66,6 +70,7 @@ export async function POST(request: Request) {
       role,
       region: region ?? null,
       created_by: auth.ctx.user.id,
+      company_id: effectiveCompanyId,
     });
 
     if (insertProfileError) {

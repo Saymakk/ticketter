@@ -24,12 +24,24 @@ export async function GET(_: Request, { params }: Params) {
 
     const { data: ev, error: evErr } = await admin
         .from("events")
-        .select("title,city,event_date,event_time")
+        .select("title,city,event_date,event_time,company_id")
         .eq("id", eventId)
         .single();
 
     if (evErr || !ev) {
         return NextResponse.json({ error: "Мероприятие не найдено" }, { status: 404 });
+    }
+
+    let companyName: string | null = null;
+    let companyImageUrl: string | null = null;
+    if (ev.company_id) {
+        const { data: company } = await admin
+            .from("companies")
+            .select("name,image_url")
+            .eq("id", ev.company_id)
+            .maybeSingle();
+        companyName = company?.name ?? null;
+        companyImageUrl = company?.image_url ?? null;
     }
 
     const { data, error } = await admin
@@ -49,6 +61,8 @@ export async function GET(_: Request, { params }: Params) {
             city: ev.city,
             event_date: ev.event_date,
             event_time: ev.event_time ?? null,
+            company_name: companyName,
+            company_image_url: companyImageUrl,
             isPast: isEventPastByDateString(ev.event_date),
         },
         stats: { total: tickets.length, checkedIn },
