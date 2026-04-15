@@ -5,7 +5,11 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function secret(): string | null {
-  return process.env.TICKET_QR_LINK_SECRET?.trim() || null;
+  return (
+    process.env.TICKET_QR_LINK_SECRET?.trim() ||
+    process.env.NEXTAUTH_SECRET?.trim() ||
+    null
+  );
 }
 
 /**

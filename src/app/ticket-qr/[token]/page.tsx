@@ -78,6 +78,23 @@ export default async function PublicTicketQrPage({ params }: Props) {
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
               Данные билета
             </h2>
+            {event.company_name || event.company_image_url ? (
+              <div className="mb-2 flex items-center gap-2 rounded-md border border-slate-100 bg-slate-50 px-2 py-1.5">
+                {event.company_image_url ? (
+                  <img
+                    src={event.company_image_url}
+                    alt={event.company_name ?? "Компания"}
+                    className="h-8 w-8 rounded-md border border-slate-200 bg-white object-cover"
+                  />
+                ) : null}
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                    Название компании
+                  </p>
+                  <p className="truncate text-sm text-slate-900">{event.company_name ?? "—"}</p>
+                </div>
+              </div>
+            ) : null}
             <InfoRow label="Код билета" value={ticket.uuid} mono />
             <InfoRow label="ФИО" value={ticket.buyer_name ?? "—"} />
             <InfoRow label="Телефон" value={ticket.phone ?? "—"} />

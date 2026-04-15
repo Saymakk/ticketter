@@ -11,6 +11,8 @@ export type PublicTicketPageModel = {
     city: string | null;
     event_date: string;
     event_time: string | null;
+    company_name: string | null;
+    company_image_url: string | null;
   };
   ticket: {
     uuid: string;
@@ -48,7 +50,7 @@ export const loadPublicTicketPageModel = cache(async function loadPublicTicketPa
 
   const { data: ev, error: eErr } = await admin
     .from("events")
-    .select("title,city,event_date,event_time")
+    .select("title,city,event_date,event_time,company_id")
     .eq("id", ticket.event_id)
     .maybeSingle();
 
@@ -58,6 +60,17 @@ export const loadPublicTicketPageModel = cache(async function loadPublicTicketPa
   const event_date = typeof ev.event_date === "string" ? ev.event_date : "";
   const event_time = ev.event_time != null ? String(ev.event_time) : null;
   const city = ev.city != null ? String(ev.city) : null;
+  let companyName: string | null = null;
+  let companyImageUrl: string | null = null;
+  if (ev.company_id) {
+    const { data: company } = await admin
+      .from("companies")
+      .select("name,image_url")
+      .eq("id", ev.company_id)
+      .maybeSingle();
+    companyName = company?.name ?? null;
+    companyImageUrl = company?.image_url ?? null;
+  }
 
   return {
     token,
@@ -67,6 +80,8 @@ export const loadPublicTicketPageModel = cache(async function loadPublicTicketPa
       city,
       event_date,
       event_time,
+      company_name: companyName,
+      company_image_url: companyImageUrl,
     },
     ticket: {
       uuid: ticket.uuid,

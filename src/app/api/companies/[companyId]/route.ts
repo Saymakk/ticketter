@@ -48,11 +48,20 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   const admin = createAdminSupabaseClient();
+  const { data: meta } = await admin
+    .from("companies")
+    .select("is_legacy")
+    .eq("id", companyId)
+    .maybeSingle();
+  if (!meta) return NextResponse.json({ error: "Компания не найдена" }, { status: 404 });
+  if (meta.is_legacy) {
+    return NextResponse.json({ error: "Legacy-компанию нельзя редактировать" }, { status: 400 });
+  }
+
   const { data, error } = await admin
     .from("companies")
     .update(payload)
     .eq("id", companyId)
-    .eq("is_legacy", false)
     .select("id,name,image_url,custom_data,is_legacy,created_by,created_at")
     .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -68,6 +77,16 @@ export async function DELETE(_request: Request, { params }: Params) {
   if (!canMutate) return NextResponse.json({ error: "Нет прав на удаление компании" }, { status: 403 });
 
   const admin = createAdminSupabaseClient();
+  const { data: meta } = await admin
+    .from("companies")
+    .select("is_legacy")
+    .eq("id", companyId)
+    .maybeSingle();
+  if (!meta) return NextResponse.json({ error: "Компания не найдена" }, { status: 404 });
+  if (meta.is_legacy) {
+    return NextResponse.json({ error: "Legacy-компанию нельзя удалить" }, { status: 400 });
+  }
+
   const { data: events } = await admin.from("events").select("id").eq("company_id", companyId).limit(1);
   if ((events ?? []).length > 0) {
     return NextResponse.json({ error: "Нельзя удалить компанию, у которой есть мероприятия" }, { status: 400 });
@@ -77,7 +96,6 @@ export async function DELETE(_request: Request, { params }: Params) {
     .from("companies")
     .delete()
     .eq("id", companyId)
-    .eq("is_legacy", false)
     .select("id")
     .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

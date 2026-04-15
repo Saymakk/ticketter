@@ -267,6 +267,10 @@ export default function AdminCompaniesPage() {
   }
 
   function openEditModal(company: Company) {
+    if (company.is_legacy) {
+      setMessage("Legacy-компанию нельзя редактировать");
+      return;
+    }
     setEditError("");
     setEditCompany(company);
     setEditName(company.name);
@@ -556,20 +560,22 @@ export default function AdminCompaniesPage() {
                           e.stopPropagation();
                           openEditModal(c);
                         }}
+                        disabled={c.is_legacy}
                         aria-label={t("common.edit")}
-                        title={t("common.edit")}
+                        title={c.is_legacy ? "Legacy-компанию нельзя редактировать" : t("common.edit")}
                       >
                         <span aria-hidden="true" className="text-base leading-none">✎</span>
                       </button>
                       <button
                         type="button"
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-rose-200 bg-rose-50 px-0 py-0 text-sm font-medium text-rose-700 hover:bg-rose-100"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-rose-200 bg-rose-50 px-0 py-0 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
                         onClick={(e) => {
                           e.stopPropagation();
                           openEditModal(c);
                         }}
+                        disabled={c.is_legacy}
                         aria-label={t("common.delete")}
-                        title={t("common.delete")}
+                        title={c.is_legacy ? "Legacy-компанию нельзя удалять" : t("common.delete")}
                       >
                         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                           <path d="M3 6h18" />

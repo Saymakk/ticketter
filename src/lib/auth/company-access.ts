@@ -77,6 +77,22 @@ export async function resolveEventCompanyId(params: {
       if (!allowed) return { ok: false, status: 403, error: "Нет доступа к компании" };
       return { ok: true, companyId: req };
     }
+    const [{ data: own }, { data: delegated }] = await Promise.all([
+      admin.from("companies").select("id").eq("created_by", actor.id),
+      admin.from("admin_company_access").select("company_id").eq("admin_id", actor.id),
+    ]);
+    const companyIds = Array.from(
+      new Set([
+        ...(own ?? []).map((x) => x.id),
+        ...(delegated ?? []).map((x) => x.company_id).filter(Boolean) as string[],
+      ])
+    );
+    if (companyIds.length > 1) {
+      return { ok: false, status: 400, error: "Выберите компанию для мероприятия" };
+    }
+    if (companyIds.length === 1) {
+      return { ok: true, companyId: companyIds[0] };
+    }
     const legacy = await getLegacyCompanyId();
     if (!legacy) return { ok: false, status: 400, error: "Не найдена legacy-компания" };
     return { ok: true, companyId: legacy };
@@ -87,6 +103,14 @@ export async function resolveEventCompanyId(params: {
       const { data } = await admin.from("companies").select("id").eq("id", req).maybeSingle();
       if (!data) return { ok: false, status: 404, error: "Компания не найдена" };
       return { ok: true, companyId: req };
+    }
+    const { data: allCompanies } = await admin.from("companies").select("id");
+    const allIds = (allCompanies ?? []).map((x) => x.id);
+    if (allIds.length > 1) {
+      return { ok: false, status: 400, error: "Выберите компанию для мероприятия" };
+    }
+    if (allIds.length === 1) {
+      return { ok: true, companyId: allIds[0] };
     }
     const legacy = await getLegacyCompanyId();
     if (!legacy) return { ok: false, status: 400, error: "Не найдена legacy-компания" };

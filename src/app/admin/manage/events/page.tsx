@@ -37,6 +37,7 @@ type AssigneeItem = {
   role: "user" | "admin";
   region: string | null;
 };
+type CompanyItem = { id: string; name: string };
 
 type ApiError = { error?: string };
 
@@ -99,11 +100,15 @@ export default function ManageEventsPage() {
   const [assignees, setAssignees] = useState<AssigneeItem[]>([]);
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
+  const [createToast, setCreateToast] = useState("");
+  const [assignToast, setAssignToast] = useState("");
+  const [companies, setCompanies] = useState<CompanyItem[]>([]);
 
   const [title, setTitle] = useState("");
   const [city, setCity] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [eventTime, setEventTime] = useState("");
+  const [createCompanyId, setCreateCompanyId] = useState("");
 
   const [selectedEventId, setSelectedEventId] = useState("");
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -128,7 +133,7 @@ export default function ManageEventsPage() {
     const silent = opts?.silent === true;
     if (!silent) setLoading(true);
     try {
-      const [eventsRes, usersRes, adminsRes] = await Promise.all([
+      const [eventsRes, usersRes, adminsRes, companiesRes] = await Promise.all([
         trackedFetch("/api/super-admin/events", {
           cache: "no-store",
           trackGlobalLoading: false,
@@ -141,6 +146,10 @@ export default function ManageEventsPage() {
           cache: "no-store",
           trackGlobalLoading: false,
         }),
+        trackedFetch("/api/companies", {
+          cache: "no-store",
+          trackGlobalLoading: false,
+        }),
       ]);
 
       const eventsJson =
@@ -149,6 +158,8 @@ export default function ManageEventsPage() {
           (await safeReadJson<{ users?: AssigneeItem[] } & ApiError>(usersRes)) ?? {};
       const adminsJson =
           (await safeReadJson<{ admins?: AssigneeItem[] } & ApiError>(adminsRes)) ?? {};
+      const companiesJson =
+          (await safeReadJson<{ companies?: CompanyItem[] } & ApiError>(companiesRes)) ?? {};
 
       const nextEvents = eventsRes.ok ? eventsJson.events ?? [] : events;
       if (eventsRes.ok) {
@@ -180,6 +191,15 @@ export default function ManageEventsPage() {
           })
         );
       }
+      if (companiesRes.ok) {
+        const nextCompanies = companiesJson.companies ?? [];
+        setCompanies(nextCompanies);
+        if (nextCompanies.length === 1) {
+          setCreateCompanyId(nextCompanies[0].id);
+        } else if (!nextCompanies.some((c) => c.id === createCompanyId)) {
+          setCreateCompanyId("");
+        }
+      }
     } catch {
       setResult(t("admin.manage.loadError"));
     } finally {
@@ -198,6 +218,18 @@ export default function ManageEventsPage() {
     }
     void loadData();
   }, []);
+
+  useEffect(() => {
+    if (!createToast) return;
+    const t = window.setTimeout(() => setCreateToast(""), 2200);
+    return () => window.clearTimeout(t);
+  }, [createToast]);
+
+  useEffect(() => {
+    if (!assignToast) return;
+    const t = window.setTimeout(() => setAssignToast(""), 2200);
+    return () => window.clearTimeout(t);
+  }, [assignToast]);
 
   useEffect(() => {
     if (activeTab === "assign" || activeTab === "list") {
@@ -352,6 +384,7 @@ export default function ManageEventsPage() {
           title,
           city,
           eventDate,
+          ...(createCompanyId ? { companyId: createCompanyId } : {}),
           ...(eventTime.trim() ? { eventTime: eventTime.trim() } : {}),
           ...(fieldsPayload.length ? { fields: fieldsPayload } : {}),
         }),
@@ -369,10 +402,12 @@ export default function ManageEventsPage() {
       }
 
       setResult(t("admin.manage.resultCreated"));
+      setCreateToast(t("admin.manage.resultCreated"));
       setTitle("");
       setCity("");
       setEventDate("");
       setEventTime("");
+      if (companies.length !== 1) setCreateCompanyId("");
       setDraftFields([]);
       await loadData();
     } catch {
@@ -451,6 +486,9 @@ export default function ManageEventsPage() {
         parts.push(t("admin.manage.resultAssigned"));
       }
       setResult(parts.join(" "));
+      if (assigned > 0) {
+        setAssignToast(t("admin.manage.resultAssigned"));
+      }
       const refreshed = await pullEventAccess(selectedEventId);
       if (refreshed) setEventAccess(refreshed);
       if (assigned > 0 && fails.length === 0) {
@@ -616,6 +654,20 @@ export default function ManageEventsPage() {
         }
       />
       <AppCard>
+        {createToast ? (
+          <div className="pointer-events-none fixed inset-0 z-[320] flex items-center justify-center p-4">
+            <div className="rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-lg">
+              {createToast}
+            </div>
+          </div>
+        ) : null}
+        {assignToast ? (
+          <div className="pointer-events-none fixed inset-0 z-[320] flex items-center justify-center p-4">
+            <div className="rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-lg">
+              {assignToast}
+            </div>
+          </div>
+        ) : null}
         <div
           className="mb-6 grid grid-cols-3 gap-1.5 rounded-2xl border border-slate-200/90 bg-slate-100/80 p-1.5 shadow-inner"
           role="tablist"
@@ -683,6 +735,21 @@ export default function ManageEventsPage() {
                     onChange={(e) => setEventTime(e.target.value)}
                     title={t("admin.manage.placeholderEventTime")}
                   />
+                  {companies.length > 1 ? (
+                    <select
+                      className={selectClass}
+                      value={createCompanyId}
+                      onChange={(e) => setCreateCompanyId(e.target.value)}
+                      required
+                    >
+                      <option value="">{t("admin.companies.grantSelectCompany")}</option>
+                      {companies.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
                   <p className="text-xs text-slate-500">{t("admin.manage.eventTimeHint")}</p>
                   <button type="submit" disabled={loading} className={btnPrimary}>
                     {t("admin.manage.submitCreate")}
