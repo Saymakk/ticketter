@@ -34,7 +34,8 @@
              },
     "logoutBar":  {
                       "logout":  "Выйти",
-                      "brand":  "Ticketter"
+                      "brand":  "Ticketter",
+                      "brandFor":  "Ticketter for"
                   },
     "login":  {
                   "title":  "Вход",

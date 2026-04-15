@@ -30,8 +30,30 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Билет не найден в выбранном мероприятии" }, { status: 404 });
     }
 
-    const { data: ev } = await supabase.from("events").select("event_date").eq("id", eventId).maybeSingle();
+    const { data: ev } = await supabase
+        .from("events")
+        .select("event_date,company_id")
+        .eq("id", eventId)
+        .maybeSingle();
     const eventPast = ev ? isEventPastByDateString(ev.event_date) : false;
+    let companyName: string | null = null;
+    let companyImageUrl: string | null = null;
+    if (ev?.company_id) {
+        const { data: company } = await supabase
+            .from("companies")
+            .select("name,image_url")
+            .eq("id", ev.company_id)
+            .maybeSingle();
+        companyName = company?.name ?? null;
+        companyImageUrl = company?.image_url ?? null;
+    }
 
-    return NextResponse.json({ ticket, eventPast });
+    return NextResponse.json({
+        ticket: {
+            ...ticket,
+            company_name: companyName,
+            company_image_url: companyImageUrl,
+        },
+        eventPast,
+    });
 }

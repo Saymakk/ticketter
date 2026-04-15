@@ -9,6 +9,22 @@ export async function GET(_: Request, { params }: Params) {
     const check = await ensureEventAccess(eventId);
     if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
     const supabase = await createServerSupabaseClient();
+    const { data: ev } = await supabase
+        .from("events")
+        .select("company_id")
+        .eq("id", eventId)
+        .maybeSingle();
+    let companyName: string | null = null;
+    let companyImageUrl: string | null = null;
+    if (ev?.company_id) {
+        const { data: company } = await supabase
+            .from("companies")
+            .select("name,image_url")
+            .eq("id", ev.company_id)
+            .maybeSingle();
+        companyName = company?.name ?? null;
+        companyImageUrl = company?.image_url ?? null;
+    }
 
     const { data, error } = await supabase
         .from("tickets")
@@ -19,5 +35,5 @@ export async function GET(_: Request, { params }: Params) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-    return NextResponse.json({ tickets: data ?? [] });
+    return NextResponse.json({ tickets: data ?? [], companyName, companyImageUrl });
 }

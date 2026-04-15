@@ -19,6 +19,8 @@ type Ticket = {
   created_at: string;
   checked_in_at: string | null;
   custom_data: Record<string, unknown>;
+  company_name?: string | null;
+  company_image_url?: string | null;
 };
 
 type ApiError = { error?: string };
@@ -53,6 +55,25 @@ function ticketDetailRows(
 ): ReactNode[] {
   const fmt = (iso: string) => new Date(iso).toLocaleString();
   const out: ReactNode[] = [
+    ...(ticket.company_name || ticket.company_image_url
+      ? [
+          <div key="company" className="flex items-center gap-3 border-b border-slate-100 py-2">
+            {ticket.company_image_url ? (
+              <img
+                src={ticket.company_image_url}
+                alt={ticket.company_name ?? "Company"}
+                className="h-12 w-12 rounded-md border border-slate-200 bg-white object-cover"
+              />
+            ) : null}
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                {t("admin.ticketCard.rowCompany")}
+              </p>
+              <p className="truncate text-sm text-slate-900">{ticket.company_name ?? "—"}</p>
+            </div>
+          </div>,
+        ]
+      : []),
     row("uuid", t("scanner.confirm.rowUuid"), ticket.uuid),
   ];
   if (ticket.buyer_name?.trim()) {

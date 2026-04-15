@@ -13,11 +13,13 @@ import {
   endTrackedOperation,
 } from "@/lib/http/tracked-fetch";
 import { clearCachedClientRole } from "@/lib/auth/client-role-cache";
+import { useCurrentUserProfile } from "@/hooks/use-current-user-profile";
 
 export default function LogoutBar() {
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useLocaleContext();
+  const { loading: profileLoading, companyId, companyName, companyImageUrl } = useCurrentUserProfile(true);
 
   if (
     pathname === "/login" ||
@@ -55,7 +57,24 @@ export default function LogoutBar() {
               className="h-8 w-8 shrink-0 object-contain"
               priority
             />
-            {t("logoutBar.brand")}
+            <span className="inline-flex items-center gap-2">
+              {companyId && companyName && !profileLoading ? (
+                <>
+                  <span>{t("logoutBar.brandFor")}</span>
+                  {companyImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- URL from DB
+                    <img
+                      src={companyImageUrl}
+                      alt={companyName}
+                      className="h-6 w-6 rounded-md border border-slate-200 bg-white object-cover"
+                    />
+                  ) : null}
+                  <span className="max-w-[14rem] truncate">{companyName}</span>
+                </>
+              ) : (
+                t("logoutBar.brand")
+              )}
+            </span>
           </span>
         </div>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">

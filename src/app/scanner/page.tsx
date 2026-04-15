@@ -47,6 +47,10 @@ type CheckedInItem = {
   custom_data: Record<string, unknown> | null;
   checked_in_at: string | null;
 };
+type CheckedInCompany = {
+  companyName: string | null;
+  companyImageUrl: string | null;
+};
 
 type ApiError = { error?: string };
 
@@ -129,6 +133,10 @@ function ScannerPageContent() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const [checkedInTickets, setCheckedInTickets] = useState<CheckedInItem[]>([]);
+  const [checkedInCompany, setCheckedInCompany] = useState<CheckedInCompany>({
+    companyName: null,
+    companyImageUrl: null,
+  });
   const [loadingCheckedIn, setLoadingCheckedIn] = useState(false);
   /** Обновление по кнопке — без глобального спиннера, только анимация иконки */
   const [refreshCheckedInOnly, setRefreshCheckedInOnly] = useState(false);
@@ -189,6 +197,7 @@ function ScannerPageContent() {
       void loadCheckedInTickets(selectedEventId);
     } else {
       setCheckedInTickets([]);
+      setCheckedInCompany({ companyName: null, companyImageUrl: null });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEventId]);
@@ -256,7 +265,10 @@ function ScannerPageContent() {
         cache: "no-store",
         credentials: "include",
       });
-      const json = (await safeReadJson<{ tickets?: CheckedInItem[] } & ApiError>(res)) ?? {};
+      const json =
+        (await safeReadJson<
+          { tickets?: CheckedInItem[]; companyName?: string | null; companyImageUrl?: string | null } & ApiError
+        >(res)) ?? {};
 
       if (!res.ok) {
         setCheckedInTickets([]);
@@ -269,6 +281,10 @@ function ScannerPageContent() {
 
       const list = json.tickets ?? [];
       setCheckedInTickets(list);
+      setCheckedInCompany({
+        companyName: json.companyName ?? null,
+        companyImageUrl: json.companyImageUrl ?? null,
+      });
       setEvents((prev) =>
         prev.map((e) =>
           e.id === eventId ? { ...e, tickets_checked_in: list.length } : e
@@ -615,40 +631,59 @@ function ScannerPageContent() {
                   </p>
                 </div>
               ) : (
-                <ul
-                  ref={checkedListRef}
-                  className="max-h-[min(55vh,24rem)] space-y-2 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50/90 p-3 shadow-inner"
-                  onTouchStart={onCheckedListTouchStart}
-                  onTouchEnd={onCheckedListTouchEnd}
-                  onTouchCancel={onCheckedListTouchEnd}
-                  style={{ touchAction: checkedListTouchAction }}
-                >
-                  {checkedInTickets.map((row) => {
-                    const contactLines = checkedInContactLines(row, t);
-                    return (
-                      <li key={row.uuid}>
-                        <button
-                          type="button"
-                          onClick={() => goToConfirm(row.uuid)}
-                          className="w-full rounded-lg px-2 py-2 text-left transition hover:bg-white hover:shadow-sm"
-                        >
-                          <span className="block break-all font-mono text-xs text-teal-800">{row.uuid}</span>
-                          <span className="mt-1.5 block text-sm font-medium text-slate-900">
-                            {row.buyer_name?.trim() || "—"}
-                          </span>
-                          {row.checked_in_at ? (
-                            <span className="mt-1 block text-xs text-slate-500">
-                              {t("scanner.checkedInAt")}: {new Date(row.checked_in_at).toLocaleString()}
+                <div className="space-y-2">
+                  {checkedInCompany.companyName || checkedInCompany.companyImageUrl ? (
+                    <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/90 px-3 py-2">
+                      {checkedInCompany.companyImageUrl ? (
+                        <img
+                          src={checkedInCompany.companyImageUrl}
+                          alt={checkedInCompany.companyName ?? "Company"}
+                          className="h-10 w-10 rounded-md border border-slate-200 bg-white object-cover"
+                        />
+                      ) : null}
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                          {t("admin.ticketCard.rowCompany")}
+                        </p>
+                        <p className="truncate text-sm text-slate-900">{checkedInCompany.companyName ?? "—"}</p>
+                      </div>
+                    </div>
+                  ) : null}
+                  <ul
+                    ref={checkedListRef}
+                    className="max-h-[min(55vh,24rem)] space-y-2 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50/90 p-3 shadow-inner"
+                    onTouchStart={onCheckedListTouchStart}
+                    onTouchEnd={onCheckedListTouchEnd}
+                    onTouchCancel={onCheckedListTouchEnd}
+                    style={{ touchAction: checkedListTouchAction }}
+                  >
+                    {checkedInTickets.map((row) => {
+                      const contactLines = checkedInContactLines(row, t);
+                      return (
+                        <li key={row.uuid}>
+                          <button
+                            type="button"
+                            onClick={() => goToConfirm(row.uuid)}
+                            className="w-full rounded-lg px-2 py-2 text-left transition hover:bg-white hover:shadow-sm"
+                          >
+                            <span className="block break-all font-mono text-xs text-teal-800">{row.uuid}</span>
+                            <span className="mt-1.5 block text-sm font-medium text-slate-900">
+                              {row.buyer_name?.trim() || "—"}
                             </span>
-                          ) : null}
-                          {contactLines.length > 0 ? (
-                            <div className="mt-1.5 flex flex-col gap-0.5">{contactLines}</div>
-                          ) : null}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                            {row.checked_in_at ? (
+                              <span className="mt-1 block text-xs text-slate-500">
+                                {t("scanner.checkedInAt")}: {new Date(row.checked_in_at).toLocaleString()}
+                              </span>
+                            ) : null}
+                            {contactLines.length > 0 ? (
+                              <div className="mt-1.5 flex flex-col gap-0.5">{contactLines}</div>
+                            ) : null}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               )}
             </div>
           ) : null}

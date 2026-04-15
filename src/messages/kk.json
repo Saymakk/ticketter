@@ -34,7 +34,8 @@
              },
     "logoutBar":  {
                       "logout":  "Шығу",
-                      "brand":  "Ticketter"
+                      "brand":  "Ticketter",
+                      "brandFor":  "Ticketter for"
                   },
     "login":  {
                   "title":  "Кіру",
