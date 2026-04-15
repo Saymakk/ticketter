@@ -84,7 +84,7 @@ export default async function PublicTicketQrPage({ params }: Props) {
                   <img
                     src={event.company_image_url}
                     alt={event.company_name ?? "Компания"}
-                    className="h-8 w-8 rounded-md border border-slate-200 bg-white object-cover"
+                    className="h-16 w-16 rounded-md border border-slate-200 bg-white object-cover"
                   />
                 ) : null}
                 <div className="min-w-0">

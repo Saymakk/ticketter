@@ -34,3 +34,23 @@ export function DeleteActionIcon({ className = "h-4 w-4" }: { className?: string
     </span>
   );
 }
+
+export function CopyLinkActionIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.8}
+      stroke="currentColor"
+      className={className}
+      aria-hidden
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M13.5 6H9.375A3.375 3.375 0 0 0 6 9.375v8.25A3.375 3.375 0 0 0 9.375 21h8.25A3.375 3.375 0 0 0 21 17.625V13.5m-7.5-7.5h4.125A3.375 3.375 0 0 1 21 9.375V13.5M13.5 6v3.75A3.75 3.75 0 0 0 17.25 13.5H21"
+      />
+    </svg>
+  );
+}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AdminTicketDetailModal } from "@/components/admin/admin-ticket-detail-modal";
 import { MailSendIcon, WhatsAppSendIcon } from "@/components/admin/send-qr-icons";
-import { DeleteActionIcon, EditActionIcon } from "@/components/ui/action-icons";
+import { CopyLinkActionIcon, DeleteActionIcon, EditActionIcon } from "@/components/ui/action-icons";
 import { TicketSendQrButtons } from "@/components/admin/ticket-send-qr-buttons";
 import { useLocaleContext } from "@/components/locale-provider";
 import { formatEventDateTimeLine } from "@/lib/event-date";
@@ -506,6 +506,22 @@ function TicketsPageContent() {
     }
   }
 
+  async function copyTicketPublicLink(ticketUuid: string) {
+    setError("");
+    try {
+      const res = await trackedFetch(`/api/tickets/${ticketUuid}/public-link`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || typeof json.url !== "string") {
+        setError(String(json.error ?? t("admin.tickets.copyLinkError")));
+        return;
+      }
+      await navigator.clipboard.writeText(json.url);
+      setSuccessMsg(t("admin.tickets.copyLinkSuccess"));
+    } catch {
+      setError(t("admin.tickets.copyLinkError"));
+    }
+  }
+
   return (
     <AppShell maxWidth="max-w-4xl">
       <PageHeaderWithBack
@@ -851,6 +867,15 @@ function TicketsPageContent() {
                               setError("");
                             }}
                           />
+                          <button
+                            type="button"
+                            onClick={() => void copyTicketPublicLink(ticket.uuid)}
+                            title={t("admin.tickets.copyLink")}
+                            aria-label={t("admin.tickets.copyLink")}
+                            className={`${btnSecondary} inline-flex min-h-9 min-w-9 items-center justify-center p-1.5`}
+                          >
+                            <CopyLinkActionIcon className="h-5 w-5" />
+                          </button>
                           {canMutateTickets ? (
                             <button
                               type="button"
