@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { isEventPastByDateString } from "@/lib/event-date";
 import { ensureEventAccess } from "@/lib/auth/event-access";
 
@@ -39,7 +40,8 @@ export async function GET(request: Request) {
     let companyName: string | null = null;
     let companyImageUrl: string | null = null;
     if (ev?.company_id) {
-        const { data: company } = await supabase
+        const admin = createAdminSupabaseClient();
+        const { data: company } = await admin
             .from("companies")
             .select("name,image_url")
             .eq("id", ev.company_id)
