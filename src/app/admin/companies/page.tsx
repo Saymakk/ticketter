@@ -14,6 +14,7 @@ import {
   ListLoading,
   PageHeaderWithBack,
 } from "@/components/ui/app-shell";
+import CompanyLogo from "@/components/company-logo";
 
 type Company = {
   id: string;
@@ -541,11 +542,7 @@ export default function AdminCompaniesPage() {
                 >
                   {c.image_url ? (
                     <div className="mb-2 flex">
-                      <img
-                        src={c.image_url}
-                        alt={c.name}
-                        className="h-8 w-8 rounded-md border border-slate-200 bg-white object-cover"
-                      />
+                      <CompanyLogo src={c.image_url} alt={c.name} size="sm" maxAspectRatio={2.2} />
                     </div>
                   ) : null}
                   <p className="w-full text-left font-medium">
@@ -740,10 +737,11 @@ export default function AdminCompaniesPage() {
             <FormStack>
               {editImageUrl ? (
                 <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2">
-                  <img
+                  <CompanyLogo
                     src={editImageUrl}
                     alt={editName || editCompany?.name || "Company logo"}
-                    className="h-10 w-10 rounded-md border border-slate-200 bg-white object-cover"
+                    size="md"
+                    maxAspectRatio={2.4}
                   />
                   <p className="text-xs text-slate-600">{t("admin.companies.imageFile")}</p>
                 </div>

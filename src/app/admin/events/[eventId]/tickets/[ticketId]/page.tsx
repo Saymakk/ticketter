@@ -14,6 +14,7 @@ import {
   PageHeaderWithBack,
   ListLoading,
 } from "@/components/ui/app-shell";
+import CompanyLogo from "@/components/company-logo";
 
 export default function TicketCardPage() {
   const { t } = useLocaleContext();
@@ -77,11 +78,7 @@ export default function TicketCardPage() {
             {ticket.company_name || ticket.company_image_url ? (
               <div className="flex items-center gap-2">
                 {ticket.company_image_url ? (
-                  <img
-                    src={ticket.company_image_url}
-                    alt={ticket.company_name ?? "Company"}
-                    className="h-16 w-16 rounded-md border border-slate-200 bg-white object-cover"
-                  />
+                  <CompanyLogo src={ticket.company_image_url} alt={ticket.company_name ?? "Company"} size="lg" maxAspectRatio={1.75} />
                 ) : null}
                 <div className="min-w-0">
                   <p className="text-[11px] uppercase tracking-wide text-slate-500">
@@ -106,3 +103,9 @@ export default function TicketCardPage() {
     </AppShell>
   );
 }
+
+
+
+
+
+

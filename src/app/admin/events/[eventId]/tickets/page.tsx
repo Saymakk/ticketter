@@ -15,6 +15,7 @@ import {
 } from "@/lib/ticket-contact";
 import { trackedFetch } from "@/lib/http/tracked-fetch";
 import { ticketStatusLabel } from "@/lib/ticket-status-label";
+import CompanyLogo from "@/components/company-logo";
 import {
   AppCard,
   AppShell,
@@ -534,11 +535,7 @@ function TicketsPageContent() {
           <div className="mb-5 rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3">
             {eventHead.company_image_url ? (
               <div className="mb-2 flex items-center gap-2">
-                <img
-                  src={eventHead.company_image_url}
-                  alt={eventHead.company_name ?? eventHead.title}
-                  className="h-8 w-8 rounded-md border border-slate-200 bg-white object-cover"
-                />
+                <CompanyLogo src={eventHead.company_image_url} alt={eventHead.company_name ?? eventHead.title} size="sm" maxAspectRatio={1.75} />
                 {eventHead.company_name ? (
                   <span className="text-sm text-slate-600">{eventHead.company_name}</span>
                 ) : null}
@@ -988,3 +985,8 @@ export default function TicketsPage() {
     </Suspense>
   );
 }
+
+
+
+
+

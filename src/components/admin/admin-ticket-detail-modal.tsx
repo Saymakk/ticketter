@@ -6,6 +6,7 @@ import { useLocaleContext } from "@/components/locale-provider";
 import { trackedFetch } from "@/lib/http/tracked-fetch";
 import { TicketDetailInner, type TicketDetailModel } from "@/components/admin/ticket-detail-inner";
 import { ListLoading, btnSecondary } from "@/components/ui/app-shell";
+import CompanyLogo from "@/components/company-logo";
 
 type ApiError = { error?: string };
 
@@ -123,11 +124,7 @@ export function AdminTicketDetailModal({ eventId, uuid, onClose }: Props) {
               {ticket.company_name || ticket.company_image_url ? (
                 <div className="flex items-center gap-2">
                   {ticket.company_image_url ? (
-                    <img
-                      src={ticket.company_image_url}
-                      alt={ticket.company_name ?? "Company"}
-                      className="h-16 w-16 rounded-md border border-slate-200 bg-white object-cover"
-                    />
+                    <CompanyLogo src={ticket.company_image_url} alt={ticket.company_name ?? "Company"} size="lg" maxAspectRatio={1.75} />
                   ) : null}
                   <div className="min-w-0">
                     <p className="text-[11px] uppercase tracking-wide text-slate-500">
@@ -179,3 +176,8 @@ export function AdminTicketDetailModal({ eventId, uuid, onClose }: Props) {
     document.body
   );
 }
+
+
+
+
+

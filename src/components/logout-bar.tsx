@@ -14,6 +14,7 @@ import {
 } from "@/lib/http/tracked-fetch";
 import { clearCachedClientRole } from "@/lib/auth/client-role-cache";
 import { useCurrentUserProfile } from "@/hooks/use-current-user-profile";
+import CompanyLogo from "@/components/company-logo";
 
 export default function LogoutBar() {
   const pathname = usePathname();
@@ -61,14 +62,7 @@ export default function LogoutBar() {
               {companyId && companyName && !profileLoading ? (
                 <>
                   <span>{t("logoutBar.brandFor")}</span>
-                  {companyImageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- URL from DB
-                    <img
-                      src={companyImageUrl}
-                      alt={companyName}
-                      className="h-6 w-6 rounded-md border border-slate-200 bg-white object-cover"
-                    />
-                  ) : null}
+                  {companyImageUrl ? (<CompanyLogo src={companyImageUrl} alt={companyName} size="xs" maxAspectRatio={2} className="p-0.5" />) : null}
                   <span className="max-w-[14rem] truncate">{companyName}</span>
                 </>
               ) : (
@@ -93,3 +87,8 @@ export default function LogoutBar() {
     </header>
   );
 }
+
+
+
+
+

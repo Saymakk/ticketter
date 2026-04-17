@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { loadPublicTicketPageModel } from "@/lib/tickets/load-public-ticket-page";
+import CompanyLogo from "@/components/company-logo";
 
 type Props = { params: Promise<{ token: string }> };
 
@@ -81,11 +82,7 @@ export default async function PublicTicketQrPage({ params }: Props) {
             {event.company_name || event.company_image_url ? (
               <div className="mb-2 flex items-center gap-2 rounded-md border border-slate-100 bg-slate-50 px-2 py-1.5">
                 {event.company_image_url ? (
-                  <img
-                    src={event.company_image_url}
-                    alt={event.company_name ?? "Компания"}
-                    className="h-16 w-16 rounded-md border border-slate-200 bg-white object-cover"
-                  />
+                  <CompanyLogo src={event.company_image_url} alt={event.company_name ?? "Company"} size="lg" maxAspectRatio={1.75} />
                 ) : null}
                 <div className="min-w-0">
                   <p className="text-[11px] uppercase tracking-wide text-slate-500">
@@ -154,3 +151,6 @@ function formatDateTimeRu(iso: string): string {
     return iso;
   }
 }
+
+
+

@@ -6,6 +6,7 @@ import { useLocaleContext } from "@/components/locale-provider";
 import { trackedFetch } from "@/lib/http/tracked-fetch";
 import { ticketStatusLabel } from "@/lib/ticket-status-label";
 import { btnPrimary, btnSecondary, ListLoading } from "@/components/ui/app-shell";
+import CompanyLogo from "@/components/company-logo";
 
 type Ticket = {
   id: number;
@@ -59,11 +60,7 @@ function ticketDetailRows(
       ? [
           <div key="company" className="flex items-center gap-3 border-b border-slate-100 py-2">
             {ticket.company_image_url ? (
-              <img
-                src={ticket.company_image_url}
-                alt={ticket.company_name ?? "Company"}
-                className="h-12 w-12 rounded-md border border-slate-200 bg-white object-cover"
-              />
+              <CompanyLogo src={ticket.company_image_url} alt={ticket.company_name ?? "Company"} size="md" maxAspectRatio={1.7} />
             ) : null}
             <div className="min-w-0">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -349,3 +346,8 @@ export function ScannerTicketConfirmModal({
     document.body
   );
 }
+
+
+
+
+

@@ -27,6 +27,7 @@ import {
 } from "@/lib/scanner/from-panel";
 import { formatEventDateTimeLine } from "@/lib/event-date";
 import { useHorizontalSwipeTabs } from "@/lib/ui/use-horizontal-swipe-tabs";
+import CompanyLogo from "@/components/company-logo";
 
 type EventItem = {
   id: string;
@@ -635,11 +636,7 @@ function ScannerPageContent() {
                   {checkedInCompany.companyName || checkedInCompany.companyImageUrl ? (
                     <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/90 px-3 py-2">
                       {checkedInCompany.companyImageUrl ? (
-                        <img
-                          src={checkedInCompany.companyImageUrl}
-                          alt={checkedInCompany.companyName ?? "Company"}
-                          className="h-10 w-10 rounded-md border border-slate-200 bg-white object-cover"
-                        />
+                        <CompanyLogo src={checkedInCompany.companyImageUrl} alt={checkedInCompany.companyName ?? "Company"} size="md" maxAspectRatio={1.6} />
                       ) : null}
                       <div className="min-w-0">
                         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -725,3 +722,8 @@ export default function ScannerPage() {
     </Suspense>
   );
 }
+
+
+
+
+
