@@ -1,0 +1,16 @@
+# На сервере создайте файл .env рядом с compose (не коммитьте). Он нужен и для сборки (NEXT_PUBLIC_*), и для контейнера.
+# Сборка: docker compose --env-file .env build
+# Запуск: docker compose --env-file .env up -d
+services:
+  ticketter:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+    ports:
+      - "127.0.0.1:3001:3000"
+    env_file:
+      - .env
+    restart: unless-stopped
