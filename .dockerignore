@@ -5,4 +5,3 @@ node_modules
 *.md
 .env*
 .dockerignore
-Dockerfile
