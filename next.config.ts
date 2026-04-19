@@ -24,6 +24,9 @@ const withPWA = require("next-pwa")({
   ],
 }) as (config: NextConfig) => NextConfig;
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  // Нужно для production-образа Docker (см. Dockerfile)
+  output: "standalone",
+};
 
 export default withPWA(nextConfig);
