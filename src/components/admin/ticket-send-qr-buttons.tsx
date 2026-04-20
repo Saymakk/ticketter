@@ -33,6 +33,7 @@ export function TicketSendQrButtons({
   onToast,
 }: Props) {
   const { t } = useLocaleContext();
+  const showEmailButton = false;
   const [emailLoading, setEmailLoading] = useState(false);
   const [waLoading, setWaLoading] = useState(false);
   const [hint, setHint] = useState("");
@@ -109,7 +110,7 @@ export function TicketSendQrButtons({
   return (
     <div className={variant === "compact" ? "inline-flex flex-wrap gap-1.5" : "flex flex-col gap-2"}>
       <div className="flex flex-wrap gap-2">
-        {canEmail ? (
+        {showEmailButton && canEmail ? (
           <button
             type="button"
             onClick={() => void send("email")}
