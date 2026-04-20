@@ -9,6 +9,7 @@ import {
   writeCachedClientRole,
 } from "@/lib/auth/client-role-cache";
 import { scannerListHref } from "@/lib/scanner/from-panel";
+import { useCurrentUserProfile } from "@/hooks/use-current-user-profile";
 import {
   AppCard,
   AppShell,
@@ -39,6 +40,7 @@ export default function AdminPage() {
   const { t } = useLocaleContext();
   /** Не читаем sessionStorage в useState — иначе SSR «Загрузка…», клиент сразу с ролью → hydration mismatch. */
   const [role, setRole] = useState<string | null | undefined>(undefined);
+  const { companyId, loading: profileLoading } = useCurrentUserProfile(role === "admin");
 
   useEffect(() => {
     const cached = readCachedClientRole();
@@ -56,6 +58,8 @@ export default function AdminPage() {
   }, []);
 
   const isManager = role === "admin" || role === "super_admin";
+  const canSeeCompanies =
+    role === "super_admin" || (role === "admin" && !profileLoading && !companyId);
 
   return (
     <AppShell>
@@ -70,7 +74,7 @@ export default function AdminPage() {
         }
       >
         <ul className="grid gap-3 sm:grid-cols-2">
-          {isManager && (
+          {canSeeCompanies && (
             <HomeNavTile
               href="/admin/companies"
               title={t("admin.home.tileCompaniesTitle")}

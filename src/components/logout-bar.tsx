@@ -38,6 +38,11 @@ export default function LogoutBar() {
       const supabase = createClient();
       await supabase.auth.signOut();
       clearCachedClientRole();
+      // Force full-page navigation so protected screens never remain visible after logout.
+      if (typeof window !== "undefined") {
+        window.location.replace("/login");
+        return;
+      }
       router.replace("/login");
       router.refresh();
     } finally {
