@@ -70,10 +70,12 @@ export async function buildTicketImageSvg(model: TicketImageModel, includeStatus
   const linkLines = model.socialLinks.filter(Boolean).slice(0, 3);
   const topMeta = [model.address, model.dressCode, model.description].filter(Boolean).join(" · ");
   const receiptThumb = model.receiptThumbDataUrl
-    ? `<rect x="760" y="420" width="250" height="250" rx="16" fill="#ffffff" stroke="#e2e8f0"/>
-       <image x="772" y="432" width="226" height="226" href="${model.receiptThumbDataUrl}" preserveAspectRatio="xMidYMid slice"/>`
-    : `<rect x="760" y="420" width="250" height="250" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-dasharray="6 6"/>
-       <foreignObject x="776" y="500" width="218" height="80">
+    ? `<rect x="132" y="1110" width="800" height="170" rx="16" fill="#ffffff" stroke="#e2e8f0"/>
+       <image x="148" y="1126" width="138" height="138" href="${model.receiptThumbDataUrl}" preserveAspectRatio="xMidYMid slice"/>
+       <text x="304" y="1162" font-size="14" fill="#64748b">Чек</text>
+       <text x="304" y="1188" font-size="18" fill="#0f172a">Изображение оплаты прикреплено</text>`
+    : `<rect x="132" y="1110" width="800" height="170" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-dasharray="6 6"/>
+       <foreignObject x="148" y="1142" width="760" height="100">
          <div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;justify-content:center;text-align:center;color:#64748b;font-size:14px;line-height:1.2;">
            Здесь мог бы быть ваш билет
          </div>
@@ -93,20 +95,20 @@ export async function buildTicketImageSvg(model: TicketImageModel, includeStatus
       ${esc(topMeta)}
     </div>
   </foreignObject>
-  <rect x="112" y="300" width="280" height="280" rx="18" fill="#ffffff" stroke="#e2e8f0"/>
-  <image x="130" y="318" width="244" height="244" href="${qrDataUrl}"/>
-  <text x="112" y="603" font-size="13" fill="#64748b">Покажите этот QR-код на входе</text>
-  <rect x="112" y="632" width="850" height="620" rx="16" fill="#ffffff" stroke="#e2e8f0"/>
-  <text x="132" y="660" font-size="12" font-weight="700" fill="#64748b">ДАННЫЕ БИЛЕТА</text>
-  ${model.companyName ? `<text x="132" y="686" font-size="14" fill="#0f172a">${esc(model.companyName)}</text>` : ""}
+  <rect x="112" y="286" width="560" height="560" rx="24" fill="#ffffff" stroke="#e2e8f0"/>
+  <image x="146" y="320" width="492" height="492" href="${qrDataUrl}"/>
+  <text x="112" y="874" font-size="13" fill="#64748b">Покажите этот QR-код на входе</text>
+  <rect x="112" y="900" width="850" height="198" rx="16" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="132" y="928" font-size="12" font-weight="700" fill="#64748b">ДАННЫЕ БИЛЕТА</text>
+  ${model.companyName ? `<text x="132" y="954" font-size="14" fill="#0f172a">${esc(model.companyName)}</text>` : ""}
   ${linkLines
     .map(
       (url, idx) =>
-        `<text x="132" y="${705 + idx * 18}" font-size="13" fill="#0f766e">${esc(url)}</text>`
+        `<text x="132" y="${973 + idx * 18}" font-size="13" fill="#0f766e">${esc(url)}</text>`
     )
     .join("\n")}
   ${receiptThumb}
-  <g transform="translate(88, 280)">
+  <g transform="translate(88, 540)">
     ${rows.join("\n")}
   </g>
 </svg>`;
