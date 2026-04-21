@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useLocaleContext } from "@/components/locale-provider";
-import { MailSendIcon, WhatsAppSendIcon } from "@/components/admin/send-qr-icons";
+import { WhatsAppSendIcon } from "@/components/admin/send-qr-icons";
 import { trackedFetch } from "@/lib/http/tracked-fetch";
 import { CircularProgress, btnSecondary } from "@/components/ui/app-shell";
 
@@ -33,17 +33,14 @@ export function TicketSendQrButtons({
   onToast,
 }: Props) {
   const { t } = useLocaleContext();
-  const showEmailButton = false;
-  const [emailLoading, setEmailLoading] = useState(false);
+  void canEmail;
   const [waLoading, setWaLoading] = useState(false);
   const [hint, setHint] = useState("");
 
-  async function send(channel: "email" | "whatsapp") {
-    if (channel === "email" && !canEmail) return;
-    if (channel === "whatsapp" && !canWhatsApp) return;
+  async function send(channel: "whatsapp") {
+    if (!canWhatsApp) return;
 
-    if (channel === "email") setEmailLoading(true);
-    else setWaLoading(true);
+    setWaLoading(true);
     setHint("");
 
     const show = (msg: string) => {
@@ -64,43 +61,28 @@ export function TicketSendQrButtons({
         return;
       }
 
-      if (channel === "email") {
-        const em = json.email;
-        if (em?.sent && em.to) {
-          show(t("admin.ticketCard.sendQrDoneEmail", { email: em.to }));
-        } else if (em?.skippedReason === "not_configured") {
-          show(t("admin.ticketCard.sendQrEmailResendMissing"));
-        } else if (em?.skippedReason === "api_error" && em.errorDetail) {
-          show(t("admin.ticketCard.sendQrEmailFailed", { detail: em.errorDetail }));
+      const wa = json.whatsapp;
+      if (wa?.sentViaApi) {
+        show(t("admin.ticketCard.sendQrWhatsAppApiDone"));
+      } else if (wa?.url) {
+        window.open(wa.url, "_blank", "noopener,noreferrer");
+        if (wa.apiError) {
+          show(t("admin.ticketCard.sendQrWhatsAppOpenedApiFallback"));
         } else {
-          show(t("admin.ticketCard.sendQrError"));
+          show(t("admin.ticketCard.sendQrWhatsAppOpened"));
         }
       } else {
-        const wa = json.whatsapp;
-        if (wa?.sentViaApi) {
-          show(t("admin.ticketCard.sendQrWhatsAppApiDone"));
-        } else if (wa?.url) {
-          window.open(wa.url, "_blank", "noopener,noreferrer");
-          if (wa.apiError) {
-            show(t("admin.ticketCard.sendQrWhatsAppOpenedApiFallback"));
-          } else {
-            show(t("admin.ticketCard.sendQrWhatsAppOpened"));
-          }
-        } else {
-          show(t("admin.ticketCard.sendQrError"));
-        }
+        show(t("admin.ticketCard.sendQrError"));
       }
     } catch {
       show(t("admin.ticketCard.sendQrError"));
     } finally {
-      setEmailLoading(false);
       setWaLoading(false);
     }
   }
 
-  if (!canEmail && !canWhatsApp) return null;
+  if (!canWhatsApp) return null;
 
-  const iconMail = variant === "compact" ? "h-4 w-4" : "h-5 w-5";
   const iconWa = variant === "compact" ? "h-4 w-4 text-emerald-600" : "h-5 w-5 text-emerald-600";
   const btnClass =
     variant === "compact"
@@ -110,22 +92,6 @@ export function TicketSendQrButtons({
   return (
     <div className={variant === "compact" ? "inline-flex flex-wrap gap-1.5" : "flex flex-col gap-2"}>
       <div className="flex flex-wrap gap-2">
-        {showEmailButton && canEmail ? (
-          <button
-            type="button"
-            onClick={() => void send("email")}
-            disabled={emailLoading}
-            className={btnClass}
-            title={t("admin.ticketCard.sendQrEmailTitle")}
-            aria-label={t("admin.ticketCard.sendQrEmailTitle")}
-          >
-            {emailLoading ? (
-              <CircularProgress size="sm" className="border-slate-200 border-t-teal-600" />
-            ) : (
-              <MailSendIcon className={iconMail} />
-            )}
-          </button>
-        ) : null}
         {canWhatsApp ? (
           <button
             type="button"

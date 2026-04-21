@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
     const { data: tickets, error } = await supabase
         .from("tickets")
-        .select("uuid,event_id,buyer_name,phone,region,status")
+        .select("uuid,event_id,buyer_name,phone,region,status,checked_in_at,custom_data,receipt_image_url")
         .in("uuid", uuids);
 
     if (error || !tickets) {
@@ -83,25 +83,52 @@ export async function POST(request: Request) {
     const eventIds = [...new Set(tickets.map((t) => t.event_id))];
     const { data: events } = await supabase
       .from("events")
-      .select("id,title,city,event_date,event_time,address,dress_code,description,social_links")
+      .select("id,title,city,event_date,event_time,address,dress_code,description,social_links,ticket_valid_until,company_id")
       .in("id", eventIds);
     const eventById = new Map((events ?? []).map((e) => [e.id, e]));
+    const companyIds = [...new Set((events ?? []).map((e) => e.company_id).filter(Boolean))];
+    const { data: companies } = companyIds.length
+      ? await supabase.from("companies").select("id,name").in("id", companyIds)
+      : { data: [] as { id: string; name: string }[] };
+    const companyNameById = new Map((companies ?? []).map((c) => [c.id, c.name]));
+
+    async function toDataUrlFromRemoteImage(src: string | null): Promise<string | null> {
+      if (!src) return null;
+      try {
+        const res = await fetch(src, { cache: "no-store" });
+        if (!res.ok) return null;
+        const type = res.headers.get("content-type") || "image/jpeg";
+        const buf = Buffer.from(await res.arrayBuffer());
+        return `data:${type};base64,${buf.toString("base64")}`;
+      } catch {
+        return null;
+      }
+    }
 
     for (const t of tickets) {
         const ev = eventById.get(t.event_id);
+        const receiptThumbDataUrl = await toDataUrlFromRemoteImage(t.receipt_image_url ?? null);
         const svg = await buildTicketImageSvg(
           {
             title: ev?.title ?? "Билет",
             city: ev?.city ?? null,
             eventLine: ev ? formatEventDateTimeLine(ev.event_date, ev.event_time ?? null) : null,
+            companyName: ev?.company_id ? companyNameById.get(ev.company_id) ?? null : null,
             address: ev?.address ?? null,
             dressCode: ev?.dress_code ?? null,
             description: ev?.description ?? null,
             socialLinks: Array.isArray(ev?.social_links) ? ev.social_links.map((x) => String(x)) : [],
+            ticketValidUntil: ev?.ticket_valid_until ?? null,
             uuid: t.uuid,
             buyerName: t.buyer_name,
             phone: t.phone,
             region: t.region,
+            checkedInAt: t.checked_in_at ?? null,
+            customData:
+              t.custom_data && typeof t.custom_data === "object" && !Array.isArray(t.custom_data)
+                ? (t.custom_data as Record<string, unknown>)
+                : null,
+            receiptThumbDataUrl,
             status: t.status,
           },
           false

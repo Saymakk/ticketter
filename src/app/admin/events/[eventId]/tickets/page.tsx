@@ -4,13 +4,12 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AdminTicketDetailModal } from "@/components/admin/admin-ticket-detail-modal";
-import { MailSendIcon, WhatsAppSendIcon } from "@/components/admin/send-qr-icons";
+import { WhatsAppSendIcon } from "@/components/admin/send-qr-icons";
 import { CopyLinkActionIcon, DeleteActionIcon, EditActionIcon } from "@/components/ui/action-icons";
 import { TicketSendQrButtons } from "@/components/admin/ticket-send-qr-buttons";
 import { useLocaleContext } from "@/components/locale-provider";
 import { formatEventDateTimeLine } from "@/lib/event-date";
 import {
-  extractEmailFromCustomData,
   normalizePhoneForWhatsAppLink,
 } from "@/lib/ticket-contact";
 import { trackedFetch } from "@/lib/http/tracked-fetch";
@@ -94,7 +93,6 @@ function TicketsPageContent() {
   const [eventHead, setEventHead] = useState<EventHead | null>(null);
   const [ticketStats, setTicketStats] = useState<TicketStats | null>(null);
   const [canEditTickets, setCanEditTickets] = useState(true);
-  const [bulkEmailLoading, setBulkEmailLoading] = useState(false);
   const [bulkWaLoading, setBulkWaLoading] = useState(false);
   const [waBulkItems, setWaBulkItems] = useState<
     { uuid: string; url: string; label: string }[] | null
@@ -105,6 +103,11 @@ function TicketsPageContent() {
   const [editPhone, setEditPhone] = useState("");
   const [editRegion, setEditRegion] = useState("");
   const [editReceiptFile, setEditReceiptFile] = useState<File | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filterText, setFilterText] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterFieldKey, setFilterFieldKey] = useState("all");
+  const [filterFieldValue, setFilterFieldValue] = useState("");
 
   const eventPast = eventHead?.isPast === true;
   const canMutateTickets = canEditTickets && !eventPast;
@@ -332,7 +335,53 @@ function TicketsPageContent() {
     }
   }
 
-  async function bulkSendQr(channel: "email" | "whatsapp") {
+  const customFieldKeys = Array.from(
+    new Set(
+      tickets.flatMap((ticket) =>
+        ticket.custom_data && typeof ticket.custom_data === "object" && !Array.isArray(ticket.custom_data)
+          ? Object.keys(ticket.custom_data)
+          : []
+      )
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  function toSearchableValues(ticket: TicketItem): string[] {
+    const values: string[] = [
+      ticket.uuid,
+      ticket.buyer_name ?? "",
+      ticket.phone ?? "",
+      ticket.ticket_type ?? "",
+      ticket.region ?? "",
+      ticket.status ?? "",
+    ];
+    if (ticket.custom_data && typeof ticket.custom_data === "object" && !Array.isArray(ticket.custom_data)) {
+      for (const [k, v] of Object.entries(ticket.custom_data)) {
+        values.push(k);
+        values.push(String(v ?? ""));
+      }
+    }
+    return values;
+  }
+
+  const filteredTickets = tickets.filter((ticket) => {
+    if (filterStatus !== "all" && ticket.status !== filterStatus) return false;
+    if (filterFieldKey !== "all") {
+      const value =
+        ticket.custom_data &&
+        typeof ticket.custom_data === "object" &&
+        !Array.isArray(ticket.custom_data)
+          ? (ticket.custom_data[filterFieldKey] ?? "")
+          : "";
+      if (!String(value ?? "").toLowerCase().includes(filterFieldValue.trim().toLowerCase())) {
+        return false;
+      }
+    }
+    const q = filterText.trim().toLowerCase();
+    if (!q) return true;
+    return toSearchableValues(ticket).some((v) => v.toLowerCase().includes(q));
+  });
+
+  async function bulkSendQr(channel: "whatsapp") {
     if (!canEditTickets) return;
     if (selected.length === 0) {
       setSuccessMsg("");
@@ -343,8 +392,7 @@ function TicketsPageContent() {
     setError("");
     setSuccessMsg("");
     setWaBulkItems(null);
-    if (channel === "email") setBulkEmailLoading(true);
-    else setBulkWaLoading(true);
+    setBulkWaLoading(true);
 
     try {
       const res = await trackedFetch("/api/tickets/send-qr-bulk", {
@@ -374,54 +422,42 @@ function TicketsPageContent() {
       const success = json.successCount ?? 0;
       const total = json.processed ?? 0;
 
-      if (channel === "email") {
-        setSuccessMsg(t("admin.tickets.bulkSendEmailResult", { success, total }));
-        if ((json.failedCount ?? 0) > 0 && json.results) {
-          const fails = json.results
-            .filter((r) => !r.ok)
-            .map((r) => `${r.uuid.slice(0, 8)}… ${r.error ?? ""}`)
-            .join("; ");
-          setError(t("admin.tickets.bulkSendEmailErrors", { detail: fails }));
-        }
+      const apiCount =
+        json.results?.filter((r) => r.ok && r.whatsappSentViaApi).length ?? 0;
+      const linkCount =
+        json.results?.filter((r) => r.ok && r.whatsappUrl).length ?? 0;
+      if (apiCount > 0 && linkCount === 0) {
+        setSuccessMsg(t("admin.tickets.bulkSendWhatsAppApiOnly", { success, total }));
+      } else if (apiCount > 0 && linkCount > 0) {
+        setSuccessMsg(
+          t("admin.tickets.bulkSendWhatsAppMixed", {
+            api: apiCount,
+            links: linkCount,
+            total,
+          })
+        );
       } else {
-        const apiCount =
-          json.results?.filter((r) => r.ok && r.whatsappSentViaApi).length ?? 0;
-        const linkCount =
-          json.results?.filter((r) => r.ok && r.whatsappUrl).length ?? 0;
-        if (apiCount > 0 && linkCount === 0) {
-          setSuccessMsg(t("admin.tickets.bulkSendWhatsAppApiOnly", { success, total }));
-        } else if (apiCount > 0 && linkCount > 0) {
-          setSuccessMsg(
-            t("admin.tickets.bulkSendWhatsAppMixed", {
-              api: apiCount,
-              links: linkCount,
-              total,
-            })
-          );
-        } else {
-          setSuccessMsg(t("admin.tickets.bulkSendWhatsAppResult", { success, total }));
-        }
-        const items =
-          json.results
-            ?.filter((r) => r.ok && r.whatsappUrl)
-            .map((r) => ({
-              uuid: r.uuid,
-              url: r.whatsappUrl!,
-              label: `${r.uuid.slice(0, 8)}…`,
-            })) ?? [];
-        if (items.length) setWaBulkItems(items);
-        if ((json.failedCount ?? 0) > 0 && json.results) {
-          const fails = json.results
-            .filter((r) => !r.ok)
-            .map((r) => `${r.uuid.slice(0, 8)}… ${r.error ?? ""}`)
-            .join("; ");
-          setError(t("admin.tickets.bulkSendEmailErrors", { detail: fails }));
-        }
+        setSuccessMsg(t("admin.tickets.bulkSendWhatsAppResult", { success, total }));
+      }
+      const items =
+        json.results
+          ?.filter((r) => r.ok && r.whatsappUrl)
+          .map((r) => ({
+            uuid: r.uuid,
+            url: r.whatsappUrl!,
+            label: `${r.uuid.slice(0, 8)}…`,
+          })) ?? [];
+      if (items.length) setWaBulkItems(items);
+      if ((json.failedCount ?? 0) > 0 && json.results) {
+        const fails = json.results
+          .filter((r) => !r.ok)
+          .map((r) => `${r.uuid.slice(0, 8)}… ${r.error ?? ""}`)
+          .join("; ");
+        setError(t("admin.tickets.bulkSendEmailErrors", { detail: fails }));
       }
     } catch {
       setError(t("admin.ticketCard.sendQrError"));
     } finally {
-      setBulkEmailLoading(false);
       setBulkWaLoading(false);
     }
   }
@@ -608,11 +644,30 @@ function TicketsPageContent() {
                 <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
                   <button
                     type="button"
+                    onClick={() => setFiltersOpen((v) => !v)}
+                    className={`${btnSecondary} flex min-h-[2.75rem] w-full items-center justify-center px-2 text-center text-sm sm:min-h-0 sm:w-auto sm:px-3.5`}
+                  >
+                    Фильтры
+                  </button>
+                  <button
+                    type="button"
                     onClick={toggleSelectAll}
                     disabled={tickets.length === 0}
                     className={`${btnSecondary} flex min-h-[2.75rem] w-full items-center justify-center px-2 text-center text-sm sm:min-h-0 sm:w-auto sm:px-3.5`}
                   >
                     {allSelected ? t("admin.tickets.deselectAll") : t("admin.tickets.selectAll")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilterText("");
+                      setFilterStatus("all");
+                      setFilterFieldKey("all");
+                      setFilterFieldValue("");
+                    }}
+                    className={`${btnSecondary} flex min-h-[2.75rem] w-full items-center justify-center px-2 text-center text-sm sm:min-h-0 sm:w-auto sm:px-3.5`}
+                  >
+                    Сброс фильтров
                   </button>
                   <button
                     type="button"
@@ -627,20 +682,6 @@ function TicketsPageContent() {
                       </>
                     ) : (
                       <span className="leading-tight">{t("admin.tickets.downloadZip")}</span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void bulkSendQr("email")}
-                    disabled={bulkEmailLoading || selected.length === 0}
-                    className={`${btnSecondary} flex min-h-[2.75rem] min-w-[2.75rem] w-full items-center justify-center px-2 sm:min-h-0 sm:w-auto sm:px-3`}
-                    title={t("admin.tickets.bulkSendEmail")}
-                    aria-label={t("admin.tickets.bulkSendEmail")}
-                  >
-                    {bulkEmailLoading ? (
-                      <CircularProgress size="sm" />
-                    ) : (
-                      <MailSendIcon className="h-5 w-5" />
                     )}
                   </button>
                   <button
@@ -800,15 +841,59 @@ function TicketsPageContent() {
             {error}
           </p>
         )}
+        {filtersOpen ? (
+          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <input
+                className={`${inputClass} !mt-0`}
+                placeholder="Поиск по билету"
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+              />
+              <select
+                className={`${inputClass} !mt-0`}
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <option value="all">Все статусы</option>
+                <option value="new">{ticketStatusLabel("new", t)}</option>
+                <option value="checked_in">{ticketStatusLabel("checked_in", t)}</option>
+              </select>
+              <select
+                className={`${inputClass} !mt-0`}
+                value={filterFieldKey}
+                onChange={(e) => setFilterFieldKey(e.target.value)}
+              >
+                <option value="all">Любое поле</option>
+                {customFieldKeys.map((k) => (
+                  <option key={k} value={k}>
+                    {k}
+                  </option>
+                ))}
+              </select>
+              <input
+                className={`${inputClass} !mt-0`}
+                placeholder="Значение поля"
+                value={filterFieldValue}
+                onChange={(e) => setFilterFieldValue(e.target.value)}
+                disabled={filterFieldKey === "all"}
+              />
+            </div>
+          </div>
+        ) : null}
+        {!listLoading ? (
+          <p className="mb-3 text-sm text-slate-600">
+            Найдено: {filteredTickets.length} из {tickets.length}
+          </p>
+        ) : null}
 
         {listLoading ? (
           <ListLoading label={t("common.loading")} />
-        ) : error ? null : tickets.length === 0 ? (
+        ) : error ? null : filteredTickets.length === 0 ? (
           <p className="text-sm text-slate-600">{t("admin.tickets.listEmpty")}</p>
         ) : (
           <ul className="space-y-4">
-            {tickets.map((ticket) => {
-              const rowEmail = extractEmailFromCustomData(ticket.custom_data);
+            {filteredTickets.map((ticket) => {
               const rowWa = normalizePhoneForWhatsAppLink(ticket.phone);
               return (
                 <li
@@ -897,7 +982,7 @@ function TicketsPageContent() {
                           </button>
                           <TicketSendQrButtons
                             ticketUuid={ticket.uuid}
-                            canEmail={Boolean(rowEmail)}
+                            canEmail={false}
                             canWhatsApp={Boolean(rowWa)}
                             variant="compact"
                             onToast={(msg) => {
