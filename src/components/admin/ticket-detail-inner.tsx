@@ -9,6 +9,7 @@ import {
 import { ticketStatusLabel } from "@/lib/ticket-status-label";
 import { TicketSendQrButtons } from "@/components/admin/ticket-send-qr-buttons";
 import { btnPrimary, btnSecondary } from "@/components/ui/app-shell";
+import { TicketReceiptPreview } from "@/components/ticket-receipt-preview";
 
 export type TicketDetailModel = {
   uuid: string;
@@ -21,6 +22,7 @@ export type TicketDetailModel = {
   status: string;
   created_at: string;
   ticket_valid_until?: string | null;
+  receipt_image_url?: string | null;
   custom_data: Record<string, unknown>;
 };
 
@@ -53,8 +55,8 @@ export function TicketDetailInner({ ticket, sendToast }: Props) {
 
   useEffect(() => {
     if (!qrPanelOpen) {
-      setQrEntered(false);
-      return;
+      const id = window.setTimeout(() => setQrEntered(false), 0);
+      return () => window.clearTimeout(id);
     }
     let inner = 0;
     const outer = requestAnimationFrame(() => {
@@ -102,6 +104,10 @@ export function TicketDetailInner({ ticket, sendToast }: Props) {
         {row(t("admin.ticketCard.rowFio"), ticket.buyer_name ?? "—")}
         {row(t("admin.ticketCard.rowPhone"), ticket.phone ?? "—")}
         {row(t("admin.ticketCard.rowRegion"), ticket.region ?? "—")}
+        {row(
+          "Чек",
+          <TicketReceiptPreview src={ticket.receipt_image_url} alt={`Чек ${ticket.uuid}`} />
+        )}
         {row(
           t("admin.ticketCard.rowStatus"),
           <span className="font-bold uppercase tracking-wide">

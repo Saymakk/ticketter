@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import QRCode from "qrcode";
 import JSZip from "jszip";
 import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { isEventManagerRole } from "@/lib/auth/roles";
-import { qrImageFileName } from "@/lib/qr-filename";
+import { formatEventDateTimeLine } from "@/lib/event-date";
+import { buildTicketImageSvg } from "@/lib/tickets/ticket-image-svg";
+import { sanitizeForFileSegment } from "@/lib/qr-filename";
 import { canAdminAccessEvent, TICKET_EDIT_FORBIDDEN_MESSAGE } from "@/lib/auth/event-access";
 
 const bodySchema = z.object({
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
 
     const { data: tickets, error } = await supabase
         .from("tickets")
-        .select("uuid,event_id,buyer_name")
+        .select("uuid,event_id,buyer_name,phone,region,status")
         .in("uuid", uuids);
 
     if (error || !tickets) {
@@ -79,10 +80,34 @@ export async function POST(request: Request) {
     }
 
     const zip = new JSZip();
+    const eventIds = [...new Set(tickets.map((t) => t.event_id))];
+    const { data: events } = await supabase
+      .from("events")
+      .select("id,title,city,event_date,event_time,address,dress_code,description,social_links")
+      .in("id", eventIds);
+    const eventById = new Map((events ?? []).map((e) => [e.id, e]));
 
     for (const t of tickets) {
-        const png = await QRCode.toBuffer(t.uuid, { type: "png", width: 512, margin: 1 });
-        zip.file(qrImageFileName(t.buyer_name, t.uuid), png);
+        const ev = eventById.get(t.event_id);
+        const svg = await buildTicketImageSvg(
+          {
+            title: ev?.title ?? "Билет",
+            city: ev?.city ?? null,
+            eventLine: ev ? formatEventDateTimeLine(ev.event_date, ev.event_time ?? null) : null,
+            address: ev?.address ?? null,
+            dressCode: ev?.dress_code ?? null,
+            description: ev?.description ?? null,
+            socialLinks: Array.isArray(ev?.social_links) ? ev.social_links.map((x) => String(x)) : [],
+            uuid: t.uuid,
+            buyerName: t.buyer_name,
+            phone: t.phone,
+            region: t.region,
+            status: t.status,
+          },
+          false
+        );
+        const base = sanitizeForFileSegment(t.buyer_name);
+        zip.file(base ? `${base}_${t.uuid}.svg` : `${t.uuid}.svg`, svg);
     }
 
     const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });

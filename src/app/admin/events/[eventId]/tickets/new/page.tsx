@@ -44,6 +44,7 @@ export default function NewTicketPage() {
   const [region, setRegion] = useState("");
   const [customData, setCustomData] = useState<Record<string, string>>({});
   const [result, setResult] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [fieldsLoading, setFieldsLoading] = useState(true);
   const [eventPastBlocked, setEventPastBlocked] = useState(false);
   const [accessChecked, setAccessChecked] = useState(false);
@@ -114,14 +115,41 @@ export default function NewTicketPage() {
     setCustomData((prev) => ({ ...prev, [key]: value }));
   }
 
+  async function uploadReceipt(): Promise<string> {
+    if (!receiptFile) throw new Error("Прикрепите изображение чека");
+    const fd = new FormData();
+    fd.set("receipt", receiptFile);
+    const res = await trackedFetch(`/api/admin/events/${eventId}/tickets/receipt-upload`, {
+      method: "POST",
+      body: fd,
+    });
+    const json = await res.json();
+    if (!res.ok || typeof json.url !== "string") {
+      throw new Error(String(json.error ?? "Не удалось загрузить чек"));
+    }
+    return json.url as string;
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!receiptFile) {
+      setResult("При создании билета нужно прикрепить чек");
+      return;
+    }
 
     for (const f of fields) {
       if (f.is_required && (customData[f.field_key] === undefined || customData[f.field_key] === "")) {
         setResult(t("admin.ticketNew.requiredField", { label: f.field_label }));
         return;
       }
+    }
+
+    let receiptImageUrl = "";
+    try {
+      receiptImageUrl = await uploadReceipt();
+    } catch (error) {
+      setResult(error instanceof Error ? error.message : "Не удалось загрузить чек");
+      return;
     }
 
     const res = await trackedFetch(`/api/admin/events/${eventId}/tickets`, {
@@ -131,6 +159,7 @@ export default function NewTicketPage() {
         buyerName,
         phone,
         region,
+        receiptImageUrl,
         customData,
       }),
     });
@@ -236,6 +265,16 @@ export default function NewTicketPage() {
                 className={inputClass}
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
+              />
+            </label>
+            <label className={labelClass}>
+              Чек (обязательно)
+              <input
+                type="file"
+                accept="image/*"
+                className={inputClass}
+                required
+                onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
               />
             </label>
 

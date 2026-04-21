@@ -20,7 +20,7 @@ export async function GET(_: Request, { params }: Params) {
 
     const { data: ticket, error } = await supabase
         .from("tickets")
-        .select("id,uuid,event_id,buyer_name,phone,ticket_type,region,status,custom_data,created_at")
+        .select("id,uuid,event_id,buyer_name,phone,ticket_type,region,status,custom_data,created_at,receipt_image_url")
         .eq("uuid", uuid)
         .single();
 

@@ -21,6 +21,10 @@ export function qrImageFileName(buyerName: string | null | undefined, uuid: stri
   return `${qrImageBaseName(buyerName, uuid)}.png`;
 }
 
+export function ticketImageFileName(buyerName: string | null | undefined, uuid: string): string {
+  return `${qrImageBaseName(buyerName, uuid)}.svg`;
+}
+
 /**
  * Content-Disposition с поддержкой кириллицы (filename* UTF-8 по RFC 5987).
  * В filename= — только ASCII fallback для старых клиентов.

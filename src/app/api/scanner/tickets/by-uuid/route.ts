@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const { data: ticket, error } = await supabase
         .from("tickets")
         .select(
-            "id,uuid,event_id,buyer_name,phone,ticket_type,region,status,created_at,checked_in_at,custom_data"
+            "id,uuid,event_id,buyer_name,phone,ticket_type,region,status,created_at,checked_in_at,custom_data,receipt_image_url"
         )
         .eq("uuid", uuid)
         .eq("event_id", eventId)

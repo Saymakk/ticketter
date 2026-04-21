@@ -12,6 +12,7 @@ const patchSchema = z.object({
     phone: z.string().nullable().optional(),
     ticketType: ticketTypeValue.optional(),
     region: z.string().nullable().optional(),
+    receiptImageUrl: z.string().url().nullable().optional(),
     customData: z.record(z.string(), z.any()).optional(),
 });
 
@@ -38,6 +39,7 @@ export async function PATCH(req: Request, { params }: Params) {
     if (p.phone !== undefined) payload.phone = p.phone;
     if (p.ticketType !== undefined) payload.ticket_type = p.ticketType;
     if (p.region !== undefined) payload.region = p.region;
+    if (p.receiptImageUrl !== undefined) payload.receipt_image_url = p.receiptImageUrl;
     if (p.customData !== undefined) payload.custom_data = p.customData;
 
     const { error } = await adminGuard.from("tickets").update(payload).eq("id", Number(ticketId)).eq("event_id", eventId);

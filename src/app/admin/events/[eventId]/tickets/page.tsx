@@ -16,6 +16,7 @@ import {
 import { trackedFetch } from "@/lib/http/tracked-fetch";
 import { ticketStatusLabel } from "@/lib/ticket-status-label";
 import CompanyLogo from "@/components/company-logo";
+import { TicketReceiptPreview } from "@/components/ticket-receipt-preview";
 import {
   AppCard,
   AppShell,
@@ -66,6 +67,7 @@ type TicketItem = {
   status: string;
   created_at: string;
   custom_data: Record<string, unknown> | null;
+  receipt_image_url: string | null;
 };
 
 function TicketsPageContent() {
@@ -102,6 +104,7 @@ function TicketsPageContent() {
   const [editBuyerName, setEditBuyerName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editRegion, setEditRegion] = useState("");
+  const [editReceiptFile, setEditReceiptFile] = useState<File | null>(null);
 
   const eventPast = eventHead?.isPast === true;
   const canMutateTickets = canEditTickets && !eventPast;
@@ -137,6 +140,7 @@ function TicketsPageContent() {
       setEditBuyerName("");
       setEditPhone("");
       setEditRegion("");
+      setEditReceiptFile(null);
       setSelected([]);
     }
   }, [canEditTickets]);
@@ -182,6 +186,7 @@ function TicketsPageContent() {
         setEditBuyerName("");
         setEditPhone("");
         setEditRegion("");
+        setEditReceiptFile(null);
       }
     } finally {
       setListLoading(false);
@@ -194,6 +199,7 @@ function TicketsPageContent() {
     setEditBuyerName(ticket.buyer_name ?? "");
     setEditPhone(ticket.phone ?? "");
     setEditRegion(ticket.region ?? "");
+    setEditReceiptFile(null);
   }
 
   function cancelEditTicket() {
@@ -201,10 +207,35 @@ function TicketsPageContent() {
     setEditBuyerName("");
     setEditPhone("");
     setEditRegion("");
+    setEditReceiptFile(null);
+  }
+
+  async function uploadReceiptForEvent(file: File) {
+    const fd = new FormData();
+    fd.set("receipt", file);
+    const uploadRes = await trackedFetch(`/api/admin/events/${eventId}/tickets/receipt-upload`, {
+      method: "POST",
+      body: fd,
+    });
+    const uploadJson = await uploadRes.json();
+    if (!uploadRes.ok || typeof uploadJson.url !== "string") {
+      throw new Error(String(uploadJson.error ?? "Не удалось загрузить чек"));
+    }
+    return uploadJson.url as string;
   }
 
   async function saveEditTicket() {
     if (!editTicketId || !canMutateTickets) return;
+
+    let receiptImageUrl: string | undefined;
+    if (editReceiptFile) {
+      try {
+        receiptImageUrl = await uploadReceiptForEvent(editReceiptFile);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : t("admin.tickets.updateError"));
+        return;
+      }
+    }
 
     const res = await trackedFetch(`/api/admin/events/${eventId}/tickets/${editTicketId}`, {
       method: "PATCH",
@@ -213,6 +244,7 @@ function TicketsPageContent() {
         buyerName: editBuyerName || null,
         phone: editPhone || null,
         region: editRegion || null,
+        ...(receiptImageUrl !== undefined ? { receiptImageUrl } : {}),
       }),
     });
 
@@ -803,6 +835,15 @@ function TicketsPageContent() {
                         onChange={(e) => setEditRegion(e.target.value)}
                         placeholder={t("admin.tickets.placeholderRegion")}
                       />
+                      <label className="text-sm text-slate-700">
+                        Чек
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className={`${inputClass} !mt-1.5`}
+                          onChange={(e) => setEditReceiptFile(e.target.files?.[0] ?? null)}
+                        />
+                      </label>
                       <div className="flex flex-wrap gap-2">
                         <button type="button" onClick={saveEditTicket} className={btnPrimary}>
                           {t("common.save")}
@@ -837,6 +878,12 @@ function TicketsPageContent() {
                               {ticketStatusLabel(ticket.status, t)}
                             </span>
                           </p>
+                          <div className="mt-2">
+                            <TicketReceiptPreview
+                              src={ticket.receipt_image_url}
+                              alt={`Чек ${ticket.uuid}`}
+                            />
+                          </div>
                         </div>
                       </div>
                       <div className="flex flex-col items-stretch gap-2 sm:items-end">

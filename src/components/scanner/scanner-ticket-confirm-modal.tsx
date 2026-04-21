@@ -7,6 +7,7 @@ import { trackedFetch } from "@/lib/http/tracked-fetch";
 import { ticketStatusLabel } from "@/lib/ticket-status-label";
 import { btnPrimary, btnSecondary, ListLoading } from "@/components/ui/app-shell";
 import CompanyLogo from "@/components/company-logo";
+import { TicketReceiptPreview } from "@/components/ticket-receipt-preview";
 
 type Ticket = {
   id: number;
@@ -20,6 +21,7 @@ type Ticket = {
   created_at: string;
   checked_in_at: string | null;
   ticket_valid_until?: string | null;
+  receipt_image_url?: string | null;
   custom_data: Record<string, unknown>;
   company_name?: string | null;
   company_image_url?: string | null;
@@ -85,6 +87,13 @@ function ticketDetailRows(
       row("region", t("admin.ticketCard.rowRegion"), ticket.region.trim())
     );
   }
+  out.push(
+    row(
+      "receipt",
+      "Чек",
+      <TicketReceiptPreview src={ticket.receipt_image_url} alt={`Чек ${ticket.uuid}`} />
+    )
+  );
   out.push(
     row(
       "status",

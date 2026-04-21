@@ -7,6 +7,11 @@ export type StaffReadableTicket = {
   event_id: string;
   buyer_name: string | null;
   phone: string | null;
+  region: string | null;
+  status: string;
+  created_at: string;
+  checked_in_at: string | null;
+  receipt_image_url: string | null;
   custom_data: unknown;
 };
 
@@ -29,7 +34,7 @@ export async function getStaffReadableTicket(ticketUuid: string): Promise<
 
   const { data: ticket, error: ticketError } = await supabase
     .from("tickets")
-    .select("uuid,event_id,buyer_name,phone,custom_data")
+    .select("uuid,event_id,buyer_name,phone,region,status,created_at,checked_in_at,receipt_image_url,custom_data")
     .eq("uuid", ticketUuid)
     .single();
 

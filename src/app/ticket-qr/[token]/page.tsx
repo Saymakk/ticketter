@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { loadPublicTicketPageModel } from "@/lib/tickets/load-public-ticket-page";
 import CompanyLogo from "@/components/company-logo";
+import { TicketReceiptPreview } from "@/components/ticket-receipt-preview";
 
 type Props = { params: Promise<{ token: string }> };
 
@@ -59,6 +60,24 @@ export default async function PublicTicketQrPage({ params }: Props) {
               <p className="mt-1 text-sm text-teal-100">{event.city}</p>
             ) : null}
             {eventLine ? <p className="mt-2 text-sm text-teal-50/95">{eventLine}</p> : null}
+            {event.address?.trim() ? (
+              <p className="mt-2 text-sm text-teal-50/95">Адрес: {event.address.trim()}</p>
+            ) : null}
+            {event.dress_code?.trim() ? (
+              <p className="mt-1 text-sm text-teal-50/95">Дресс-код: {event.dress_code.trim()}</p>
+            ) : null}
+            {event.description?.trim() ? (
+              <p className="mt-1 text-sm text-teal-50/95">Описание: {event.description.trim()}</p>
+            ) : null}
+            {socialLinks.length > 0 ? (
+              <div className="mt-2 space-y-0.5 text-sm text-teal-50/95">
+                {socialLinks.map((url) => (
+                  <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="block underline break-all">
+                    {url}
+                  </a>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-col items-center px-5 pt-6">
@@ -99,31 +118,17 @@ export default async function PublicTicketQrPage({ params }: Props) {
             <InfoRow label="Телефон" value={ticket.phone ?? "—"} />
             <InfoRow label="Регион" value={ticket.region ?? "—"} />
             <InfoRow label="Статус" value={statusRu(ticket.status).toUpperCase()} emphasize />
+            <div className="flex flex-col gap-0.5 border-b border-slate-50 py-2.5 last:border-0 sm:flex-row sm:items-start sm:gap-3">
+              <span className="shrink-0 text-xs font-medium text-slate-500 sm:w-36">Чек</span>
+              <span className="min-w-0 break-words text-sm text-slate-900">
+                <TicketReceiptPreview
+                  src={ticket.receipt_image_url}
+                  alt={`Чек ${ticket.uuid}`}
+                />
+              </span>
+            </div>
             {event.ticket_valid_until ? (
               <InfoRow label="Билет действителен до" value={event.ticket_valid_until} />
-            ) : null}
-            {event.address?.trim() ? <InfoRow label="Адрес" value={event.address.trim()} /> : null}
-            {event.dress_code?.trim() ? <InfoRow label="Дресс-код" value={event.dress_code.trim()} /> : null}
-            {event.description?.trim() ? (
-              <InfoRow label="Описание" value={event.description.trim()} />
-            ) : null}
-            {socialLinks.length > 0 ? (
-              <div className="flex flex-col gap-0.5 border-b border-slate-50 py-2.5 last:border-0 sm:flex-row sm:items-start sm:gap-3">
-                <span className="shrink-0 text-xs font-medium text-slate-500 sm:w-36">Соц. сети</span>
-                <span className="min-w-0 break-words text-sm text-slate-900">
-                  {socialLinks.map((url) => (
-                    <a
-                      key={url}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block text-teal-700 underline break-all"
-                    >
-                      {url}
-                    </a>
-                  ))}
-                </span>
-              </div>
             ) : null}
             {ticket.checked_in_at ? (
               <InfoRow label="Пробит" value={formatDateTimeRu(ticket.checked_in_at)} />

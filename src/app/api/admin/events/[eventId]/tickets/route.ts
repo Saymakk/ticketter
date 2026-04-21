@@ -10,6 +10,7 @@ const createTicketSchema = z.object({
     phone: z.string().optional().nullable(),
     ticketType: z.enum(["vip", "standard", "vip+"]).optional().nullable(),
     region: z.string().optional().nullable(),
+    receiptImageUrl: z.string().url(),
     customData: z.record(z.string(), z.any()),
 });
 
@@ -46,7 +47,7 @@ export async function GET(_: Request, { params }: Params) {
 
     const { data, error } = await admin
         .from("tickets")
-        .select("id,uuid,buyer_name,phone,ticket_type,region,status,created_at,custom_data")
+        .select("id,uuid,buyer_name,phone,ticket_type,region,status,created_at,custom_data,receipt_image_url")
         .eq("event_id", eventId)
         .order("created_at", { ascending: false });
 
@@ -98,6 +99,7 @@ export async function POST(request: Request, { params }: Params) {
             phone: p.phone ?? null,
             ticket_type: p.ticketType ?? null,
             region: p.region ?? null,
+            receipt_image_url: p.receiptImageUrl,
             manager_id: check.userId,
             status: "new",
             custom_data: p.customData ?? {},
