@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Props = {
   src: string | null | undefined;
@@ -17,6 +17,16 @@ export function TicketReceiptPreview({
 }: Props) {
   const [open, setOpen] = useState(false);
   const hasImage = Boolean(src?.trim());
+  const touchStartY = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
 
   return (
     <>
@@ -55,6 +65,16 @@ export function TicketReceiptPreview({
             className="h-[92vh] w-[96vw] max-w-3xl overflow-auto rounded-lg bg-black/30 p-2 sm:h-auto sm:w-auto sm:max-h-[90vh] sm:max-w-[95vw]"
             style={{ touchAction: "pinch-zoom pan-x pan-y" }}
             onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => {
+              touchStartY.current = e.touches[0]?.clientY ?? null;
+            }}
+            onTouchEnd={(e) => {
+              const start = touchStartY.current;
+              const end = e.changedTouches[0]?.clientY ?? null;
+              touchStartY.current = null;
+              if (start == null || end == null) return;
+              if (Math.abs(end - start) >= 90) setOpen(false);
+            }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
