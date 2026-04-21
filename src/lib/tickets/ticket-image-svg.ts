@@ -95,8 +95,8 @@ export async function buildTicketImageSvg(model: TicketImageModel, includeStatus
       ${esc(topMeta)}
     </div>
   </foreignObject>
-  <rect x="112" y="286" width="560" height="560" rx="24" fill="#ffffff" stroke="#e2e8f0"/>
-  <image x="146" y="320" width="492" height="492" href="${qrDataUrl}"/>
+  <rect x="257" y="286" width="560" height="560" rx="24" fill="#ffffff" stroke="#e2e8f0"/>
+  <image x="291" y="320" width="492" height="492" href="${qrDataUrl}"/>
   <text x="112" y="874" font-size="13" fill="#64748b">Покажите этот QR-код на входе</text>
   <rect x="112" y="900" width="850" height="198" rx="16" fill="#ffffff" stroke="#e2e8f0"/>
   <text x="132" y="928" font-size="12" font-weight="700" fill="#64748b">ДАННЫЕ БИЛЕТА</text>

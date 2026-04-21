@@ -27,13 +27,15 @@ export function TicketReceiptPreview({
           className={`group overflow-hidden rounded-lg border border-slate-200 bg-white ${className}`}
           title="Открыть чек"
         >
+          <span className="flex h-24 w-24 items-center justify-center bg-slate-50 p-1">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={src!}
             alt={alt}
-            className="h-24 w-24 object-cover transition group-hover:scale-105"
+            className="h-full w-full object-contain transition group-hover:scale-105"
             loading="lazy"
           />
+          </span>
         </button>
       ) : (
         <div
@@ -49,9 +51,18 @@ export function TicketReceiptPreview({
           aria-modal="true"
           onClick={() => setOpen(false)}
         >
-          <div className="max-h-[90vh] max-w-[95vw] overflow-auto" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="h-[92vh] w-[96vw] max-w-3xl overflow-auto rounded-lg bg-black/30 p-2 sm:h-auto sm:w-auto sm:max-h-[90vh] sm:max-w-[95vw]"
+            style={{ touchAction: "pinch-zoom pan-x pan-y" }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src!} alt={alt} className="h-auto max-w-[95vw] rounded-lg bg-white" />
+            <img
+              src={src!}
+              alt={alt}
+              className="mx-auto h-auto w-auto max-h-full max-w-full rounded-lg bg-white"
+              style={{ touchAction: "pinch-zoom" }}
+            />
           </div>
         </div>
       ) : null}
