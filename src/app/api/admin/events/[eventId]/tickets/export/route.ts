@@ -29,7 +29,6 @@ const PREFERRED_TICKET_COLS = [
   "uuid",
   "buyer_name",
   "phone",
-  "ticket_type",
   "region",
   "status",
   "manager_id",
@@ -44,7 +43,7 @@ function ticketBaseColumns(tickets: Record<string, unknown>[]): string[] {
     }
   }
   const rest = [...seen]
-    .filter((k) => !PREFERRED_TICKET_COLS.includes(k))
+    .filter((k) => !PREFERRED_TICKET_COLS.includes(k) && k !== "ticket_type")
     .sort();
   const head = PREFERRED_TICKET_COLS.filter((k) => seen.has(k));
   return [...head, ...rest];

@@ -16,12 +16,12 @@ export async function GET(_request: Request, { params }: Params) {
   const supabase = await createServerSupabaseClient();
   const { data: ev } = await supabase
     .from("events")
-    .select("event_date")
+    .select("ticket_valid_until")
     .eq("id", access.ticket.event_id)
     .maybeSingle();
-  const eventDate =
-    ev != null && typeof (ev as { event_date?: unknown }).event_date === "string"
-      ? (ev as { event_date: string }).event_date
+  const ticketValidUntil =
+    ev != null && typeof (ev as { ticket_valid_until?: unknown }).ticket_valid_until === "string"
+      ? (ev as { ticket_valid_until: string }).ticket_valid_until
       : null;
 
   const base = publicSiteUrl();
@@ -32,7 +32,7 @@ export async function GET(_request: Request, { params }: Params) {
     );
   }
 
-  const token = mintTicketQrLinkToken(uuid, eventDate);
+  const token = mintTicketQrLinkToken(uuid, ticketValidUntil);
   if (!token) {
     return NextResponse.json(
       { error: "Не настроен секрет публичной ссылки (TICKET_QR_LINK_SECRET)" },

@@ -45,6 +45,38 @@ export function isValidOptionalEventTime(s: string | null | undefined): boolean 
   return /^\d{2}:\d{2}$/.test(s.trim());
 }
 
+function addDaysUtc(yyyyMmDd: string, days: number): string {
+  const [y, m, d] = yyyyMmDd.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  return dt.toISOString().slice(0, 10);
+}
+
+export function defaultTicketValidUntilDate(eventDate: string | null | undefined): string | null {
+  const d = eventDate?.slice(0, 10);
+  if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  return addDaysUtc(d, 1);
+}
+
+export function isTicketValidUntilAllowed(
+  eventDate: string | null | undefined,
+  ticketValidUntil: string | null | undefined
+): boolean {
+  const ev = eventDate?.slice(0, 10);
+  const vu = ticketValidUntil?.slice(0, 10);
+  if (!ev || !vu) return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ev) || !/^\d{4}-\d{2}-\d{2}$/.test(vu)) return false;
+  return vu > ev;
+}
+
+export function isTicketExpiredByDateString(
+  ticketValidUntil: string | null | undefined
+): boolean {
+  const d = ticketValidUntil?.slice(0, 10);
+  if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+  const todayUtc = new Date().toISOString().slice(0, 10);
+  return d < todayUtc;
+}
+
 /**
  * Unix-время (сек), до которого действует публичная ссылка на PNG QR:
  * конец календарного дня UTC на «день после даты мероприятия» (включительно).

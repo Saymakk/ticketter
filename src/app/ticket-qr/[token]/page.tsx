@@ -47,6 +47,8 @@ export default async function PublicTicketQrPage({ params }: Props) {
       ? Object.entries(ticket.custom_data as Record<string, unknown>)
       : [];
 
+  const socialLinks = (event.social_links ?? []).filter((x) => /^https?:\/\//i.test(x));
+
   return (
     <div className="min-h-dvh bg-slate-50 px-4 py-8 pb-12">
       <div className="mx-auto w-full max-w-md">
@@ -95,9 +97,34 @@ export default async function PublicTicketQrPage({ params }: Props) {
             <InfoRow label="Код билета" value={ticket.uuid} mono />
             <InfoRow label="ФИО" value={ticket.buyer_name ?? "—"} />
             <InfoRow label="Телефон" value={ticket.phone ?? "—"} />
-            <InfoRow label="Тип" value={ticket.ticket_type ?? "—"} />
             <InfoRow label="Регион" value={ticket.region ?? "—"} />
-            <InfoRow label="Статус" value={statusRu(ticket.status)} />
+            <InfoRow label="Статус" value={statusRu(ticket.status).toUpperCase()} emphasize />
+            {event.ticket_valid_until ? (
+              <InfoRow label="Билет действителен до" value={event.ticket_valid_until} />
+            ) : null}
+            {event.address?.trim() ? <InfoRow label="Адрес" value={event.address.trim()} /> : null}
+            {event.dress_code?.trim() ? <InfoRow label="Дресс-код" value={event.dress_code.trim()} /> : null}
+            {event.description?.trim() ? (
+              <InfoRow label="Описание" value={event.description.trim()} />
+            ) : null}
+            {socialLinks.length > 0 ? (
+              <div className="flex flex-col gap-0.5 border-b border-slate-50 py-2.5 last:border-0 sm:flex-row sm:items-start sm:gap-3">
+                <span className="shrink-0 text-xs font-medium text-slate-500 sm:w-36">Соц. сети</span>
+                <span className="min-w-0 break-words text-sm text-slate-900">
+                  {socialLinks.map((url) => (
+                    <a
+                      key={url}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-teal-700 underline break-all"
+                    >
+                      {url}
+                    </a>
+                  ))}
+                </span>
+              </div>
+            ) : null}
             {ticket.checked_in_at ? (
               <InfoRow label="Пробит" value={formatDateTimeRu(ticket.checked_in_at)} />
             ) : null}
@@ -119,16 +146,20 @@ function InfoRow({
   label,
   value,
   mono,
+  emphasize,
 }: {
   label: string;
   value: string;
   mono?: boolean;
+  emphasize?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-0.5 border-b border-slate-50 py-2.5 last:border-0 sm:flex-row sm:items-start sm:gap-3">
       <span className="shrink-0 text-xs font-medium text-slate-500 sm:w-36">{label}</span>
       <span
-        className={`min-w-0 break-words text-sm text-slate-900 ${mono ? "font-mono text-xs" : ""}`}
+        className={`min-w-0 break-words text-sm text-slate-900 ${
+          mono ? "font-mono text-xs" : ""
+        } ${emphasize ? "font-bold uppercase tracking-wide" : ""}`}
       >
         {value}
       </span>

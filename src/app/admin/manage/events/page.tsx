@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocaleContext } from "@/components/locale-provider";
-import { formatEventDateTimeLine, isEventPastByDateString } from "@/lib/event-date";
+import {
+  defaultTicketValidUntilDate,
+  formatEventDateTimeLine,
+  isEventPastByDateString,
+  isTicketValidUntilAllowed,
+} from "@/lib/event-date";
 import { trackedFetch } from "@/lib/http/tracked-fetch";
 import { useHorizontalSwipeTabs } from "@/lib/ui/use-horizontal-swipe-tabs";
 import {
@@ -27,6 +32,11 @@ type EventItem = {
   city: string;
   event_date: string;
   event_time?: string | null;
+  ticket_valid_until?: string | null;
+  address?: string | null;
+  dress_code?: string | null;
+  description?: string | null;
+  social_links?: string[] | null;
   is_active: boolean;
 };
 
@@ -107,7 +117,12 @@ export default function ManageEventsPage() {
   const [title, setTitle] = useState("");
   const [city, setCity] = useState("");
   const [eventDate, setEventDate] = useState("");
+  const [ticketValidUntil, setTicketValidUntil] = useState("");
   const [eventTime, setEventTime] = useState("");
+  const [address, setAddress] = useState("");
+  const [dressCode, setDressCode] = useState("");
+  const [eventDescription, setEventDescription] = useState("");
+  const [socialLinksText, setSocialLinksText] = useState("");
   const [createCompanyId, setCreateCompanyId] = useState("");
 
   const [selectedEventId, setSelectedEventId] = useState("");
@@ -124,7 +139,12 @@ export default function ManageEventsPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editCity, setEditCity] = useState("");
   const [editDate, setEditDate] = useState("");
+  const [editTicketValidUntil, setEditTicketValidUntil] = useState("");
   const [editTime, setEditTime] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [editDressCode, setEditDressCode] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editSocialLinksText, setEditSocialLinksText] = useState("");
   const [editIsActive, setEditIsActive] = useState(true);
 
   const [draftFields, setDraftFields] = useState<DraftField[]>([]);
@@ -230,6 +250,14 @@ export default function ManageEventsPage() {
     const t = window.setTimeout(() => setAssignToast(""), 2200);
     return () => window.clearTimeout(t);
   }, [assignToast]);
+
+  useEffect(() => {
+    if (!eventDate) return;
+    const nextDefault = defaultTicketValidUntilDate(eventDate) ?? "";
+    if (!ticketValidUntil || !isTicketValidUntilAllowed(eventDate, ticketValidUntil)) {
+      setTicketValidUntil(nextDefault);
+    }
+  }, [eventDate, ticketValidUntil]);
 
   useEffect(() => {
     if (activeTab === "assign" || activeTab === "list") {
@@ -384,6 +412,11 @@ export default function ManageEventsPage() {
           title,
           city,
           eventDate,
+          ticketValidUntil,
+          address,
+          dressCode,
+          description: eventDescription,
+          socialLinks: socialLinksText.split(/\n/).map((s) => s.trim()).filter(Boolean),
           ...(createCompanyId ? { companyId: createCompanyId } : {}),
           ...(eventTime.trim() ? { eventTime: eventTime.trim() } : {}),
           ...(fieldsPayload.length ? { fields: fieldsPayload } : {}),
@@ -406,7 +439,12 @@ export default function ManageEventsPage() {
       setTitle("");
       setCity("");
       setEventDate("");
+      setTicketValidUntil("");
       setEventTime("");
+      setAddress("");
+      setDressCode("");
+      setEventDescription("");
+      setSocialLinksText("");
       if (companies.length !== 1) setCreateCompanyId("");
       setDraftFields([]);
       await loadData();
@@ -570,7 +608,12 @@ export default function ManageEventsPage() {
     setEditTitle(ev.title);
     setEditCity(ev.city);
     setEditDate(ev.event_date);
+    setEditTicketValidUntil(ev.ticket_valid_until ?? defaultTicketValidUntilDate(ev.event_date) ?? "");
     setEditTime(ev.event_time?.trim() ?? "");
+    setEditAddress(ev.address?.trim() ?? "");
+    setEditDressCode(ev.dress_code?.trim() ?? "");
+    setEditDescription(ev.description?.trim() ?? "");
+    setEditSocialLinksText(Array.isArray(ev.social_links) ? ev.social_links.join("\n") : "");
     setEditIsActive(ev.is_active);
   }
 
@@ -579,7 +622,12 @@ export default function ManageEventsPage() {
     setEditTitle("");
     setEditCity("");
     setEditDate("");
+    setEditTicketValidUntil("");
     setEditTime("");
+    setEditAddress("");
+    setEditDressCode("");
+    setEditDescription("");
+    setEditSocialLinksText("");
     setEditIsActive(true);
   }
 
@@ -594,7 +642,12 @@ export default function ManageEventsPage() {
         title: editTitle,
         city: editCity,
         eventDate: editDate,
+        ticketValidUntil: editTicketValidUntil,
         eventTime: editTime.trim() ? editTime.trim() : null,
+        address: editAddress,
+        dressCode: editDressCode,
+        description: editDescription,
+        socialLinks: editSocialLinksText.split(/\n/).map((s) => s.trim()).filter(Boolean),
         isActive: editIsActive,
       }),
     });
@@ -707,34 +760,95 @@ export default function ManageEventsPage() {
             <AppSection title={t("admin.manage.sectionNew")}>
               <form onSubmit={onCreateEvent}>
                 <FormStack>
-                  <input
-                    className={inputClass}
-                    placeholder={t("admin.manage.placeholderTitle")}
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    required
-                  />
-                  <input
-                    className={inputClass}
-                    placeholder={t("admin.manage.placeholderCity")}
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    required
-                  />
-                  <input
-                    type="date"
-                    className={inputClass}
-                    value={eventDate}
-                    onChange={(e) => setEventDate(e.target.value)}
-                    required
-                  />
-                  <input
-                    type="time"
-                    className={inputClass}
-                    value={eventTime}
-                    onChange={(e) => setEventTime(e.target.value)}
-                    title={t("admin.manage.placeholderEventTime")}
-                  />
+                  <label className="text-sm font-medium text-slate-700">
+                    {t("admin.manage.placeholderTitle")}
+                    <input
+                      className={`${inputClass} mt-1`}
+                      placeholder={t("admin.manage.placeholderTitle")}
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="text-sm font-medium text-slate-700">
+                    {t("admin.manage.placeholderCity")}
+                    <input
+                      className={`${inputClass} mt-1`}
+                      placeholder={t("admin.manage.placeholderCity")}
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="text-sm font-medium text-slate-700">
+                    Дата мероприятия
+                    <input
+                      type="date"
+                      className={`${inputClass} mt-1`}
+                      value={eventDate}
+                      onChange={(e) => setEventDate(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="text-sm font-medium text-slate-700">
+                    Билет действителен до (необязательно)
+                    <input
+                      type="date"
+                      className={`${inputClass} mt-1`}
+                      value={ticketValidUntil}
+                      min={defaultTicketValidUntilDate(eventDate) ?? undefined}
+                      onChange={(e) => setTicketValidUntil(e.target.value)}
+                      required
+                      title="Срок действия билета (дата)"
+                    />
+                    <p className="mt-1 text-xs font-normal text-slate-500">
+                      *По умолчанию билет действует до вечера следующего дня, после окончания мероприятия
+                    </p>
+                  </label>
+                  <label className="text-sm font-medium text-slate-700">
+                    {t("admin.manage.placeholderEventTime")}
+                    <input
+                      type="time"
+                      className={`${inputClass} mt-1`}
+                      value={eventTime}
+                      onChange={(e) => setEventTime(e.target.value)}
+                      title={t("admin.manage.placeholderEventTime")}
+                    />
+                  </label>
+                  <label className="text-sm font-medium text-slate-700">
+                    Адрес
+                    <input
+                      className={`${inputClass} mt-1`}
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                    />
+                  </label>
+                  <label className="text-sm font-medium text-slate-700">
+                    Дресс-код
+                    <input
+                      className={`${inputClass} mt-1`}
+                      value={dressCode}
+                      onChange={(e) => setDressCode(e.target.value)}
+                    />
+                  </label>
+                  <label className="text-sm font-medium text-slate-700">
+                    Описание
+                    <textarea
+                      className={`${inputClass} mt-1`}
+                      rows={3}
+                      value={eventDescription}
+                      onChange={(e) => setEventDescription(e.target.value)}
+                    />
+                  </label>
+                  <label className="text-sm font-medium text-slate-700">
+                    Соц. сети (по одной ссылке в строке)
+                    <textarea
+                      className={`${inputClass} mt-1`}
+                      rows={3}
+                      value={socialLinksText}
+                      onChange={(e) => setSocialLinksText(e.target.value)}
+                    />
+                  </label>
                   {companies.length > 1 ? (
                     <select
                       className={selectClass}
@@ -990,29 +1104,88 @@ export default function ManageEventsPage() {
                     >
                       {editEventId === ev.id ? (
                         <div className="max-w-md space-y-3">
-                          <input
-                            className={inputClass}
-                            value={editTitle}
-                            onChange={(e) => setEditTitle(e.target.value)}
-                          />
-                          <input
-                            className={inputClass}
-                            value={editCity}
-                            onChange={(e) => setEditCity(e.target.value)}
-                          />
-                          <input
-                            type="date"
-                            className={inputClass}
-                            value={editDate}
-                            onChange={(e) => setEditDate(e.target.value)}
-                          />
-                          <input
-                            type="time"
-                            className={inputClass}
-                            value={editTime}
-                            onChange={(e) => setEditTime(e.target.value)}
-                            title={t("admin.manage.placeholderEventTime")}
-                          />
+                          <label className="text-sm font-medium text-slate-700">
+                            {t("admin.manage.placeholderTitle")}
+                            <input
+                              className={`${inputClass} mt-1`}
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                            />
+                          </label>
+                          <label className="text-sm font-medium text-slate-700">
+                            {t("admin.manage.placeholderCity")}
+                            <input
+                              className={`${inputClass} mt-1`}
+                              value={editCity}
+                              onChange={(e) => setEditCity(e.target.value)}
+                            />
+                          </label>
+                          <label className="text-sm font-medium text-slate-700">
+                            Дата мероприятия
+                            <input
+                              type="date"
+                              className={`${inputClass} mt-1`}
+                              value={editDate}
+                              onChange={(e) => setEditDate(e.target.value)}
+                            />
+                          </label>
+                          <label className="text-sm font-medium text-slate-700">
+                            Билет действителен до (необязательно)
+                            <input
+                              type="date"
+                              className={`${inputClass} mt-1`}
+                              value={editTicketValidUntil}
+                              min={defaultTicketValidUntilDate(editDate) ?? undefined}
+                              onChange={(e) => setEditTicketValidUntil(e.target.value)}
+                            />
+                            <p className="mt-1 text-xs font-normal text-slate-500">
+                              *По умолчанию билет действует до вечера следующего дня, после окончания мероприятия
+                            </p>
+                          </label>
+                          <label className="text-sm font-medium text-slate-700">
+                            {t("admin.manage.placeholderEventTime")}
+                            <input
+                              type="time"
+                              className={`${inputClass} mt-1`}
+                              value={editTime}
+                              onChange={(e) => setEditTime(e.target.value)}
+                              title={t("admin.manage.placeholderEventTime")}
+                            />
+                          </label>
+                          <label className="text-sm font-medium text-slate-700">
+                            Адрес
+                            <input
+                              className={`${inputClass} mt-1`}
+                              value={editAddress}
+                              onChange={(e) => setEditAddress(e.target.value)}
+                            />
+                          </label>
+                          <label className="text-sm font-medium text-slate-700">
+                            Дресс-код
+                            <input
+                              className={`${inputClass} mt-1`}
+                              value={editDressCode}
+                              onChange={(e) => setEditDressCode(e.target.value)}
+                            />
+                          </label>
+                          <label className="text-sm font-medium text-slate-700">
+                            Описание
+                            <textarea
+                              className={`${inputClass} mt-1`}
+                              rows={3}
+                              value={editDescription}
+                              onChange={(e) => setEditDescription(e.target.value)}
+                            />
+                          </label>
+                          <label className="text-sm font-medium text-slate-700">
+                            Соц. сети (по одной ссылке в строке)
+                            <textarea
+                              className={`${inputClass} mt-1`}
+                              rows={3}
+                              value={editSocialLinksText}
+                              onChange={(e) => setEditSocialLinksText(e.target.value)}
+                            />
+                          </label>
                           <label className="flex items-center gap-2 text-sm text-slate-700">
                             <input
                               type="checkbox"

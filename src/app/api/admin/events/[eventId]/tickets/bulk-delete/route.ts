@@ -33,7 +33,7 @@ export async function POST(request: Request, { params }: Params) {
 
   const { data: found, error: selErr } = await admin
     .from("tickets")
-    .select("id")
+    .select("id,manager_id")
     .eq("event_id", eventId)
     .in("id", uniqueIds);
 
@@ -43,6 +43,16 @@ export async function POST(request: Request, { params }: Params) {
 
   if (!found || found.length !== uniqueIds.length) {
     return NextResponse.json({ error: "Часть билетов не найдена в этом мероприятии" }, { status: 400 });
+  }
+
+  if (check.role === "user") {
+    const ownOnly = found.every((t) => t.manager_id === check.userId);
+    if (!ownOnly) {
+      return NextResponse.json(
+        { error: "Можно удалять только созданные вами билеты" },
+        { status: 403 }
+      );
+    }
   }
 
   const { error: delErr } = await admin.from("tickets").delete().eq("event_id", eventId).in("id", uniqueIds);

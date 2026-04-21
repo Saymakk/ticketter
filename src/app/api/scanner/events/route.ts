@@ -8,6 +8,7 @@ type ScannerEventRow = {
     city: string;
     event_date: string;
     event_time?: string | null;
+    ticket_valid_until?: string | null;
 };
 
 async function enrichEventsWithTicketStats(
@@ -75,12 +76,14 @@ export async function GET() {
         return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
     }
 
-    // Авто-деактивация через дату: event_date >= today
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Показываем события, где билеты еще действительны
     if (profile.role === "super_admin") {
         const { data, error } = await supabase
             .from("events")
-            .select("id,title,city,event_date,event_time")
-            .gte("event_date", new Date().toISOString().slice(0, 10))
+            .select("id,title,city,event_date,event_time,ticket_valid_until")
+            .gte("ticket_valid_until", today)
             .order("event_date", { ascending: true });
 
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -94,9 +97,9 @@ export async function GET() {
         if (visibleEventIds.length === 0) return NextResponse.json({ events: [] });
         const { data, error } = await supabase
             .from("events")
-            .select("id,title,city,event_date,event_time")
+            .select("id,title,city,event_date,event_time,ticket_valid_until")
             .in("id", visibleEventIds)
-            .gte("event_date", new Date().toISOString().slice(0, 10))
+            .gte("ticket_valid_until", today)
             .order("event_date", { ascending: true });
 
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -107,9 +110,9 @@ export async function GET() {
 
     const { data, error } = await supabase
         .from("user_event_access")
-        .select("event:events(id,title,city,event_date,event_time)")
+        .select("event:events(id,title,city,event_date,event_time,ticket_valid_until)")
         .eq("user_id", user.id)
-        .gte("event.event_date", new Date().toISOString().slice(0, 10));
+        .gte("event.ticket_valid_until", today);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 

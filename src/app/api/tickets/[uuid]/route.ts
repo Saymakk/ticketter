@@ -53,7 +53,7 @@ export async function GET(_: Request, { params }: Params) {
 
     const { data: event } = await supabase
         .from("events")
-        .select("company_id")
+        .select("company_id,ticket_valid_until")
         .eq("id", ticket.event_id)
         .maybeSingle();
 
@@ -72,6 +72,7 @@ export async function GET(_: Request, { params }: Params) {
     return NextResponse.json({
         ticket: {
             ...ticket,
+            ticket_valid_until: event?.ticket_valid_until ?? null,
             company_name: companyName,
             company_image_url: companyImageUrl,
         },

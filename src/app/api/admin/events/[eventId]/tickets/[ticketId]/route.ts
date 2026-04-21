@@ -68,6 +68,17 @@ export async function DELETE(req: Request, { params }: Params) {
         return NextResponse.json({ error: EVENT_TICKETS_LOCKED_MESSAGE }, { status: 403 });
     }
 
+    const { data: row } = await admin
+      .from("tickets")
+      .select("id,manager_id")
+      .eq("id", Number(ticketId))
+      .eq("event_id", eventId)
+      .maybeSingle();
+    if (!row) return NextResponse.json({ error: "Билет не найден" }, { status: 404 });
+    if (check.role === "user" && row.manager_id !== check.userId) {
+      return NextResponse.json({ error: "Можно удалять только созданные вами билеты" }, { status: 403 });
+    }
+
     const { error } = await admin.from("tickets").delete().eq("id", Number(ticketId)).eq("event_id", eventId);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 

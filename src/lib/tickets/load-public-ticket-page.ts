@@ -11,6 +11,11 @@ export type PublicTicketPageModel = {
     city: string | null;
     event_date: string;
     event_time: string | null;
+    ticket_valid_until: string | null;
+    address: string | null;
+    dress_code: string | null;
+    description: string | null;
+    social_links: string[];
     company_name: string | null;
     company_image_url: string | null;
   };
@@ -18,7 +23,6 @@ export type PublicTicketPageModel = {
     uuid: string;
     buyer_name: string | null;
     phone: string | null;
-    ticket_type: string | null;
     region: string | null;
     status: string;
     created_at: string;
@@ -50,7 +54,7 @@ export const loadPublicTicketPageModel = cache(async function loadPublicTicketPa
 
   const { data: ev, error: eErr } = await admin
     .from("events")
-    .select("title,city,event_date,event_time,company_id")
+    .select("title,city,event_date,event_time,ticket_valid_until,address,dress_code,description,social_links,company_id")
     .eq("id", ticket.event_id)
     .maybeSingle();
 
@@ -80,6 +84,13 @@ export const loadPublicTicketPageModel = cache(async function loadPublicTicketPa
       city,
       event_date,
       event_time,
+      ticket_valid_until: ev.ticket_valid_until != null ? String(ev.ticket_valid_until) : null,
+      address: ev.address != null ? String(ev.address) : null,
+      dress_code: ev.dress_code != null ? String(ev.dress_code) : null,
+      description: ev.description != null ? String(ev.description) : null,
+      social_links: Array.isArray(ev.social_links)
+        ? ev.social_links.map((x) => String(x).trim()).filter(Boolean)
+        : [],
       company_name: companyName,
       company_image_url: companyImageUrl,
     },
@@ -87,7 +98,6 @@ export const loadPublicTicketPageModel = cache(async function loadPublicTicketPa
       uuid: ticket.uuid,
       buyer_name: ticket.buyer_name,
       phone: ticket.phone,
-      ticket_type: ticket.ticket_type,
       region: ticket.region,
       status: String(ticket.status ?? "new"),
       created_at: String(ticket.created_at ?? ""),

@@ -19,6 +19,7 @@ type Ticket = {
   status: "new" | "checked_in";
   created_at: string;
   checked_in_at: string | null;
+  ticket_valid_until?: string | null;
   custom_data: Record<string, unknown>;
   company_name?: string | null;
   company_image_url?: string | null;
@@ -36,7 +37,7 @@ async function safeReadJson<T>(res: Response): Promise<T | null> {
   }
 }
 
-function row(rowKey: string, label: string, value: string) {
+function row(rowKey: string, label: string, value: ReactNode) {
   return (
     <div
       key={rowKey}
@@ -79,19 +80,23 @@ function ticketDetailRows(
   if (ticket.phone?.trim()) {
     out.push(row("phone", t("admin.ticketCard.rowPhone"), ticket.phone.trim()));
   }
-  if (ticket.ticket_type?.trim()) {
-    out.push(
-      row("type", t("admin.ticketCard.rowType"), ticket.ticket_type.trim())
-    );
-  }
   if (ticket.region?.trim()) {
     out.push(
       row("region", t("admin.ticketCard.rowRegion"), ticket.region.trim())
     );
   }
   out.push(
-    row("status", t("admin.ticketCard.rowStatus"), ticketStatusLabel(ticket.status, t))
+    row(
+      "status",
+      t("admin.ticketCard.rowStatus"),
+      <span className="font-bold uppercase tracking-wide">
+        {ticketStatusLabel(ticket.status, t)}
+      </span>
+    )
   );
+  if (ticket.ticket_valid_until) {
+    out.push(row("validUntil", "Билет действителен до", ticket.ticket_valid_until.slice(0, 10)));
+  }
   out.push(row("createdAt", t("scanner.confirm.rowCreatedAt"), fmt(ticket.created_at)));
   if (ticket.status === "checked_in" && ticket.checked_in_at) {
     out.push(

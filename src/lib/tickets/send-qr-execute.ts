@@ -92,14 +92,14 @@ export async function executeTicketSendQr(
   const supabase = await createServerSupabaseClient();
   const { data: ev } = await supabase
     .from("events")
-    .select("title,event_date")
+    .select("title,ticket_valid_until")
     .eq("id", ticket.event_id)
     .maybeSingle();
 
   const eventTitle = ev?.title ? String(ev.title) : null;
-  const eventDate =
-    ev != null && typeof (ev as { event_date?: unknown }).event_date === "string"
-      ? (ev as { event_date: string }).event_date
+  const ticketValidUntil =
+    ev != null && typeof (ev as { ticket_valid_until?: unknown }).ticket_valid_until === "string"
+      ? (ev as { ticket_valid_until: string }).ticket_valid_until
       : null;
   const pngBuffer = await QRCode.toBuffer(ticket.uuid, {
     type: "png",
@@ -148,7 +148,7 @@ export async function executeTicketSendQr(
   if (channel === "whatsapp" && waDigits) {
     const caption = buildWhatsAppMessage(eventTitle);
     const base = publicSiteUrl();
-    const token = mintTicketQrLinkToken(ticket.uuid, eventDate);
+    const token = mintTicketQrLinkToken(ticket.uuid, ticketValidUntil);
     const publicTicketPageUrl = base && token ? `${base}/ticket-qr/${token}` : null;
     const publicQrImageUrl =
       base && token ? `${base}/api/public/ticket-qr/${token}` : null;

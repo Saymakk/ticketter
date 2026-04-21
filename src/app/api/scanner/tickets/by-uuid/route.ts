@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { isEventPastByDateString } from "@/lib/event-date";
+import { isTicketExpiredByDateString } from "@/lib/event-date";
 import { ensureEventAccess } from "@/lib/auth/event-access";
 
 export async function GET(request: Request) {
@@ -33,10 +33,10 @@ export async function GET(request: Request) {
 
     const { data: ev } = await supabase
         .from("events")
-        .select("event_date,company_id")
+        .select("ticket_valid_until,company_id")
         .eq("id", eventId)
         .maybeSingle();
-    const eventPast = ev ? isEventPastByDateString(ev.event_date) : false;
+    const eventPast = ev ? isTicketExpiredByDateString(ev.ticket_valid_until) : false;
     let companyName: string | null = null;
     let companyImageUrl: string | null = null;
     if (ev?.company_id) {
@@ -53,6 +53,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
         ticket: {
             ...ticket,
+            ticket_valid_until: ev?.ticket_valid_until ?? null,
             company_name: companyName,
             company_image_url: companyImageUrl,
         },

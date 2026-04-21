@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, type ReactNode, useCallback, useEffect, useState } from "react";
 import { useLocaleContext } from "@/components/locale-provider";
 import {
   extractEmailFromCustomData,
@@ -20,10 +20,11 @@ export type TicketDetailModel = {
   region: string | null;
   status: string;
   created_at: string;
+  ticket_valid_until?: string | null;
   custom_data: Record<string, unknown>;
 };
 
-function row(label: string, value: string) {
+function row(label: string, value: ReactNode) {
   return (
     <div className="flex flex-col gap-0.5 border-b border-slate-100 py-2 last:border-0 sm:flex-row sm:gap-4">
       <span className="w-32 shrink-0 text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -100,9 +101,16 @@ export function TicketDetailInner({ ticket, sendToast }: Props) {
       <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3">
         {row(t("admin.ticketCard.rowFio"), ticket.buyer_name ?? "—")}
         {row(t("admin.ticketCard.rowPhone"), ticket.phone ?? "—")}
-        {ticket.ticket_type ? row(t("admin.ticketCard.rowType"), ticket.ticket_type) : null}
         {row(t("admin.ticketCard.rowRegion"), ticket.region ?? "—")}
-        {row(t("admin.ticketCard.rowStatus"), ticketStatusLabel(ticket.status, t))}
+        {row(
+          t("admin.ticketCard.rowStatus"),
+          <span className="font-bold uppercase tracking-wide">
+            {ticketStatusLabel(ticket.status, t)}
+          </span>
+        )}
+        {ticket.ticket_valid_until
+          ? row("Билет действителен до", ticket.ticket_valid_until.slice(0, 10))
+          : null}
         {row(t("admin.ticketCard.rowCreated"), new Date(ticket.created_at).toLocaleString())}
         {customEntries.map(([k, v]) => (
           <Fragment key={k}>{row(k, String(v ?? "—"))}</Fragment>

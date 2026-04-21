@@ -3,7 +3,11 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireEventManager } from "@/lib/auth/api-guards";
 import { writeAuditLog } from "@/lib/audit";
-import { isValidOptionalEventTime } from "@/lib/event-date";
+import {
+  defaultTicketValidUntilDate,
+  isTicketValidUntilAllowed,
+  isValidOptionalEventTime,
+} from "@/lib/event-date";
 import { resolveEventCompanyId } from "@/lib/auth/company-access";
 
 const fieldDraftSchema = z
@@ -29,6 +33,11 @@ const bodySchema = z.object({
   city: z.string().min(2),
   eventDate: z.string().min(10),
   eventTime: z.string().optional().nullable(),
+  ticketValidUntil: z.string().min(10).optional().nullable(),
+  address: z.string().optional().nullable(),
+  dressCode: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  socialLinks: z.array(z.string()).optional(),
   companyId: z.string().uuid().optional().nullable(),
   fields: z.array(fieldDraftSchema).optional(),
 });
@@ -49,10 +58,29 @@ export async function POST(request: Request) {
     );
   }
 
-  const { title, city, eventDate, eventTime, companyId, fields: fieldDrafts } = parsed.data;
+  const {
+    title,
+    city,
+    eventDate,
+    eventTime,
+    ticketValidUntil,
+    address,
+    dressCode,
+    description,
+    socialLinks,
+    companyId,
+    fields: fieldDrafts,
+  } = parsed.data;
   const timeTrim = typeof eventTime === "string" ? eventTime.trim() : "";
   if (timeTrim && !isValidOptionalEventTime(timeTrim)) {
     return NextResponse.json({ error: "Время: формат HH:MM" }, { status: 400 });
+  }
+  const effectiveValidUntil = (ticketValidUntil?.slice(0, 10) || defaultTicketValidUntilDate(eventDate));
+  if (!effectiveValidUntil || !isTicketValidUntilAllowed(eventDate, effectiveValidUntil)) {
+    return NextResponse.json(
+      { error: "Срок действия билета должен быть позже даты мероприятия" },
+      { status: 400 }
+    );
   }
 
   const company = await resolveEventCompanyId({
@@ -71,11 +99,16 @@ export async function POST(request: Request) {
       city,
       event_date: eventDate,
       event_time: timeTrim || null,
+      ticket_valid_until: effectiveValidUntil,
+      address: address?.trim() || null,
+      dress_code: dressCode?.trim() || null,
+      description: description?.trim() || null,
+      social_links: (socialLinks ?? []).map((x) => x.trim()).filter(Boolean),
       is_active: true,
       created_by: check.ctx.user.id,
       company_id: company.companyId,
     })
-    .select("id,title,city,event_date,event_time,is_active")
+    .select("id,title,city,event_date,event_time,ticket_valid_until,is_active")
     .single();
 
   if (error) {

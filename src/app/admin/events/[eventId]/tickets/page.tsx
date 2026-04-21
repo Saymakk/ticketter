@@ -829,16 +829,10 @@ function TicketsPageContent() {
                             {ticket.buyer_name ?? "—"} · {ticket.phone ?? "—"}
                           </p>
                           <p className="text-sm text-slate-600">
-                            {ticket.ticket_type ? (
-                              <>
-                                {ticket.ticket_type}
-                                {" · "}
-                              </>
-                            ) : null}
                             <span
-                              className={
+                              className={`font-bold uppercase tracking-wide ${
                                 ticket.status === "checked_in" ? "text-teal-700" : "text-slate-500"
-                              }
+                              }`}
                             >
                               {ticketStatusLabel(ticket.status, t)}
                             </span>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { isEventPastByDateString, SCAN_EVENT_ENDED_TICKET_INVALID } from "@/lib/event-date";
+import { isTicketExpiredByDateString, SCAN_EVENT_ENDED_TICKET_INVALID } from "@/lib/event-date";
 import { ensureEventAccess } from "@/lib/auth/event-access";
 import { writeAuditLog } from "@/lib/audit";
 
@@ -33,11 +33,15 @@ export async function POST(request: Request) {
     const access = await ensureEventAccess(eventId);
     if (!access.ok) return NextResponse.json({ error: access.error, success: false }, { status: access.status });
 
-    const { data: evRow } = await supabase.from("events").select("event_date").eq("id", eventId).maybeSingle();
+    const { data: evRow } = await supabase
+      .from("events")
+      .select("ticket_valid_until")
+      .eq("id", eventId)
+      .maybeSingle();
     if (!evRow) {
         return NextResponse.json({ error: "Мероприятие не найдено", success: false }, { status: 404 });
     }
-    if (isEventPastByDateString(evRow.event_date)) {
+    if (isTicketExpiredByDateString(evRow.ticket_valid_until)) {
         return NextResponse.json({ error: SCAN_EVENT_ENDED_TICKET_INVALID, success: false }, { status: 403 });
     }
 
