@@ -54,3 +54,37 @@ export function CopyLinkActionIcon({ className = "h-5 w-5" }: { className?: stri
     </svg>
   );
 }
+
+export function DownloadActionIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.8}
+      stroke="currentColor"
+      className={className}
+      aria-hidden
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v11m0 0 4-4m-4 4-4-4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 15.5v2A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5v-2" />
+    </svg>
+  );
+}
+
+export function QrActionIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.8}
+      stroke="currentColor"
+      className={className}
+      aria-hidden
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14 14h2m4 0h-2m-2 2v4m4-2h-4" />
+    </svg>
+  );
+}

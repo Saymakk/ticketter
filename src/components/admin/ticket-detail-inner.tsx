@@ -10,6 +10,7 @@ import { ticketStatusLabel } from "@/lib/ticket-status-label";
 import { TicketSendQrButtons } from "@/components/admin/ticket-send-qr-buttons";
 import { btnPrimary, btnSecondary } from "@/components/ui/app-shell";
 import { TicketReceiptPreview } from "@/components/ticket-receipt-preview";
+import { DownloadActionIcon, QrActionIcon } from "@/components/ui/action-icons";
 
 export type TicketDetailModel = {
   uuid: string;
@@ -124,25 +125,33 @@ export function TicketDetailInner({ ticket, sendToast }: Props) {
       </div>
 
       <div className="mt-6 flex flex-col gap-3">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <a
             href={`/api/tickets/${ticket.uuid}/qr`}
             download
-            className={`${btnPrimary} inline-flex no-underline`}
+            className={`${btnPrimary} inline-flex min-h-10 min-w-10 items-center justify-center p-0 no-underline`}
+            title="Скачать билет"
+            aria-label="Скачать билет"
           >
-            {t("admin.ticketCard.downloadQr")}
+            <DownloadActionIcon className="h-5 w-5" />
           </a>
-          <button type="button" onClick={() => setQrPanelOpen(true)} className={btnSecondary}>
-            {t("admin.ticketCard.showQr")}
+          <button
+            type="button"
+            onClick={() => setQrPanelOpen(true)}
+            className={`${btnSecondary} inline-flex min-h-10 min-w-10 items-center justify-center p-0`}
+            title={t("admin.ticketCard.showQr")}
+            aria-label={t("admin.ticketCard.showQr")}
+          >
+            <QrActionIcon className="h-5 w-5" />
           </button>
+          <TicketSendQrButtons
+            ticketUuid={ticket.uuid}
+            canEmail={canEmail}
+            canWhatsApp={canWhatsApp}
+            variant="compact"
+            onToast={sendToast}
+          />
         </div>
-        <TicketSendQrButtons
-          ticketUuid={ticket.uuid}
-          canEmail={canEmail}
-          canWhatsApp={canWhatsApp}
-          variant="inline"
-          onToast={sendToast}
-        />
       </div>
 
       {qrPanelOpen ? (
@@ -159,16 +168,28 @@ export function TicketDetailInner({ ticket, sendToast }: Props) {
             role="dialog"
             aria-modal="true"
             aria-label={t("admin.ticketCard.qrDialogAria")}
-            className={`fixed inset-x-0 bottom-0 z-[220] max-h-[min(520px,85vh)] rounded-t-2xl border border-slate-200/90 bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_40px_rgba(15,23,42,0.12)] transition-transform duration-300 ease-out sm:mx-auto sm:max-w-lg ${
+            className={`fixed inset-x-0 bottom-0 z-[220] max-h-[min(520px,85vh)] overflow-y-auto rounded-t-2xl border border-slate-200/90 bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_40px_rgba(15,23,42,0.12)] transition-transform duration-300 ease-out sm:mx-auto sm:max-w-lg ${
               qrEntered ? "translate-y-0" : "translate-y-full"
             }`}
+            style={{ scrollbarGutter: "stable" }}
           >
             <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-slate-200" aria-hidden />
-            <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="mb-3 flex items-center justify-between gap-3 pr-2">
               <p className="text-sm font-medium text-slate-900">{t("admin.ticketCard.qrSheetTitle")}</p>
-              <button type="button" onClick={closeQrPanel} className={btnSecondary}>
-                {t("admin.ticketCard.closeQr")}
-              </button>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={closeQrPanel} className={btnSecondary}>
+                  {t("admin.ticketCard.closeQr")}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeQrPanel}
+                  className={`${btnSecondary} inline-flex min-h-10 min-w-10 items-center justify-center p-0`}
+                  aria-label="Закрыть"
+                  title="Закрыть"
+                >
+                  <span aria-hidden className="text-lg leading-none">×</span>
+                </button>
+              </div>
             </div>
             <div className="flex justify-center pb-2">
               <img

@@ -116,9 +116,20 @@ export function AdminTicketDetailModal({ eventId, uuid, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-slate-100 pb-3">
-          <h2 id="admin-ticket-modal-title" className="text-lg font-semibold text-slate-900">
-            {title}
-          </h2>
+          <div className="flex items-start justify-between gap-3">
+            <h2 id="admin-ticket-modal-title" className="text-lg font-semibold text-slate-900">
+              {title}
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className={`${btnSecondary} inline-flex min-h-9 min-w-9 items-center justify-center p-0`}
+              aria-label="Закрыть"
+              title="Закрыть"
+            >
+              <span aria-hidden className="text-lg leading-none">×</span>
+            </button>
+          </div>
           {!loading && ticket ? (
             <div className="mt-2 space-y-2">
               {ticket.company_name || ticket.company_image_url ? (

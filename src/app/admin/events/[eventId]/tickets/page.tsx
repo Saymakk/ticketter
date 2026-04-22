@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AdminTicketDetailModal } from "@/components/admin/admin-ticket-detail-modal";
 import { WhatsAppSendIcon } from "@/components/admin/send-qr-icons";
-import { CopyLinkActionIcon, DeleteActionIcon, EditActionIcon } from "@/components/ui/action-icons";
+import { CopyLinkActionIcon, DeleteActionIcon, DownloadActionIcon, EditActionIcon } from "@/components/ui/action-icons";
 import { TicketSendQrButtons } from "@/components/admin/ticket-send-qr-buttons";
 import { useLocaleContext } from "@/components/locale-provider";
 import { formatEventDateTimeLine } from "@/lib/event-date";
@@ -637,7 +637,7 @@ function TicketsPageContent() {
           </p>
         ) : null}
 
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-6 flex flex-col gap-3">
           <div className="flex min-w-0 max-w-full flex-1 flex-col gap-3">
             {canEditTickets ? (
               <>
@@ -645,9 +645,21 @@ function TicketsPageContent() {
                   <button
                     type="button"
                     onClick={() => setFiltersOpen((v) => !v)}
-                    className={`${btnSecondary} flex min-h-[2.75rem] w-full items-center justify-center px-2 text-center text-sm sm:min-h-0 sm:w-auto sm:px-3.5`}
+                    className={`${btnSecondary} flex min-h-[2.75rem] min-w-[2.75rem] w-full items-center justify-center px-2 sm:min-h-0 sm:w-auto sm:px-3`}
+                    aria-label="Фильтры"
+                    title="Фильтры"
                   >
-                    Фильтры
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      className="h-5 w-5"
+                      aria-hidden
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12m-8 7h4" />
+                    </svg>
                   </button>
                   <button
                     type="button"
@@ -659,21 +671,11 @@ function TicketsPageContent() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setFilterText("");
-                      setFilterStatus("all");
-                      setFilterFieldKey("all");
-                      setFilterFieldValue("");
-                    }}
-                    className={`${btnSecondary} flex min-h-[2.75rem] w-full items-center justify-center px-2 text-center text-sm sm:min-h-0 sm:w-auto sm:px-3.5`}
-                  >
-                    Сброс фильтров
-                  </button>
-                  <button
-                    type="button"
                     onClick={downloadSelectedQrZip}
                     disabled={loadingZip || selected.length === 0}
-                    className={`${btnPrimary} flex min-h-[2.75rem] w-full items-center justify-center gap-2 px-2 text-center text-sm sm:min-h-0 sm:w-auto sm:px-3.5`}
+                    className={`${btnPrimary} flex min-h-[2.75rem] min-w-[2.75rem] w-full items-center justify-center gap-2 px-2 text-center text-sm sm:min-h-0 sm:w-auto sm:px-3`}
+                    title="Скачать билеты"
+                    aria-label="Скачать билеты"
                   >
                     {loadingZip ? (
                       <>
@@ -681,7 +683,7 @@ function TicketsPageContent() {
                         <span className="leading-tight">{t("admin.tickets.downloading")}</span>
                       </>
                     ) : (
-                      <span className="leading-tight">{t("admin.tickets.downloadZip")}</span>
+                      <DownloadActionIcon className="h-5 w-5" />
                     )}
                   </button>
                   <button
@@ -702,7 +704,9 @@ function TicketsPageContent() {
                     type="button"
                     onClick={() => void deleteSelectedTickets()}
                     disabled={deleteBulkLoading || selected.length === 0 || eventPast}
-                    className={`${btnDanger} flex min-h-[2.75rem] w-full items-center justify-center gap-2 px-2 text-center text-sm sm:min-h-0 sm:w-auto sm:px-3.5`}
+                    className={`${btnDanger} flex min-h-[2.75rem] min-w-[2.75rem] w-full items-center justify-center gap-2 px-2 text-center text-sm sm:min-h-0 sm:w-auto sm:px-3`}
+                    title={t("admin.tickets.deleteSelected")}
+                    aria-label={t("admin.tickets.deleteSelected")}
                   >
                     {deleteBulkLoading ? (
                       <>
@@ -710,15 +714,15 @@ function TicketsPageContent() {
                         <span className="leading-tight">{t("admin.tickets.deleteSelectedProgress")}</span>
                       </>
                     ) : (
-                      <span className="leading-tight">{t("admin.tickets.deleteSelected")}</span>
+                      <DeleteActionIcon className="h-4 w-4" />
                     )}
                   </button>
-                  <div className="relative w-full sm:w-auto" ref={exportMenuRef}>
+                  <div className="relative w-full sm:ml-auto sm:w-auto" ref={exportMenuRef}>
                     <button
                       type="button"
                       onClick={() => setExportMenuOpen((o) => !o)}
                       disabled={!!exporting}
-                      className={`${btnSecondary} flex min-h-[2.75rem] w-full items-center justify-center gap-1.5 px-2 text-center text-sm sm:min-h-0 sm:w-auto sm:px-3.5`}
+                      className={`${btnSecondary} flex min-h-[2.75rem] w-full items-center justify-center gap-1.5 px-3 text-sm sm:min-h-0 sm:w-auto sm:px-3.5`}
                       aria-expanded={exportMenuOpen}
                       aria-haspopup="menu"
                     >
@@ -739,7 +743,7 @@ function TicketsPageContent() {
                     {exportMenuOpen && !exporting ? (
                       <div
                         role="menu"
-                        className="absolute left-0 right-0 top-full z-20 mt-1 min-w-[11rem] rounded-lg border border-slate-200 bg-white py-1 shadow-lg sm:left-0 sm:right-auto"
+                        className="absolute right-0 top-full z-20 mt-1 min-w-[11rem] rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
                       >
                         <button
                           type="button"
@@ -806,12 +810,15 @@ function TicketsPageContent() {
                     {t("admin.tickets.selected", { count: selected.length })}
                   </span>
                 </div>
+                <p className="text-xs text-slate-500">
+                  *Например, дублировать 5 билетов = +5 билетов к тому, который уже имеется
+                </p>
               </>
             ) : null}
           </div>
           {eventPast || !canEditTickets ? (
             <span
-              className={`${btnPrimary} inline-flex shrink-0 cursor-not-allowed select-none opacity-50`}
+              className={`${btnPrimary} inline-flex w-fit shrink-0 cursor-not-allowed select-none opacity-50`}
               title={
                 !canEditTickets
                   ? t("admin.tickets.readOnlyBanner")
@@ -823,7 +830,7 @@ function TicketsPageContent() {
           ) : (
             <Link
               href={`/admin/events/${eventId}/tickets/new`}
-              className={`${btnPrimary} shrink-0 no-underline`}
+              className={`${btnPrimary} w-fit shrink-0 no-underline`}
             >
               {t("admin.tickets.newTicket")}
             </Link>
@@ -878,6 +885,20 @@ function TicketsPageContent() {
                 onChange={(e) => setFilterFieldValue(e.target.value)}
                 disabled={filterFieldKey === "all"}
               />
+            </div>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterText("");
+                  setFilterStatus("all");
+                  setFilterFieldKey("all");
+                  setFilterFieldValue("");
+                }}
+                className={`${btnSecondary} px-3 py-1.5 text-sm`}
+              >
+                Сброс фильтров
+              </button>
             </div>
           </div>
         ) : null}
