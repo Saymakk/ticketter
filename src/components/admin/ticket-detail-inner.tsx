@@ -176,20 +176,15 @@ export function TicketDetailInner({ ticket, sendToast }: Props) {
             <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-slate-200" aria-hidden />
             <div className="mb-3 flex items-center justify-between gap-3 pr-2">
               <p className="text-sm font-medium text-slate-900">{t("admin.ticketCard.qrSheetTitle")}</p>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={closeQrPanel} className={btnSecondary}>
-                  {t("admin.ticketCard.closeQr")}
-                </button>
-                <button
-                  type="button"
-                  onClick={closeQrPanel}
-                  className={`${btnSecondary} inline-flex min-h-10 min-w-10 items-center justify-center p-0`}
-                  aria-label="Закрыть"
-                  title="Закрыть"
-                >
-                  <span aria-hidden className="text-lg leading-none">×</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={closeQrPanel}
+                className={`${btnSecondary} inline-flex min-h-10 min-w-10 items-center justify-center p-0`}
+                aria-label="Закрыть"
+                title="Закрыть"
+              >
+                <span aria-hidden className="text-lg leading-none">×</span>
+              </button>
             </div>
             <div className="flex justify-center pb-2">
               <img
