@@ -18,12 +18,12 @@ ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
 ENV NEXT_TELEMETRY_DISABLED=1
-# Слабый VPS: без swap сборка часто «висит» на TypeScript / PWA (нехватка RAM).
+# Слабый VPS: без swap сборка часто «висит» на TypeScript (нехватка RAM).
+# SKIP_PWA_BUILD=1 — не подключать next-pwa/workbox (быстрее и меньше RAM).
+# Не задавайте NEXT_FONT_GOOGLE_MOCKED_RESPONSES=1 — ломает сборку (Cannot find module '1').
 ENV NODE_OPTIONS=--max-old-space-size=2048
 ENV SKIP_TYPECHECK=1
 ENV SKIP_PWA_BUILD=1
-# next/font/google (Geist в layout.tsx) без сети даёт «Retrying 1/3…» на часы
-ENV NEXT_FONT_GOOGLE_MOCKED_RESPONSES=1
 RUN npm run build
 
 FROM node:22-alpine AS runner

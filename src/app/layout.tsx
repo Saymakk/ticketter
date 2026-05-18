@@ -1,21 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import GlobalRequestLoadingProvider from "@/components/global-request-loading-provider";
 import IdleTracker from "@/components/idle-tracker";
 import { LocaleProvider } from "@/components/locale-provider";
 import LogoutBar from "@/components/logout-bar";
 import AuthGuard from "@/components/auth-guard";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Ticketter",
@@ -36,7 +25,7 @@ export default function RootLayout({
     <html
       lang="ru"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full`}
+      className="h-full"
     >
       <body className="min-h-full font-sans antialiased">
         <LocaleProvider>

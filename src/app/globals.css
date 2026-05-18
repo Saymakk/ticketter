@@ -3,6 +3,8 @@
 :root {
   --background: #f1f5f9;
   --foreground: #0f172a;
+  --font-geist-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-geist-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", monospace;
 }
 
 @theme inline {
