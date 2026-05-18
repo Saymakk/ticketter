@@ -4,9 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
+    "dev:cloud": "node ./scripts/run-next-with-provider.mjs cloud dev",
+    "dev:local": "node ./scripts/run-next-with-provider.mjs local dev",
     "dev:turbo": "next dev --turbopack",
     "build": "next build --webpack",
+    "build:cloud": "node ./scripts/run-next-with-provider.mjs cloud build",
+    "build:local": "node ./scripts/run-next-with-provider.mjs local build",
     "start": "next start",
+    "start:cloud": "node ./scripts/run-next-with-provider.mjs cloud start",
+    "start:local": "node ./scripts/run-next-with-provider.mjs local start",
+    "supabase:sync-local-env": "node ./scripts/sync-local-supabase-env.mjs",
     "lint": "eslint",
     "deploy": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy.ps1"
   },

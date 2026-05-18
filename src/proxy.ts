@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isEventManagerRole, isStaffRole, isSuperAdminRole } from "@/lib/auth/roles";
+import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/config";
 
 const IDLE_MS = 30 * 60 * 1000;
 
@@ -31,8 +32,8 @@ export async function proxy(request: NextRequest) {
   });
 
   const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      getSupabaseUrl(),
+      getSupabaseAnonKey(),
       {
         cookies: {
           getAll() {

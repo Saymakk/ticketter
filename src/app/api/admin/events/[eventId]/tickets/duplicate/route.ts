@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: Params) {
 
   const { data: sources, error: fetchError } = await admin
     .from("tickets")
-    .select("buyer_name,phone,ticket_type,region,custom_data,uuid")
+    .select("buyer_name,phone,ticket_type,region,custom_data,receipt_image_url,uuid")
     .eq("event_id", eventId)
     .in("uuid", sourceUuids);
 
@@ -69,6 +69,10 @@ export async function POST(request: Request, { params }: Params) {
         src.custom_data && typeof src.custom_data === "object" && !Array.isArray(src.custom_data)
           ? { ...(src.custom_data as Record<string, unknown>) }
           : {},
+      receipt_image_url:
+        src.receipt_image_url != null && String(src.receipt_image_url).trim() !== ""
+          ? String(src.receipt_image_url)
+          : null,
       manager_id: check.userId,
       status: "new" as const,
     }))
