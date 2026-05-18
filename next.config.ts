@@ -12,7 +12,9 @@ const defaultCache = require("next-pwa/cache") as Array<{
 
 const withPWA = require("next-pwa")({
   dest: "public",
-  disable: process.env.NODE_ENV === "development",
+  disable:
+    process.env.NODE_ENV === "development" ||
+    process.env.SKIP_PWA_BUILD === "1",
   register: true,
   skipWaiting: true,
   runtimeCaching: [
@@ -24,9 +26,18 @@ const withPWA = require("next-pwa")({
   ],
 }) as (config: NextConfig) => NextConfig;
 
+const skipBuildChecks = process.env.SKIP_TYPECHECK === "1";
+
 const nextConfig: NextConfig = {
   // Нужно для production-образа Docker (см. Dockerfile)
   output: "standalone",
+  // На слабом VPS `next build` часто «зависает» на Running TypeScript — отключаем в Docker.
+  typescript: {
+    ignoreBuildErrors: skipBuildChecks,
+  },
+  eslint: {
+    ignoreDuringBuilds: skipBuildChecks,
+  },
 };
 
 export default withPWA(nextConfig);

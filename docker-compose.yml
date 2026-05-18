@@ -1,5 +1,6 @@
 # На сервере создайте файл .env рядом с compose (не коммитьте). Он нужен и для сборки (NEXT_PUBLIC_*), и для контейнера.
-# Сборка: docker compose --env-file .env build
+# Сборка: docker compose --env-file .env build --progress=plain
+# На слабом VPS: добавьте swap 2G, сборка 15–40 мин — это нормально.
 # Запуск: docker compose --env-file .env up -d
 services:
   ticketter:
