@@ -22,6 +22,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS=--max-old-space-size=2048
 ENV SKIP_TYPECHECK=1
 ENV SKIP_PWA_BUILD=1
+# next/font/google (Geist в layout.tsx) без сети даёт «Retrying 1/3…» на часы
+ENV NEXT_FONT_GOOGLE_MOCKED_RESPONSES=1
 RUN npm run build
 
 FROM node:22-alpine AS runner
