@@ -5,6 +5,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { isEventManagerRole } from "@/lib/auth/roles";
 import { formatEventDateTimeLine } from "@/lib/event-date";
 import { buildTicketImageSvg } from "@/lib/tickets/ticket-image-svg";
+import { isPdfReceiptUrl } from "@/lib/tickets/receipt-url";
 import { sanitizeForFileSegment } from "@/lib/qr-filename";
 import { canAdminAccessEvent, TICKET_EDIT_FORBIDDEN_MESSAGE } from "@/lib/auth/event-access";
 
@@ -107,7 +108,11 @@ export async function POST(request: Request) {
 
     for (const t of tickets) {
         const ev = eventById.get(t.event_id);
-        const receiptThumbDataUrl = await toDataUrlFromRemoteImage(t.receipt_image_url ?? null);
+        const receiptUrl = t.receipt_image_url ?? null;
+        const receiptIsPdf = isPdfReceiptUrl(receiptUrl);
+        const receiptThumbDataUrl = receiptIsPdf
+          ? null
+          : await toDataUrlFromRemoteImage(receiptUrl);
         const svg = await buildTicketImageSvg(
           {
             title: ev?.title ?? "Билет",
@@ -129,6 +134,7 @@ export async function POST(request: Request) {
                 ? (t.custom_data as Record<string, unknown>)
                 : null,
             receiptThumbDataUrl,
+            receiptIsPdf,
             status: t.status,
           },
           false

@@ -4,6 +4,7 @@ import { getStaffReadableTicket } from "@/lib/auth/ticket-staff-read";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { formatEventDateTimeLine } from "@/lib/event-date";
 import { buildTicketImageSvg } from "@/lib/tickets/ticket-image-svg";
+import { isPdfReceiptUrl } from "@/lib/tickets/receipt-url";
 import {
   contentDispositionWithUtf8Name,
   qrImageFileName,
@@ -68,7 +69,11 @@ export async function GET(request: Request, { params }: Params) {
         .maybeSingle();
       companyName = company?.name ?? null;
     }
-    const receiptThumbDataUrl = await toDataUrlFromRemoteImage(check.ticket.receipt_image_url);
+    const receiptUrl = check.ticket.receipt_image_url;
+    const receiptIsPdf = isPdfReceiptUrl(receiptUrl);
+    const receiptThumbDataUrl = receiptIsPdf
+      ? null
+      : await toDataUrlFromRemoteImage(receiptUrl);
     const svg = await buildTicketImageSvg(
       {
         title: event?.title ?? "Билет",
@@ -92,6 +97,7 @@ export async function GET(request: Request, { params }: Params) {
             ? (check.ticket.custom_data as Record<string, unknown>)
             : null,
         receiptThumbDataUrl,
+        receiptIsPdf,
         status: check.ticket.status,
       },
       false

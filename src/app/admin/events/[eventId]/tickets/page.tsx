@@ -945,7 +945,7 @@ function TicketsPageContent() {
                         Чек
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/*,application/pdf"
                           className={`${inputClass} !mt-1.5`}
                           onChange={(e) => setEditReceiptFile(e.target.files?.[0] ?? null)}
                         />

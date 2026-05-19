@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { downloadPdfReceipt, isPdfReceiptUrl } from "@/lib/tickets/receipt-url";
 
 type Props = {
   src: string | null | undefined;
@@ -16,7 +17,10 @@ export function TicketReceiptPreview({
   className = "",
 }: Props) {
   const [open, setOpen] = useState(false);
-  const hasImage = Boolean(src?.trim());
+  const [pdfDownloading, setPdfDownloading] = useState(false);
+  const url = src?.trim() ?? "";
+  const hasReceipt = Boolean(url);
+  const isPdf = isPdfReceiptUrl(url);
   const touchStartY = useRef<number | null>(null);
 
   useEffect(() => {
@@ -28,23 +32,47 @@ export function TicketReceiptPreview({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
 
+  async function onReceiptClick() {
+    if (isPdf) {
+      if (pdfDownloading) return;
+      setPdfDownloading(true);
+      try {
+        await downloadPdfReceipt(url);
+      } finally {
+        setPdfDownloading(false);
+      }
+      return;
+    }
+    setOpen(true);
+  }
+
   return (
     <>
-      {hasImage ? (
+      {hasReceipt ? (
         <button
           type="button"
-          onClick={() => setOpen(true)}
-          className={`group overflow-hidden rounded-lg border border-slate-200 bg-white ${className}`}
-          title="Открыть чек"
+          onClick={() => void onReceiptClick()}
+          disabled={isPdf && pdfDownloading}
+          className={`group overflow-hidden rounded-lg border border-slate-200 bg-white disabled:opacity-60 ${className}`}
+          title={isPdf ? "Скачать чек (PDF)" : "Открыть чек"}
         >
           <span className="flex h-24 w-24 items-center justify-center bg-slate-50 p-1">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={src!}
-            alt={alt}
-            className="h-full w-full object-contain transition group-hover:scale-105"
-            loading="lazy"
-          />
+            {isPdf ? (
+              <span className="flex h-full w-full flex-col items-center justify-center gap-1 rounded bg-red-50 text-red-700">
+                <span className="text-[10px] font-bold uppercase tracking-wide">PDF</span>
+                <span className="px-1 text-center text-[10px] leading-tight">
+                  {pdfDownloading ? "…" : "Скачать"}
+                </span>
+              </span>
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={url}
+                alt={alt}
+                className="h-full w-full object-contain transition group-hover:scale-105"
+                loading="lazy"
+              />
+            )}
           </span>
         </button>
       ) : (
@@ -54,7 +82,7 @@ export function TicketReceiptPreview({
           {placeholderText}
         </div>
       )}
-      {open && hasImage ? (
+      {open && hasReceipt && !isPdf ? (
         <div
           className="fixed inset-0 z-[260] flex items-center justify-center bg-black/70 p-4"
           role="dialog"
@@ -62,8 +90,7 @@ export function TicketReceiptPreview({
           onClick={() => setOpen(false)}
         >
           <div
-            className="h-[92vh] w-[96vw] max-w-3xl overflow-auto rounded-lg bg-black/30 p-2 sm:h-auto sm:w-auto sm:max-h-[90vh] sm:max-w-[95vw]"
-            style={{ touchAction: "pinch-zoom pan-x pan-y" }}
+            className="max-h-[92vh] max-w-[96vw] overflow-auto rounded-lg bg-white p-2 shadow-lg sm:max-w-4xl"
             onClick={(e) => e.stopPropagation()}
             onTouchStart={(e) => {
               touchStartY.current = e.touches[0]?.clientY ?? null;
@@ -75,12 +102,13 @@ export function TicketReceiptPreview({
               if (start == null || end == null) return;
               if (Math.abs(end - start) >= 90) setOpen(false);
             }}
+            style={{ touchAction: "pinch-zoom pan-x pan-y" }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={src!}
+              src={url}
               alt={alt}
-              className="mx-auto h-auto w-auto max-h-full max-w-full rounded-lg bg-white"
+              className="mx-auto h-auto w-auto max-h-full max-w-full rounded bg-white"
               style={{ touchAction: "pinch-zoom" }}
             />
           </div>

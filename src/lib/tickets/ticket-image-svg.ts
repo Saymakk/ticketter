@@ -17,6 +17,7 @@ type TicketImageModel = {
   checkedInAt: string | null;
   customData: Record<string, unknown> | null;
   receiptThumbDataUrl: string | null;
+  receiptIsPdf?: boolean;
   status: string;
 };
 
@@ -74,7 +75,13 @@ export async function buildTicketImageSvg(model: TicketImageModel, includeStatus
        <image x="148" y="1126" width="138" height="138" href="${model.receiptThumbDataUrl}" preserveAspectRatio="xMidYMid slice"/>
        <text x="304" y="1162" font-size="14" fill="#64748b">Чек</text>
        <text x="304" y="1188" font-size="18" fill="#0f172a">Изображение оплаты прикреплено</text>`
-    : `<rect x="132" y="1110" width="800" height="170" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-dasharray="6 6"/>
+    : model.receiptIsPdf
+      ? `<rect x="132" y="1110" width="800" height="170" rx="16" fill="#fef2f2" stroke="#fecaca"/>
+       <rect x="148" y="1126" width="138" height="138" rx="12" fill="#fee2e2"/>
+       <text x="217" y="1198" text-anchor="middle" font-size="22" font-weight="700" fill="#b91c1c">PDF</text>
+       <text x="304" y="1162" font-size="14" fill="#64748b">Чек</text>
+       <text x="304" y="1188" font-size="18" fill="#0f172a">PDF чек прикреплён</text>`
+      : `<rect x="132" y="1110" width="800" height="170" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-dasharray="6 6"/>
        <foreignObject x="148" y="1142" width="760" height="100">
          <div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;justify-content:center;text-align:center;color:#64748b;font-size:14px;line-height:1.2;">
            Здесь мог бы быть ваш билет

@@ -116,7 +116,7 @@ export default function NewTicketPage() {
   }
 
   async function uploadReceipt(): Promise<string> {
-    if (!receiptFile) throw new Error("Прикрепите изображение чека");
+    if (!receiptFile) throw new Error("Прикрепите чек (изображение или PDF)");
     const fd = new FormData();
     fd.set("receipt", receiptFile);
     const res = await trackedFetch(`/api/admin/events/${eventId}/tickets/receipt-upload`, {
@@ -271,7 +271,7 @@ export default function NewTicketPage() {
               Чек (обязательно)
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,application/pdf"
                 className={inputClass}
                 required
                 onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
