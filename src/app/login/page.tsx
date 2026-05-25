@@ -3,7 +3,7 @@
 import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { resolveAuthEmail } from "@/lib/auth/login";
+import { resolveAuthEmailCandidates } from "@/lib/auth/login";
 import { patchProfileLocale, getStoredLocale } from "@/lib/i18n/sync-locale";
 import LanguageSwitcher from "@/components/language-switcher";
 import { useLocaleContext } from "@/components/locale-provider";
@@ -40,14 +40,22 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const { email } = resolveAuthEmail(login);
+      const { emails } = resolveAuthEmailCandidates(login);
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      let signedIn = false;
 
-      if (error) {
+      for (const email of emails) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (!error) {
+          signedIn = true;
+          break;
+        }
+      }
+
+      if (!signedIn) {
         setErrorText(t("login.errorCredentials"));
         return;
       }

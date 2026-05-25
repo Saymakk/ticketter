@@ -174,5 +174,7 @@ export async function DELETE(_: Request, { params }: Params) {
     return NextResponse.json({ error: delErr.message }, { status: 400 });
   }
 
+  await admin.from("profiles").delete().eq("id", userId);
+
   return NextResponse.json({ ok: true });
 }
