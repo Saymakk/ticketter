@@ -14,7 +14,9 @@ export async function GET() {
   if (check.ctx.profile.role === "super_admin") {
     const { data, error } = await admin
       .from("profiles")
-      .select("id,full_name,phone,role,region,created_at,created_by,can_edit_tickets,company_id")
+      .select(
+        "id,full_name,phone,role,region,created_at,created_by,can_edit_tickets,company_id,managed_password"
+      )
       .eq("role", "user")
       .order("created_at", { ascending: false });
     if (error) {

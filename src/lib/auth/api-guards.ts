@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { loadProfileByUserId } from "@/lib/auth/load-profile";
 import { isEventManagerRole, isStaffRole, isSuperAdminRole } from "@/lib/auth/roles";
 
 type ProfileRow = { role: string };
@@ -24,11 +25,7 @@ export async function getAuthedProfile(): Promise<AuthResult> {
     return { ok: false, status: 401, error: "Не авторизован" };
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  const { profile, error: profileError } = await loadProfileByUserId(user.id, "role");
 
   if (profileError || !profile?.role) {
     return { ok: false, status: 403, error: "Профиль не найден" };

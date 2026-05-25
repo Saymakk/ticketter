@@ -25,6 +25,7 @@ type AdminRow = {
   role: string;
   region: string | null;
   company_id?: string | null;
+  managed_password?: string | null;
 };
 type CompanyItem = { id: string; name: string };
 
@@ -54,6 +55,7 @@ export default function SuperAdminAdminsPage() {
   const [editRegion, setEditRegion] = useState("");
   const [editRole, setEditRole] = useState<"user" | "admin">("admin");
   const [editPassword, setEditPassword] = useState("");
+  const [editCurrentPassword, setEditCurrentPassword] = useState("");
   const [companies, setCompanies] = useState<CompanyItem[]>([]);
   const [createCompanyId, setCreateCompanyId] = useState<string>("");
   const [editCompanyId, setEditCompanyId] = useState<string>("");
@@ -147,12 +149,14 @@ export default function SuperAdminAdminsPage() {
     setEditRegion(a.region ?? "");
     setEditRole(a.role === "admin" ? "admin" : "user");
     setEditPassword("");
+    setEditCurrentPassword(a.managed_password ?? "");
     setEditCompanyId(a.company_id ?? "");
   }
 
   function cancelEdit() {
     setEditId(null);
     setEditPassword("");
+    setEditCurrentPassword("");
   }
 
   async function saveEdit() {
@@ -271,7 +275,7 @@ export default function SuperAdminAdminsPage() {
           ) : admins.length === 0 ? (
             <p className="text-sm text-slate-600">{t("super.admins.listEmpty")}</p>
           ) : (
-            <ul className="space-y-3 text-sm text-slate-800">
+            <ul className="max-h-[min(28rem,55vh)] space-y-3 overflow-y-auto pr-1 text-sm text-slate-800">
               {admins.map((a) => (
                 <li key={a.id} className="rounded-lg border border-slate-100 bg-slate-50/80 p-3">
                   {editId === a.id ? (
@@ -296,6 +300,15 @@ export default function SuperAdminAdminsPage() {
                         <option value="user">{t("admin.users.roleUser")}</option>
                         <option value="admin">{t("admin.users.roleAdmin")}</option>
                       </select>
+                      <label className={labelClass}>
+                        {t("admin.users.currentPassword")}
+                        <input
+                          type="text"
+                          className={`${inputClass} bg-slate-100`}
+                          value={editCurrentPassword || t("admin.users.currentPasswordEmpty")}
+                          readOnly
+                        />
+                      </label>
                       <label className={labelClass}>
                         {t("admin.users.newPasswordOptional")}
                         <input

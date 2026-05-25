@@ -279,6 +279,8 @@
                                 "deleteError":  "Could not delete user",
                                 "deleteSuccess":  "User deleted",
                                 "newPasswordOptional":  "New password (optional)",
+                                "currentPassword":  "Current password",
+                                "currentPasswordEmpty":  "Not stored (created before update or changed manually)",
                                 "newPasswordPh":  "At least 8 characters",
                                 "canEditTicketsLabel":  "Create and edit tickets",
                                 "canEditTicketsHint":  "If unchecked, the user can only view tickets and use the scanner (check-in).",

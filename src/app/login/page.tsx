@@ -62,16 +62,16 @@ function LoginForm() {
         return;
       }
 
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
+      const roleRes = await fetch("/api/auth/role", { credentials: "include" });
+      const roleJson = (await roleRes.json()) as { role?: string; error?: string };
 
-      if (profileError || !profile) {
-        setErrorText(t("login.errorProfile"));
+      if (!roleRes.ok || !roleJson.role) {
+        setErrorText(roleJson.error ?? t("login.errorProfile"));
+        await supabase.auth.signOut();
         return;
       }
+
+      const profile = { role: roleJson.role };
 
       await patchProfileLocale(getStoredLocale());
 

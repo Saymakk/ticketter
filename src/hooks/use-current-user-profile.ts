@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { trackedFetch } from "@/lib/http/tracked-fetch";
+
 export type CurrentUserProfileState = {
   email: string | null;
   fullName: string | null;
@@ -37,7 +38,6 @@ export function useCurrentUserProfile(enabled: boolean): CurrentUserProfileState
       return;
     }
 
-    const supabase = createClient();
     let mounted = true;
 
     async function load(opts?: { showLoading?: boolean }) {
@@ -46,13 +46,16 @@ export function useCurrentUserProfile(enabled: boolean): CurrentUserProfileState
         setState((s) => ({ ...s, loading: true }));
       }
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const res = await trackedFetch("/api/me/profile", {
+          cache: "no-store",
+          credentials: "include",
+          trackGlobalLoading: false,
+        });
+        const json = await res.json().catch(() => ({}));
 
         if (!mounted) return;
 
-        if (!user) {
+        if (!res.ok) {
           setState({
             email: null,
             fullName: null,
@@ -65,36 +68,13 @@ export function useCurrentUserProfile(enabled: boolean): CurrentUserProfileState
           return;
         }
 
-        const email = user.email ?? null;
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name, phone, company_id")
-          .eq("id", user.id)
-          .single();
-
-        if (!mounted) return;
-
-        let companyName: string | null = null;
-        let companyImageUrl: string | null = null;
-        const companyId = profile?.company_id ?? null;
-        if (companyId) {
-          const { data: company } = await supabase
-            .from("companies")
-            .select("name, image_url")
-            .eq("id", companyId)
-            .maybeSingle();
-          if (!mounted) return;
-          companyName = company?.name ?? null;
-          companyImageUrl = company?.image_url ?? null;
-        }
-
         setState({
-          email,
-          fullName: profile?.full_name ?? null,
-          phone: profile?.phone ?? null,
-          companyId,
-          companyName,
-          companyImageUrl,
+          email: typeof json.email === "string" ? json.email : null,
+          fullName: typeof json.fullName === "string" ? json.fullName : null,
+          phone: typeof json.phone === "string" ? json.phone : null,
+          companyId: typeof json.companyId === "string" ? json.companyId : null,
+          companyName: typeof json.companyName === "string" ? json.companyName : null,
+          companyImageUrl: typeof json.companyImageUrl === "string" ? json.companyImageUrl : null,
           loading: false,
         });
       } catch {
@@ -106,18 +86,12 @@ export function useCurrentUserProfile(enabled: boolean): CurrentUserProfileState
 
     void load({ showLoading: true });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "INITIAL_SESSION") return;
-      /* Обновление JWT при возврате во вкладку — без перезагрузки профиля и без лишней анимации */
-      if (event === "TOKEN_REFRESHED") return;
-      void load({ showLoading: false });
-    });
+    const onFocus = () => void load({ showLoading: false });
+    window.addEventListener("focus", onFocus);
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      window.removeEventListener("focus", onFocus);
     };
   }, [enabled]);
 

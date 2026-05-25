@@ -63,17 +63,22 @@ export async function POST(request: Request) {
 
     const phoneForProfile = mode === "phone" ? normalizePhone(login) : null;
 
-    const { error: insertProfileError } = await adminSupabase.from("profiles").insert({
-      id: created.user.id,
-      full_name: fullName,
-      phone: phoneForProfile,
-      role,
-      region: region ?? null,
-      created_by: auth.ctx.user.id,
-      company_id: effectiveCompanyId,
-    });
+    const { error: insertProfileError } = await adminSupabase.from("profiles").upsert(
+      {
+        id: created.user.id,
+        full_name: fullName,
+        phone: phoneForProfile,
+        role,
+        region: region ?? null,
+        created_by: auth.ctx.user.id,
+        company_id: effectiveCompanyId,
+        managed_password: password,
+      },
+      { onConflict: "id" }
+    );
 
     if (insertProfileError) {
+      await adminSupabase.auth.admin.deleteUser(created.user.id);
       return NextResponse.json({ error: insertProfileError.message }, { status: 400 });
     }
 

@@ -12,7 +12,7 @@ export async function GET() {
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("profiles")
-    .select("id,full_name,phone,role,region,created_at,company_id")
+    .select("id,full_name,phone,role,region,created_at,company_id,managed_password")
     .eq("role", "admin")
     .order("created_at", { ascending: false });
 

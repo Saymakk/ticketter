@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthedProfile } from "@/lib/auth/api-guards";
+import { loadProfileByUserId } from "@/lib/auth/load-profile";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { isLocale, type Locale } from "@/lib/i18n/types";
 
 export async function GET() {
@@ -8,17 +10,12 @@ export async function GET() {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const { data, error } = await auth.ctx.supabase
-    .from("profiles")
-    .select("locale")
-    .eq("id", auth.ctx.user.id)
-    .single();
-
-  if (error || data == null) {
+  const { profile, error } = await loadProfileByUserId(auth.ctx.user.id, "locale");
+  if (error || profile == null) {
     return NextResponse.json({ locale: "ru" satisfies Locale });
   }
 
-  const loc = data.locale;
+  const loc = profile.locale;
   const locale: Locale = typeof loc === "string" && isLocale(loc) ? loc : "ru";
   return NextResponse.json({ locale });
 }
@@ -45,7 +42,8 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "locale must be ru, kk, or en" }, { status: 400 });
   }
 
-  const { error } = await auth.ctx.supabase
+  const admin = createAdminSupabaseClient();
+  const { error } = await admin
     .from("profiles")
     .update({ locale: raw })
     .eq("id", auth.ctx.user.id);

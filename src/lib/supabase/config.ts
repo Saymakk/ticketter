@@ -25,8 +25,8 @@ export function getSupabaseUrl(): string {
     provider === "local"
       ? process.env.NEXT_PUBLIC_SUPABASE_URL_LOCAL ??
         process.env.NEXT_PUBLIC_SUPABASE_URL
-      : process.env.NEXT_PUBLIC_SUPABASE_URL_CLOUD ??
-        process.env.NEXT_PUBLIC_SUPABASE_URL;
+      : process.env.NEXT_PUBLIC_SUPABASE_URL ??
+        process.env.NEXT_PUBLIC_SUPABASE_URL_CLOUD;
   return requireEnv(
     value,
     "NEXT_PUBLIC_SUPABASE_URL_CLOUD",
@@ -41,8 +41,8 @@ export function getSupabaseAnonKey(): string {
     provider === "local"
       ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_LOCAL ??
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_CLOUD ??
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_CLOUD;
   return requireEnv(
     value,
     "NEXT_PUBLIC_SUPABASE_ANON_KEY_CLOUD",
@@ -57,8 +57,8 @@ export function getSupabaseServiceRoleKey(): string {
     provider === "local"
       ? process.env.SUPABASE_SERVICE_ROLE_KEY_LOCAL ??
         process.env.SUPABASE_SERVICE_ROLE_KEY
-      : process.env.SUPABASE_SERVICE_ROLE_KEY_CLOUD ??
-        process.env.SUPABASE_SERVICE_ROLE_KEY;
+      : process.env.SUPABASE_SERVICE_ROLE_KEY ??
+        process.env.SUPABASE_SERVICE_ROLE_KEY_CLOUD;
   return requireEnv(
     value,
     "SUPABASE_SERVICE_ROLE_KEY_CLOUD",

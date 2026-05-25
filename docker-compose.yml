@@ -1,4 +1,4 @@
-# На сервере создайте файл .env рядом с compose (не коммитьте). Он нужен и для сборки (NEXT_PUBLIC_*), и для контейнера.
+# На сервере: SUPABASE_PROVIDER=cloud и ключи облачного Supabase (*_CLOUD или NEXT_PUBLIC_*).
 # Сборка: docker compose --env-file .env build --progress=plain
 # На слабом VPS: добавьте swap 2G, сборка 15–40 мин — это нормально.
 # Запуск: docker compose --env-file .env up -d
@@ -16,4 +16,6 @@ services:
       - "127.0.0.1:3001:3000"
     env_file:
       - .env
+    environment:
+      SUPABASE_PROVIDER: cloud
     restart: unless-stopped

@@ -279,6 +279,8 @@
                                 "deleteError":  "Жою мүмкін болмады",
                                 "deleteSuccess":  "Пайдаланушы жойылды",
                                 "newPasswordOptional":  "Жаңа құпия сөз (қажет болса)",
+                                "currentPassword":  "Ағымдағы құпия сөз",
+                                "currentPasswordEmpty":  "Сақталмаған (жаңартуға дейін немесе қолмен өзгертілген)",
                                 "newPasswordPh":  "Кемінде 8 таңба",
                                 "canEditTicketsLabel":  "Билеттерді жасау және өңдеу",
                                 "canEditTicketsHint":  "Белгіні алсаңыз — тек қарау және сканер (тіркеу) қалады.",

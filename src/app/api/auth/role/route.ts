@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthedProfile } from "@/lib/auth/api-guards";
+import { loadProfileByUserId } from "@/lib/auth/load-profile";
 import { isEventManagerRole } from "@/lib/auth/roles";
 
 export async function GET() {
@@ -12,16 +13,11 @@ export async function GET() {
 
   let canEditTickets = true;
   if (!isEventManagerRole(role)) {
-    const { data: row, error } = await auth.ctx.supabase
-      .from("profiles")
-      .select("can_edit_tickets")
-      .eq("id", auth.ctx.user.id)
-      .maybeSingle();
-    if (error) {
-      canEditTickets = true;
-    } else {
-      canEditTickets = row?.can_edit_tickets !== false;
-    }
+    const { profile: row } = await loadProfileByUserId(
+      auth.ctx.user.id,
+      "can_edit_tickets"
+    );
+    canEditTickets = row?.can_edit_tickets !== false;
   }
 
   return NextResponse.json({

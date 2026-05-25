@@ -60,6 +60,8 @@ export async function PATCH(request: Request, { params }: Params) {
     }
   }
 
+  let passwordToStore: string | undefined;
+
   if (parsed.data.password !== undefined) {
     if (!isSuperAdminRole(callerRole)) {
       return NextResponse.json({ error: "Только суперадминистратор может задавать пароль" }, { status: 403 });
@@ -70,6 +72,7 @@ export async function PATCH(request: Request, { params }: Params) {
     if (pwErr) {
       return NextResponse.json({ error: pwErr.message }, { status: 400 });
     }
+    passwordToStore = parsed.data.password;
   }
 
   const effectiveRole =
@@ -102,6 +105,9 @@ export async function PATCH(request: Request, { params }: Params) {
   }
   if (isSuperAdminRole(callerRole) && parsed.data.companyId !== undefined) {
     payload.company_id = parsed.data.companyId;
+  }
+  if (passwordToStore !== undefined) {
+    payload.managed_password = passwordToStore;
   }
 
   if (Object.keys(payload).length > 0) {
