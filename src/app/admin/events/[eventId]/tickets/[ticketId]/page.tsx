@@ -22,6 +22,7 @@ export default function TicketCardPage() {
   const eventId = params.eventId;
   const ticketUuid = params.ticketId;
   const [ticket, setTicket] = useState<TicketDetailModel | null>(null);
+  const [fieldLabels, setFieldLabels] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export default function TicketCardPage() {
         return;
       }
       setTicket(json.ticket);
+      setFieldLabels(json.fieldLabels ?? {});
     }
     if (ticketUuid) load();
   }, [ticketUuid, t]);
@@ -98,7 +100,7 @@ export default function TicketCardPage() {
         }
       />
       <AppCard>
-        <TicketDetailInner ticket={ticket} />
+        <TicketDetailInner ticket={ticket} fieldLabels={fieldLabels} />
       </AppCard>
     </AppShell>
   );

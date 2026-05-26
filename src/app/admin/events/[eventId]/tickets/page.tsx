@@ -14,6 +14,7 @@ import {
 } from "@/lib/ticket-contact";
 import { trackedFetch } from "@/lib/http/tracked-fetch";
 import { ticketStatusLabel } from "@/lib/ticket-status-label";
+import { labelForFieldKey } from "@/lib/tickets/field-labels";
 import CompanyLogo from "@/components/company-logo";
 import { TicketReceiptPreview } from "@/components/ticket-receipt-preview";
 import {
@@ -79,6 +80,7 @@ function TicketsPageContent() {
   const ticketModalUuid = searchParams.get("ticket");
 
   const [tickets, setTickets] = useState<TicketItem[]>([]);
+  const [fieldLabels, setFieldLabels] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [listLoading, setListLoading] = useState(true);
@@ -184,6 +186,7 @@ function TicketsPageContent() {
       setEventHead(json.event ?? null);
       setTicketStats(json.stats ?? null);
       setTickets(json.tickets ?? []);
+      setFieldLabels(json.fieldLabels ?? {});
       if (json.event?.isPast) {
         setEditTicketId(null);
         setEditBuyerName("");
@@ -874,7 +877,7 @@ function TicketsPageContent() {
                 <option value="all">Любое поле</option>
                 {customFieldKeys.map((k) => (
                   <option key={k} value={k}>
-                    {k}
+                    {labelForFieldKey(k, fieldLabels)}
                   </option>
                 ))}
               </select>

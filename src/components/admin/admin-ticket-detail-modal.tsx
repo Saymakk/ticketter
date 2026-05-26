@@ -30,6 +30,7 @@ export function AdminTicketDetailModal({ eventId, uuid, onClose }: Props) {
   const { t } = useLocaleContext();
   const [mounted, setMounted] = useState(false);
   const [ticket, setTicket] = useState<TicketDetailModel | null>(null);
+  const [fieldLabels, setFieldLabels] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
@@ -61,7 +62,7 @@ export function AdminTicketDetailModal({ eventId, uuid, onClose }: Props) {
       setLoading(true);
       const res = await trackedFetch(`/api/tickets/${uuid}`, { cache: "no-store" });
       const json =
-        (await safeReadJson<{ ticket?: TicketDetailModel } & ApiError>(res)) ?? {};
+        (await safeReadJson<{ ticket?: TicketDetailModel; fieldLabels?: Record<string, string> } & ApiError>(res)) ?? {};
 
       if (cancelled) return;
 
@@ -80,6 +81,7 @@ export function AdminTicketDetailModal({ eventId, uuid, onClose }: Props) {
       }
 
       setTicket(json.ticket);
+      setFieldLabels(json.fieldLabels ?? {});
       setLoading(false);
     }
 
@@ -168,6 +170,7 @@ export function AdminTicketDetailModal({ eventId, uuid, onClose }: Props) {
           ) : ticket ? (
             <TicketDetailInner
               ticket={ticket}
+              fieldLabels={fieldLabels}
               sendToast={(msg) => {
                 setToast(msg);
               }}

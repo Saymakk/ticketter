@@ -151,7 +151,12 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json(
-        { error: createUserError?.message ?? "Ошибка создания пользователя" },
+        {
+          error:
+            createUserError?.message === "Database error creating new user"
+              ? "Ошибка БД Supabase Auth. Выполните в SQL Editor миграцию 20260421130000_drop_auth_user_profile_trigger.sql (удаление триггера on_auth_user_created)."
+              : (createUserError?.message ?? "Ошибка создания пользователя"),
+        },
         { status: 400 }
       );
     }

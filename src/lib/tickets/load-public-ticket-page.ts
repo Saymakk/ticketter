@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { formatEventDateTimeLine } from "@/lib/event-date";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { loadEventFieldLabelsMap } from "@/lib/tickets/field-labels";
 import { verifyTicketQrLinkToken } from "@/lib/tickets/ticket-qr-link-token";
 
 export type PublicTicketPageModel = {
@@ -30,6 +31,7 @@ export type PublicTicketPageModel = {
     receipt_image_url: string | null;
     custom_data: unknown;
   };
+  fieldLabels: Record<string, string>;
 };
 
 export const loadPublicTicketPageModel = cache(async function loadPublicTicketPageModel(
@@ -60,6 +62,8 @@ export const loadPublicTicketPageModel = cache(async function loadPublicTicketPa
     .maybeSingle();
 
   if (eErr || !ev) return null;
+
+  const fieldLabels = await loadEventFieldLabelsMap(admin, ticket.event_id);
 
   const title = ev.title != null ? String(ev.title) : "Мероприятие";
   const event_date = typeof ev.event_date === "string" ? ev.event_date : "";
@@ -106,5 +110,6 @@ export const loadPublicTicketPageModel = cache(async function loadPublicTicketPa
       receipt_image_url: ticket.receipt_image_url != null ? String(ticket.receipt_image_url) : null,
       custom_data: ticket.custom_data,
     },
+    fieldLabels,
   };
 });

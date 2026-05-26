@@ -8,6 +8,7 @@ import { ticketStatusLabel } from "@/lib/ticket-status-label";
 import { btnPrimary, btnSecondary, ListLoading } from "@/components/ui/app-shell";
 import CompanyLogo from "@/components/company-logo";
 import { TicketReceiptPreview } from "@/components/ticket-receipt-preview";
+import { orderedCustomFieldEntries } from "@/lib/tickets/field-labels";
 
 type Ticket = {
   id: number;
@@ -55,7 +56,8 @@ function row(rowKey: string, label: string, value: ReactNode) {
 
 function ticketDetailRows(
   ticket: Ticket,
-  t: (key: string) => string
+  t: (key: string) => string,
+  fieldLabels?: Record<string, string>
 ): ReactNode[] {
   const fmt = (iso: string) => new Date(iso).toLocaleString();
   const out: ReactNode[] = [
@@ -116,14 +118,9 @@ function ticketDetailRows(
       )
     );
   }
-  const cd = ticket.custom_data;
-  if (cd && typeof cd === "object" && !Array.isArray(cd)) {
-    for (const [k, v] of Object.entries(cd)) {
-      if (v === null || v === undefined) continue;
-      const s = typeof v === "string" ? v.trim() : String(v);
-      if (!s) continue;
-      out.push(row(`custom:${k}`, k, s));
-    }
+  const customRows = orderedCustomFieldEntries(ticket.custom_data, fieldLabels);
+  for (const { key, label, value } of customRows) {
+    out.push(row(`custom:${key}`, label, value));
   }
   return out;
 }
@@ -145,6 +142,7 @@ export function ScannerTicketConfirmModal({
   const [mounted, setMounted] = useState(false);
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [fieldLabels, setFieldLabels] = useState<Record<string, string>>({});
   const [eventPast, setEventPast] = useState(false);
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
@@ -188,7 +186,7 @@ export function ScannerTicketConfirmModal({
       );
 
       const json =
-        (await safeReadJson<{ ticket?: Ticket; eventPast?: boolean } & ApiError>(res)) ?? {};
+        (await safeReadJson<{ ticket?: Ticket; eventPast?: boolean; fieldLabels?: Record<string, string> } & ApiError>(res)) ?? {};
 
       if (cancelled) return;
 
@@ -201,6 +199,7 @@ export function ScannerTicketConfirmModal({
       }
 
       setTicket(json.ticket);
+      setFieldLabels(json.fieldLabels ?? {});
       setEventPast(!!json.eventPast);
       setLoading(false);
     }
@@ -269,7 +268,7 @@ export function ScannerTicketConfirmModal({
 
   const ticketRows = ticket ? (
     <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3">
-      {ticketDetailRows(ticket, t)}
+      {ticketDetailRows(ticket, t, fieldLabels)}
     </div>
   ) : null;
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { loadPublicTicketPageModel } from "@/lib/tickets/load-public-ticket-page";
+import { orderedCustomFieldEntries } from "@/lib/tickets/field-labels";
 import CompanyLogo from "@/components/company-logo";
 import { TicketReceiptPreview } from "@/components/ticket-receipt-preview";
 
@@ -40,13 +41,10 @@ export default async function PublicTicketQrPage({ params }: Props) {
   const data = await loadPublicTicketPageModel(token);
   if (!data) notFound();
 
-  const { ticket, event, eventLine } = data;
+  const { ticket, event, eventLine, fieldLabels } = data;
   const qrSrc = `/api/public/ticket-qr/${token}`;
 
-  const customEntries =
-    ticket.custom_data && typeof ticket.custom_data === "object" && ticket.custom_data !== null
-      ? Object.entries(ticket.custom_data as Record<string, unknown>)
-      : [];
+  const customRows = orderedCustomFieldEntries(ticket.custom_data, fieldLabels);
 
   const socialLinks = (event.social_links ?? []).filter((x) => /^https?:\/\//i.test(x));
 
@@ -133,8 +131,8 @@ export default async function PublicTicketQrPage({ params }: Props) {
             {ticket.checked_in_at ? (
               <InfoRow label="Пробит" value={formatDateTimeRu(ticket.checked_in_at)} />
             ) : null}
-            {customEntries.map(([k, v]) => (
-              <InfoRow key={k} label={k} value={formatValue(v)} />
+            {customRows.map(({ key, label, value }) => (
+              <InfoRow key={key} label={label} value={formatValue(value)} />
             ))}
           </div>
         </div>

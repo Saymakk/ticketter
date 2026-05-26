@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { isEventManagerRole } from "@/lib/auth/roles";
 import { canAdminAccessEvent } from "@/lib/auth/event-access";
+import { loadEventFieldLabelsMap } from "@/lib/tickets/field-labels";
 
 type Params = { params: Promise<{ uuid: string }> };
 
@@ -69,6 +71,9 @@ export async function GET(_: Request, { params }: Params) {
         companyImageUrl = company?.image_url ?? null;
     }
 
+    const admin = createAdminSupabaseClient();
+    const fieldLabels = await loadEventFieldLabelsMap(admin, ticket.event_id);
+
     return NextResponse.json({
         ticket: {
             ...ticket,
@@ -76,5 +81,6 @@ export async function GET(_: Request, { params }: Params) {
             company_name: companyName,
             company_image_url: companyImageUrl,
         },
+        fieldLabels,
     });
 }

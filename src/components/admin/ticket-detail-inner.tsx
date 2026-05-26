@@ -11,6 +11,7 @@ import { TicketSendQrButtons } from "@/components/admin/ticket-send-qr-buttons";
 import { btnPrimary, btnSecondary } from "@/components/ui/app-shell";
 import { TicketReceiptPreview } from "@/components/ticket-receipt-preview";
 import { DownloadActionIcon, QrActionIcon } from "@/components/ui/action-icons";
+import { orderedCustomFieldEntries } from "@/lib/tickets/field-labels";
 
 export type TicketDetailModel = {
   uuid: string;
@@ -40,11 +41,13 @@ function row(label: string, value: ReactNode) {
 
 type Props = {
   ticket: TicketDetailModel;
+  /** field_key → подпись из event_fields */
+  fieldLabels?: Record<string, string>;
   /** Карточка в модалке — подсказки отправки через onToast в шапку модалки */
   sendToast?: (message: string) => void;
 };
 
-export function TicketDetailInner({ ticket, sendToast }: Props) {
+export function TicketDetailInner({ ticket, fieldLabels, sendToast }: Props) {
   const { t } = useLocaleContext();
   const [qrPanelOpen, setQrPanelOpen] = useState(false);
   const [qrEntered, setQrEntered] = useState(false);
@@ -87,10 +90,7 @@ export function TicketDetailInner({ ticket, sendToast }: Props) {
     };
   }, [qrPanelOpen]);
 
-  const customEntries =
-    ticket.custom_data && typeof ticket.custom_data === "object" && ticket.custom_data !== null
-      ? Object.entries(ticket.custom_data as Record<string, unknown>)
-      : [];
+  const customRows = orderedCustomFieldEntries(ticket.custom_data, fieldLabels);
 
   const ticketEmail = extractEmailFromCustomData(ticket.custom_data);
   const ticketWaPhone = normalizePhoneForWhatsAppLink(ticket.phone);
@@ -119,8 +119,8 @@ export function TicketDetailInner({ ticket, sendToast }: Props) {
           ? row("Билет действителен до", ticket.ticket_valid_until.slice(0, 10))
           : null}
         {row(t("admin.ticketCard.rowCreated"), new Date(ticket.created_at).toLocaleString())}
-        {customEntries.map(([k, v]) => (
-          <Fragment key={k}>{row(k, String(v ?? "—"))}</Fragment>
+        {customRows.map(({ key, label, value }) => (
+          <Fragment key={key}>{row(label, value)}</Fragment>
         ))}
       </div>
 

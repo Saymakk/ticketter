@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { isTicketExpiredByDateString } from "@/lib/event-date";
 import { ensureEventAccess } from "@/lib/auth/event-access";
+import { loadEventFieldLabelsMap } from "@/lib/tickets/field-labels";
 
 export async function GET(request: Request) {
     const supabase = await createServerSupabaseClient();
@@ -37,10 +38,11 @@ export async function GET(request: Request) {
         .eq("id", eventId)
         .maybeSingle();
     const eventPast = ev ? isTicketExpiredByDateString(ev.ticket_valid_until) : false;
+    const admin = createAdminSupabaseClient();
+    const fieldLabels = await loadEventFieldLabelsMap(admin, eventId);
     let companyName: string | null = null;
     let companyImageUrl: string | null = null;
     if (ev?.company_id) {
-        const admin = createAdminSupabaseClient();
         const { data: company } = await admin
             .from("companies")
             .select("name,image_url")
@@ -58,5 +60,6 @@ export async function GET(request: Request) {
             company_image_url: companyImageUrl,
         },
         eventPast,
+        fieldLabels,
     });
 }

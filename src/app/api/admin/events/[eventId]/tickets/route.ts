@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { EVENT_ENDED_MESSAGE, isEventPastByDateString } from "@/lib/event-date";
 import { ensureEventAccess, ensureTicketMutationAccess } from "@/lib/auth/event-access";
+import { loadEventFieldLabelsMap } from "@/lib/tickets/field-labels";
 import { writeAuditLog } from "@/lib/audit";
 
 const createTicketSchema = z.object({
@@ -53,6 +54,8 @@ export async function GET(_: Request, { params }: Params) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
+    const fieldLabels = await loadEventFieldLabelsMap(admin, eventId);
+
     const tickets = data ?? [];
     const checkedIn = tickets.filter((t) => t.status === "checked_in").length;
 
@@ -68,6 +71,7 @@ export async function GET(_: Request, { params }: Params) {
         },
         stats: { total: tickets.length, checkedIn },
         tickets,
+        fieldLabels,
     });
 }
 
