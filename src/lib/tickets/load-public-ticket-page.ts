@@ -28,7 +28,6 @@ export type PublicTicketPageModel = {
     status: string;
     created_at: string;
     checked_in_at: string | null;
-    receipt_image_url: string | null;
     custom_data: unknown;
   };
   fieldLabels: Record<string, string>;
@@ -48,7 +47,7 @@ export const loadPublicTicketPageModel = cache(async function loadPublicTicketPa
   const { data: ticket, error: tErr } = await admin
     .from("tickets")
     .select(
-      "uuid,event_id,buyer_name,phone,ticket_type,region,status,created_at,checked_in_at,custom_data,receipt_image_url"
+      "uuid,event_id,buyer_name,phone,ticket_type,region,status,created_at,checked_in_at,custom_data"
     )
     .eq("uuid", verified.uuid)
     .maybeSingle();
@@ -107,7 +106,6 @@ export const loadPublicTicketPageModel = cache(async function loadPublicTicketPa
       status: String(ticket.status ?? "new"),
       created_at: String(ticket.created_at ?? ""),
       checked_in_at: ticket.checked_in_at != null ? String(ticket.checked_in_at) : null,
-      receipt_image_url: ticket.receipt_image_url != null ? String(ticket.receipt_image_url) : null,
       custom_data: ticket.custom_data,
     },
     fieldLabels,

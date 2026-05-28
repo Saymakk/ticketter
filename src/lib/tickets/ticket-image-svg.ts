@@ -16,8 +16,6 @@ type TicketImageModel = {
   region: string | null;
   checkedInAt: string | null;
   customData: Record<string, unknown> | null;
-  receiptThumbDataUrl: string | null;
-  receiptIsPdf?: boolean;
   status: string;
 };
 
@@ -70,28 +68,11 @@ export async function buildTicketImageSvg(model: TicketImageModel, includeStatus
   const rows = infoRows(model, includeStatus);
   const linkLines = model.socialLinks.filter(Boolean).slice(0, 3);
   const topMeta = [model.address, model.dressCode, model.description].filter(Boolean).join(" · ");
-  const receiptThumb = model.receiptThumbDataUrl
-    ? `<rect x="132" y="1110" width="800" height="170" rx="16" fill="#ffffff" stroke="#e2e8f0"/>
-       <image x="148" y="1126" width="138" height="138" href="${model.receiptThumbDataUrl}" preserveAspectRatio="xMidYMid slice"/>
-       <text x="304" y="1162" font-size="14" fill="#64748b">Чек</text>
-       <text x="304" y="1188" font-size="18" fill="#0f172a">Изображение оплаты прикреплено</text>`
-    : model.receiptIsPdf
-      ? `<rect x="132" y="1110" width="800" height="170" rx="16" fill="#fef2f2" stroke="#fecaca"/>
-       <rect x="148" y="1126" width="138" height="138" rx="12" fill="#fee2e2"/>
-       <text x="217" y="1198" text-anchor="middle" font-size="22" font-weight="700" fill="#b91c1c">PDF</text>
-       <text x="304" y="1162" font-size="14" fill="#64748b">Чек</text>
-       <text x="304" y="1188" font-size="18" fill="#0f172a">PDF чек прикреплён</text>`
-      : `<rect x="132" y="1110" width="800" height="170" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-dasharray="6 6"/>
-       <foreignObject x="148" y="1142" width="760" height="100">
-         <div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;justify-content:center;text-align:center;color:#64748b;font-size:14px;line-height:1.2;">
-           Здесь мог бы быть ваш билет
-         </div>
-       </foreignObject>`;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
-  <rect width="1080" height="1350" fill="#f1f5f9"/>
-  <rect x="80" y="40" width="920" height="1270" rx="28" fill="#ffffff" stroke="#e2e8f0"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1180" viewBox="0 0 1080 1180">
+  <rect width="1080" height="1180" fill="#f1f5f9"/>
+  <rect x="80" y="40" width="920" height="1100" rx="28" fill="#ffffff" stroke="#e2e8f0"/>
   <rect x="80" y="40" width="920" height="225" rx="28" fill="#0f766e"/>
   <text x="112" y="98" font-size="34" font-weight="700" fill="#ffffff">${esc(model.title)}</text>
   <text x="112" y="126" font-size="14" fill="#ccfbf1">${esc(model.companyName ?? "")}</text>
@@ -114,7 +95,6 @@ export async function buildTicketImageSvg(model: TicketImageModel, includeStatus
         `<text x="132" y="${973 + idx * 18}" font-size="13" fill="#0f766e">${esc(url)}</text>`
     )
     .join("\n")}
-  ${receiptThumb}
   <g transform="translate(88, 540)">
     ${rows.join("\n")}
   </g>

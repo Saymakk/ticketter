@@ -5,7 +5,6 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { isEventManagerRole } from "@/lib/auth/roles";
 import { formatEventDateTimeLine } from "@/lib/event-date";
 import { buildTicketImageSvg } from "@/lib/tickets/ticket-image-svg";
-import { isPdfReceiptUrl } from "@/lib/tickets/receipt-url";
 import { sanitizeForFileSegment } from "@/lib/qr-filename";
 import { canAdminAccessEvent, TICKET_EDIT_FORBIDDEN_MESSAGE } from "@/lib/auth/event-access";
 
@@ -35,7 +34,7 @@ export async function POST(request: Request) {
 
     const { data: tickets, error } = await supabase
         .from("tickets")
-        .select("uuid,event_id,buyer_name,phone,region,status,checked_in_at,custom_data,receipt_image_url")
+        .select("uuid,event_id,buyer_name,phone,region,status,checked_in_at,custom_data")
         .in("uuid", uuids);
 
     if (error || !tickets) {
@@ -93,26 +92,8 @@ export async function POST(request: Request) {
       : { data: [] as { id: string; name: string }[] };
     const companyNameById = new Map((companies ?? []).map((c) => [c.id, c.name]));
 
-    async function toDataUrlFromRemoteImage(src: string | null): Promise<string | null> {
-      if (!src) return null;
-      try {
-        const res = await fetch(src, { cache: "no-store" });
-        if (!res.ok) return null;
-        const type = res.headers.get("content-type") || "image/jpeg";
-        const buf = Buffer.from(await res.arrayBuffer());
-        return `data:${type};base64,${buf.toString("base64")}`;
-      } catch {
-        return null;
-      }
-    }
-
     for (const t of tickets) {
         const ev = eventById.get(t.event_id);
-        const receiptUrl = t.receipt_image_url ?? null;
-        const receiptIsPdf = isPdfReceiptUrl(receiptUrl);
-        const receiptThumbDataUrl = receiptIsPdf
-          ? null
-          : await toDataUrlFromRemoteImage(receiptUrl);
         const svg = await buildTicketImageSvg(
           {
             title: ev?.title ?? "Билет",
@@ -133,8 +114,6 @@ export async function POST(request: Request) {
               t.custom_data && typeof t.custom_data === "object" && !Array.isArray(t.custom_data)
                 ? (t.custom_data as Record<string, unknown>)
                 : null,
-            receiptThumbDataUrl,
-            receiptIsPdf,
             status: t.status,
           },
           false
