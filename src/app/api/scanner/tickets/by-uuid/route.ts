@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { isTicketExpiredByDateString } from "@/lib/event-date";
 import { ensureEventAccess } from "@/lib/auth/event-access";
 import { loadEventFieldLabelsMap } from "@/lib/tickets/field-labels";
 
 export async function GET(request: Request) {
-    const supabase = await createServerSupabaseClient();
     const { searchParams } = new URL(request.url);
 
     const uuid = searchParams.get("uuid");
@@ -19,7 +17,8 @@ export async function GET(request: Request) {
     const check = await ensureEventAccess(eventId);
     if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
 
-    const { data: ticket, error } = await supabase
+    const admin = createAdminSupabaseClient();
+    const { data: ticket, error } = await admin
         .from("tickets")
         .select(
             "id,uuid,event_id,buyer_name,phone,ticket_type,region,status,created_at,checked_in_at,custom_data,receipt_image_url"
@@ -32,13 +31,12 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Билет не найден в выбранном мероприятии" }, { status: 404 });
     }
 
-    const { data: ev } = await supabase
+    const { data: ev } = await admin
         .from("events")
         .select("ticket_valid_until,company_id")
         .eq("id", eventId)
         .maybeSingle();
     const eventPast = ev ? isTicketExpiredByDateString(ev.ticket_valid_until) : false;
-    const admin = createAdminSupabaseClient();
     const fieldLabels = await loadEventFieldLabelsMap(admin, eventId);
     let companyName: string | null = null;
     let companyImageUrl: string | null = null;

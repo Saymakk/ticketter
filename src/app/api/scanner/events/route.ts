@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { loadProfileByUserId } from "@/lib/auth/load-profile";
 import { getAdminVisibleEventIds } from "@/lib/auth/event-access";
 
 type ScannerEventRow = {
@@ -66,13 +68,9 @@ export async function GET() {
         return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
+    const { profile, error: profileError } = await loadProfileByUserId(user.id, "role");
 
-    if (!profile || !["user", "admin", "super_admin"].includes(profile.role)) {
+    if (profileError || !profile?.role || !["user", "admin", "super_admin"].includes(profile.role)) {
         return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
     }
 
@@ -80,7 +78,8 @@ export async function GET() {
 
     // Показываем события, где билеты еще действительны
     if (profile.role === "super_admin") {
-        const { data, error } = await supabase
+        const admin = createAdminSupabaseClient();
+        const { data, error } = await admin
             .from("events")
             .select("id,title,city,event_date,event_time,ticket_valid_until")
             .gte("ticket_valid_until", today)
@@ -95,7 +94,8 @@ export async function GET() {
     if (profile.role === "admin") {
         const visibleEventIds = await getAdminVisibleEventIds(user.id);
         if (visibleEventIds.length === 0) return NextResponse.json({ events: [] });
-        const { data, error } = await supabase
+        const admin = createAdminSupabaseClient();
+        const { data, error } = await admin
             .from("events")
             .select("id,title,city,event_date,event_time,ticket_valid_until")
             .in("id", visibleEventIds)

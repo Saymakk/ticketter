@@ -1,5 +1,6 @@
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { loadProfileByUserId } from "@/lib/auth/load-profile";
 import { isSuperAdminRole } from "@/lib/auth/roles";
 
 type StaffRole = "user" | "admin" | "super_admin";
@@ -50,13 +51,9 @@ export async function getAuthedStaff() {
     return { ok: false as const, status: 401, error: "Не авторизован" };
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  const { profile, error: profileError } = await loadProfileByUserId(user.id, "role");
 
-  if (!profile || !["user", "admin", "super_admin"].includes(profile.role)) {
+  if (profileError || !profile?.role || !["user", "admin", "super_admin"].includes(profile.role)) {
     return { ok: false as const, status: 403, error: "Доступ запрещен" };
   }
 
@@ -70,14 +67,21 @@ export async function getAuthedStaff() {
 
 export async function getAdminVisibleEventIds(adminId: string): Promise<string[]> {
   const admin = createAdminSupabaseClient();
-  const [{ data: owned }, { data: delegated }, { data: companyAll }] = await Promise.all([
-    admin.from("events").select("id").eq("created_by", adminId),
-    admin.from("admin_event_access").select("event_id").eq("admin_id", adminId),
-    admin.from("admin_company_access").select("company_id").eq("admin_id", adminId).eq("all_events", true),
-  ]);
+  const [{ data: owned }, { data: delegated }, { data: companyAll }, { data: adminProfile }] =
+    await Promise.all([
+      admin.from("events").select("id").eq("created_by", adminId),
+      admin.from("admin_event_access").select("event_id").eq("admin_id", adminId),
+      admin.from("admin_company_access").select("company_id").eq("admin_id", adminId).eq("all_events", true),
+      admin.from("profiles").select("company_id").eq("id", adminId).maybeSingle(),
+    ]);
 
   let companyEventIds: string[] = [];
-  const companyIds = [...new Set((companyAll ?? []).map((x) => x.company_id))];
+  const companyIds = [
+    ...new Set([
+      ...(companyAll ?? []).map((x) => x.company_id),
+      ...(adminProfile?.company_id ? [adminProfile.company_id] : []),
+    ]),
+  ];
   if (companyIds.length > 0) {
     const { data: companyEvents } = await admin.from("events").select("id").in("company_id", companyIds);
     companyEventIds = (companyEvents ?? []).map((x) => x.id);
@@ -120,7 +124,14 @@ export async function canAdminAccessEvent(adminId: string, eventId: string): Pro
     .eq("company_id", ev.company_id)
     .eq("all_events", true)
     .maybeSingle();
-  return Boolean(companyWide);
+  if (companyWide) return true;
+
+  const { data: adminProfile } = await admin
+    .from("profiles")
+    .select("company_id")
+    .eq("id", adminId)
+    .maybeSingle();
+  return adminProfile?.company_id === ev.company_id;
 }
 
 export async function ensureEventAccess(eventId: string) {

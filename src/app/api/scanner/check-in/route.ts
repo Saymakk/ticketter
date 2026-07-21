@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { isTicketExpiredByDateString, SCAN_EVENT_ENDED_TICKET_INVALID } from "@/lib/event-date";
 import { ensureEventAccess } from "@/lib/auth/event-access";
 import { writeAuditLog } from "@/lib/audit";
@@ -11,17 +11,6 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
-    const supabase = await createServerSupabaseClient();
-
-    const {
-        data: { user },
-        error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-        return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
-    }
-
     const body = await request.json();
     const parsed = schema.safeParse(body);
 
@@ -31,9 +20,12 @@ export async function POST(request: Request) {
 
     const { uuid, eventId } = parsed.data;
     const access = await ensureEventAccess(eventId);
-    if (!access.ok) return NextResponse.json({ error: access.error, success: false }, { status: access.status });
+    if (!access.ok) {
+        return NextResponse.json({ error: access.error, success: false }, { status: access.status });
+    }
 
-    const { data: evRow } = await supabase
+    const admin = createAdminSupabaseClient();
+    const { data: evRow } = await admin
       .from("events")
       .select("ticket_valid_until")
       .eq("id", eventId)
@@ -45,32 +37,53 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: SCAN_EVENT_ENDED_TICKET_INVALID, success: false }, { status: 403 });
     }
 
-    // В Supabase убедитесь, что RPC check_in_ticket_scoped разрешает роль «user» (не только admin).
-    const { data, error } = await supabase.rpc("check_in_ticket_scoped", {
-        p_ticket_uuid: uuid,
-        p_event_id: eventId,
-        p_user_id: user.id,
+    const { data: ticket, error: ticketError } = await admin
+      .from("tickets")
+      .select("id,status")
+      .eq("uuid", uuid)
+      .eq("event_id", eventId)
+      .maybeSingle();
+
+    if (ticketError || !ticket) {
+        return NextResponse.json(
+          { error: "Билет не найден в выбранном мероприятии", success: false },
+          { status: 404 }
+        );
+    }
+
+    if (ticket.status === "checked_in") {
+        return NextResponse.json({ success: false, message: "Билет уже пробит" });
+    }
+
+    const checkedInAt = new Date().toISOString();
+    const { data: updated, error: updateError } = await admin
+      .from("tickets")
+      .update({ status: "checked_in", checked_in_at: checkedInAt })
+      .eq("id", ticket.id)
+      .eq("status", "new")
+      .select("id")
+      .maybeSingle();
+
+    if (updateError) {
+        return NextResponse.json({ error: updateError.message, success: false }, { status: 400 });
+    }
+
+    if (!updated) {
+        return NextResponse.json({ success: false, message: "Билет уже пробит" });
+    }
+
+    void writeAuditLog({
+        actorId: access.userId,
+        action: "ticket.check_in",
+        resourceType: "ticket",
+        resourceId: uuid,
+        request,
+        method: "POST",
+        metadata: { eventId },
     });
 
-    if (error) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    const row = data?.[0];
-    const success = !!row?.success;
-    if (success) {
-        void writeAuditLog({
-            actorId: user.id,
-            action: "ticket.check_in",
-            resourceType: "ticket",
-            resourceId: uuid,
-            request,
-            method: "POST",
-            metadata: { eventId },
-        });
-    }
     return NextResponse.json({
-        success,
-        message: row?.message ?? "Неизвестный ответ",
+        success: true,
+        message: "Билет пробит",
     });
 }
