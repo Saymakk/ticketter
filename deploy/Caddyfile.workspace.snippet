@@ -1,0 +1,16 @@
+# Caddy: myworkspace.su as Workspace portal, ticketter subdomain as Ticketter.
+# Replace the previous permanent redirects from apex/www → ticketter.
+#
+# Both hosts point at the same Next.js process; hostname routing is handled in src/proxy.ts.
+
+myworkspace.su {
+	reverse_proxy 127.0.0.1:3001
+}
+
+www.myworkspace.su {
+	redir https://myworkspace.su{uri} permanent
+}
+
+ticketter.myworkspace.su {
+	reverse_proxy 127.0.0.1:3001
+}

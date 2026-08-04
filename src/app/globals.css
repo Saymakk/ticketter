@@ -18,3 +18,40 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* Workspace portal — system light/dark catalog theme */
+.workspace-portal {
+  --ws-bg: #f4f6f8;
+  --ws-fg: #0f172a;
+  --ws-muted: #64748b;
+  --ws-card: #ffffff;
+  --ws-card-border: rgba(15, 23, 42, 0.08);
+  --ws-thumb-bg: #e8eef3;
+  --ws-accent: #0f766e;
+  --ws-accent-soft: rgba(15, 118, 110, 0.12);
+  --ws-glow-a: rgba(15, 118, 110, 0.12);
+  --ws-glow-b: rgba(51, 65, 85, 0.08);
+  --ws-dot: rgba(15, 23, 42, 0.06);
+  --ws-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.04);
+  --ws-shadow-hover: 0 4px 12px rgba(15, 23, 42, 0.06), 0 16px 40px rgba(15, 118, 110, 0.12);
+  color: var(--ws-fg);
+  background: var(--ws-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  .workspace-portal {
+    --ws-bg: #0b0f14;
+    --ws-fg: #f1f5f9;
+    --ws-muted: #94a3b8;
+    --ws-card: #121821;
+    --ws-card-border: rgba(148, 163, 184, 0.14);
+    --ws-thumb-bg: #1a222d;
+    --ws-accent: #2dd4bf;
+    --ws-accent-soft: rgba(45, 212, 191, 0.14);
+    --ws-glow-a: rgba(45, 212, 191, 0.08);
+    --ws-glow-b: rgba(56, 189, 248, 0.06);
+    --ws-dot: rgba(148, 163, 184, 0.08);
+    --ws-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.35);
+    --ws-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(45, 212, 191, 0.18);
+  }
+}

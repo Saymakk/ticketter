@@ -95,6 +95,13 @@ export default function AdminPage() {
           />
           {role === "super_admin" && (
             <HomeNavTile
+              href="/admin/workspace"
+              title={t("admin.home.tileWorkspaceTitle")}
+              description={t("admin.home.tileWorkspaceDesc")}
+            />
+          )}
+          {role === "super_admin" && (
+            <HomeNavTile
               href="/super-admin/admins"
               title={t("admin.home.tileAdminsTitle")}
               description={t("admin.home.tileAdminsDesc")}

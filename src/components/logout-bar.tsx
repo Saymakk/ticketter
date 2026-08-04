@@ -25,6 +25,8 @@ export default function LogoutBar() {
   if (
     pathname === "/login" ||
     pathname === "/" ||
+    pathname === "/workspace" ||
+    pathname?.startsWith("/workspace/") ||
     pathname === "/scanner" ||
     pathname === "/ticket-qr" ||
     pathname?.startsWith("/ticket-qr/")

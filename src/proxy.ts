@@ -2,12 +2,16 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isEventManagerRole, isStaffRole, isSuperAdminRole } from "@/lib/auth/roles";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/config";
+import { WORKSPACE_OWNER_EMAIL } from "@/lib/workspace/access";
+import { getRequestHost, isWorkspaceHost } from "@/lib/workspace/hosts";
 
 const IDLE_MS = 30 * 60 * 1000;
 
 function isPublicPath(pathname: string) {
   return (
       pathname === "/login" ||
+      pathname === "/workspace" ||
+      pathname.startsWith("/workspace/") ||
       pathname.startsWith("/_next") ||
       pathname === "/favicon.ico"
   );
@@ -22,6 +26,14 @@ function parseLastActivity(raw: string | undefined): number | null {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const host = getRequestHost(request);
+
+  // myworkspace.su → Workspace portal; ticketter.myworkspace.su keeps Ticketter home
+  if (isWorkspaceHost(host) && (pathname === "/" || pathname === "")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/workspace";
+    return NextResponse.rewrite(url);
+  }
 
   if (isPublicPath(pathname)) {
     return NextResponse.next();
@@ -127,6 +139,15 @@ export async function proxy(request: NextRequest) {
       const needsManager =
         pathname.startsWith("/admin/manage") || pathname.startsWith("/admin/users");
       if (needsManager && !isEventManagerRole(role)) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/admin";
+        return NextResponse.redirect(url);
+      }
+      if (
+        pathname.startsWith("/admin/workspace") &&
+        !isSuperAdminRole(role) &&
+        (user.email?.trim().toLowerCase() ?? "") !== WORKSPACE_OWNER_EMAIL
+      ) {
         const url = request.nextUrl.clone();
         url.pathname = "/admin";
         return NextResponse.redirect(url);
