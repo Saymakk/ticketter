@@ -2,6 +2,7 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
+COPY prisma ./prisma
 RUN npm ci
 
 FROM node:22-alpine AS builder
@@ -13,9 +14,13 @@ COPY . .
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_HEALTHY_LIFE_SUPABASE_URL
+ARG NEXT_PUBLIC_HEALTHY_LIFE_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_HEALTHY_LIFE_SUPABASE_URL=$NEXT_PUBLIC_HEALTHY_LIFE_SUPABASE_URL
+ENV NEXT_PUBLIC_HEALTHY_LIFE_SUPABASE_ANON_KEY=$NEXT_PUBLIC_HEALTHY_LIFE_SUPABASE_ANON_KEY
 
 ENV NEXT_TELEMETRY_DISABLED=1
 # Слабый VPS: без swap сборка часто «висит» на TypeScript (нехватка RAM).
@@ -36,6 +41,10 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Prisma's generated client + query engine binary (used by the Healthy Life module) —
+# standalone's file tracer doesn't reliably bundle the native engine, copy it explicitly.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
 USER nextjs
 EXPOSE 3000

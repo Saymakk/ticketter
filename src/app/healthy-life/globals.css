@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f3efe6;
+  --bg-elevated: #faf7f0;
+  --surface: #fffcf7;
+  --ink: #1c372a;
+  --muted: #6d7b70;
+  --line: #d9e0d6;
+  --accent: #2f6b4f;
+  --accent-ink: #214836;
+  --accent-soft: #dceadf;
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  min-height: 100dvh;
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #d9ebe0 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #efe6d4 0%, transparent 45%),
+    linear-gradient(180deg, #f6f2e9 0%, #eef3ea 48%, #f3efe6 100%);
+  font-family: var(--font-body), "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+  letter-spacing: -0.02em;
+}
+
+.brand-mark {
+  font-family: var(--font-body), sans-serif;
+  font-weight: 700;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-rise {
+  animation: rise 0.45s ease-out both;
+}
+
+input,
+textarea,
+button,
+a {
+  font: inherit;
+  touch-action: manipulation;
+}

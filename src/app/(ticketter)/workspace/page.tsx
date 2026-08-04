@@ -30,7 +30,7 @@ export default async function WorkspacePortalPage() {
           Workspace
         </h1>
         <p className="mt-3 text-base leading-relaxed text-[var(--ws-muted)] sm:text-lg">
-          Все проекты в одном месте. Откройте карточку — сайт откроется в новой вкладке.
+          Все проекты в одном месте.
         </p>
       </header>
 

@@ -46,6 +46,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# original standalone Healthy Life project — merged into src/**/healthy-life;
+# kept on disk only as reference, has its own nested .git so never track it here.
+/healthy_life/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

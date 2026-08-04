@@ -1,4 +1,7 @@
 /** Hostnames that serve the Workspace portal instead of Ticketter home */
+import { normalizeHost } from "@/lib/http/host";
+
+export { getRequestHost } from "@/lib/http/host";
 
 const WORKSPACE_HOSTS = new Set([
   "myworkspace.su",
@@ -15,24 +18,11 @@ function envWorkspaceHosts(): string[] {
     .filter(Boolean);
 }
 
-export function normalizeHost(hostHeader: string | null | undefined): string {
-  if (!hostHeader) return "";
-  return hostHeader.split(":")[0]?.trim().toLowerCase() ?? "";
-}
+export { normalizeHost };
 
 export function isWorkspaceHost(hostHeader: string | null | undefined): boolean {
   const host = normalizeHost(hostHeader);
   if (!host) return false;
   if (WORKSPACE_HOSTS.has(host)) return true;
   return envWorkspaceHosts().includes(host);
-}
-
-export function getRequestHost(request: {
-  headers: { get(name: string): string | null };
-}): string {
-  return (
-    request.headers.get("x-forwarded-host") ??
-    request.headers.get("host") ??
-    ""
-  );
 }

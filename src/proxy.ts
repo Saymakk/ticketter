@@ -3,7 +3,10 @@ import { createServerClient } from "@supabase/ssr";
 import { isEventManagerRole, isStaffRole, isSuperAdminRole } from "@/lib/auth/roles";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/config";
 import { WORKSPACE_OWNER_EMAIL } from "@/lib/workspace/access";
-import { getRequestHost, isWorkspaceHost } from "@/lib/workspace/hosts";
+import { isWorkspaceHost } from "@/lib/workspace/hosts";
+import { getRequestHost } from "@/lib/http/host";
+import { isHealthyLifeHost } from "@/lib/healthy-life/hosts";
+import { healthyLifeProxy } from "@/lib/healthy-life/proxy";
 
 const IDLE_MS = 30 * 60 * 1000;
 
@@ -28,11 +31,21 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = getRequestHost(request);
 
+  // healthy-life.myworkspace.su → its own app (own Supabase/users), routed to /healthy-life/*
+  if (isHealthyLifeHost(host)) {
+    return healthyLifeProxy(request);
+  }
+
   // myworkspace.su → Workspace portal; ticketter.myworkspace.su keeps Ticketter home
   if (isWorkspaceHost(host) && (pathname === "/" || pathname === "")) {
     const url = request.nextUrl.clone();
     url.pathname = "/workspace";
     return NextResponse.rewrite(url);
+  }
+
+  // Ticketter's own API routes guard themselves (api-guards); skip proxy overhead for them.
+  if (pathname.startsWith("/api")) {
+    return NextResponse.next();
   }
 
   if (isPublicPath(pathname)) {
@@ -159,5 +172,8 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|.*\\..*).*)"],
+  // "api" is intentionally included so healthy-life.myworkspace.su can rewrite its own
+  // fetch("/api/...") calls to /healthy-life/api/...; Ticketter's own /api/* is passed
+  // straight through above (each route guards itself via lib/auth/api-guards).
+  matcher: ["/((?!_next/static|_next/image|.*\\..*).*)"],
 };

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import "../globals.css";
 import GlobalRequestLoadingProvider from "@/components/global-request-loading-provider";
 import IdleTracker from "@/components/idle-tracker";
 import { LocaleProvider } from "@/components/locale-provider";

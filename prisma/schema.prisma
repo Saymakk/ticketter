@@ -1,0 +1,99 @@
+// Prisma is used exclusively by the Healthy Life module (healthy-life.myworkspace.su).
+// Ticketter itself talks to Supabase directly via @supabase/supabase-js — no other model needs this.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("HEALTHY_LIFE_DATABASE_URL")
+  directUrl = env("HEALTHY_LIFE_DIRECT_URL")
+}
+
+model Profile {
+  id               String        @id @default(cuid())
+  userId           String?       @unique // Healthy Life Supabase auth.users.id
+  name             String        @default("Пользователь")
+  dailyCalorieGoal Int           @default(2000)
+  targetWeightKg   Float?
+  heightCm         Float?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  meals            Meal[]
+  weights          WeightEntry[]
+  advice           Advice[]
+  workouts         Workout[]
+}
+
+model Meal {
+  id             String   @id @default(cuid())
+  profileId      String
+  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  date           String // YYYY-MM-DD
+  mealType       String   @default("snack") // breakfast | lunch | dinner | snack
+  name           String
+  description    String?
+  calories       Float
+  protein        Float?
+  carbs          Float?
+  fat            Float?
+  portionGrams   Float?
+  photoPath      String? // public URL in Supabase Storage
+  aiDetectedName String?
+  aiCalories     Float?
+  aiConfidence   Float?
+  aiRawResponse  String?  @db.Text
+  userCorrected  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([profileId, date])
+}
+
+model WeightEntry {
+  id        String   @id @default(cuid())
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  date      String // YYYY-MM-DD
+  weightKg  Float
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([profileId, date])
+  @@index([profileId, date])
+}
+
+model Advice {
+  id        String   @id @default(cuid())
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  period    String // day | week | month
+  periodKey String // 2026-08-04 | 2026-W32 | 2026-08
+  title     String
+  content   String   @db.Text
+  summary   String?
+  createdAt DateTime @default(now())
+
+  @@unique([profileId, period, periodKey])
+  @@index([profileId, period])
+}
+
+model Workout {
+  id             String   @id @default(cuid())
+  profileId      String
+  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  date           String // YYYY-MM-DD
+  type           String // running | walking | cycling | strength | yoga | swimming | hiit | sports | other
+  quantity       Float // minutes / km / sets / reps depending on unit
+  unit           String   @default("minutes") // minutes | km | sets | reps
+  name           String?
+  note           String?
+  caloriesBurned Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([profileId, date])
+  @@index([profileId, type])
+}
