@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/healthy-life/prisma";
 
-export type AiRecordKind = "food_analysis" | "advice";
+export type AiRecordKind = "food_analysis" | "medication_analysis" | "advice";
 
 export async function saveAiRecord(params: {
   profileId: string;

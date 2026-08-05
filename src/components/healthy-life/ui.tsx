@@ -104,6 +104,14 @@ export const inputClass =
 export const medInputClass =
   "w-full rounded-2xl border border-[var(--med-line)] bg-[var(--med-surface)] px-3 py-3 text-base text-[var(--ink)] outline-none transition focus:border-[var(--med-accent)]";
 
+export function LoadingText({ label }: { label: string }) {
+  return (
+    <p className="py-16 text-center text-[var(--muted)]" role="status">
+      {label}
+    </p>
+  );
+}
+
 export function Modal({
   open,
   onClose,
@@ -119,7 +127,7 @@ export function Modal({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[max(0.5rem,env(safe-area-inset-top))] sm:items-center sm:p-4 sm:pt-4">
       <button
         type="button"
         aria-label="Закрыть"
@@ -131,7 +139,7 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         className={cn(
-          "relative z-10 flex max-h-[min(92dvh,100%)] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.75rem] border shadow-2xl animate-rise sm:rounded-[1.75rem]",
+          "relative z-10 flex max-h-[min(92dvh,100%)] w-full max-w-lg flex-col overflow-hidden rounded-b-[1.75rem] border shadow-2xl animate-rise sm:rounded-[1.75rem]",
           tone === "med"
             ? "border-[var(--med-line)] bg-[var(--med-surface)]"
             : "border-[var(--line)] bg-[var(--surface)]",

@@ -7,6 +7,7 @@ import { useHlI18n, useT } from "@/lib/healthy-life/i18n";
 import type { HlMessageKey } from "@/lib/healthy-life/i18n";
 import { Button, Field, Modal, inputClass } from "@/components/healthy-life/ui";
 import { OpenablePhoto } from "@/components/healthy-life/PhotoLightbox";
+import { useHlToast } from "@/components/healthy-life/HlToast";
 
 type Analysis = {
   name: string;
@@ -39,6 +40,7 @@ export function AddMealModal({
   const { fetch: hlFetch } = useHlRouting();
   const { locale } = useHlI18n();
   const t = useT();
+  const toast = useHlToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const analyzeAbortRef = useRef<AbortController | null>(null);
   const previewUrlRef = useRef<string | null>(null);
@@ -209,6 +211,7 @@ export function AddMealModal({
         throw new Error(data.error || t("error"));
       }
       onSaved();
+      toast.success(t("toast.mealSaved"));
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("error"));

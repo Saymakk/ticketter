@@ -9,6 +9,7 @@ import { useT } from "@/lib/healthy-life/i18n";
 import type { HlMessageKey } from "@/lib/healthy-life/i18n";
 import { Button, Field, Modal, inputClass } from "@/components/healthy-life/ui";
 import { OpenablePhoto } from "@/components/healthy-life/PhotoLightbox";
+import { useHlToast } from "@/components/healthy-life/HlToast";
 
 export type MealDetail = {
   id: string;
@@ -46,6 +47,7 @@ export function MealDetailModal({
 }) {
   const { fetch: hlFetch } = useHlRouting();
   const t = useT();
+  const toast = useHlToast();
   const editable = Boolean(meal && !readOnly && isWithinEditWindow(meal.createdAt));
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -96,6 +98,7 @@ export function MealDetailModal({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || t("meal.saveFailed"));
       onSaved();
+      toast.success(t("toast.mealSaved"));
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("error"));
@@ -113,6 +116,7 @@ export function MealDetailModal({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || t("meal.deleteFailed"));
       onDeleted();
+      toast.success(t("toast.mealDeleted"));
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("error"));

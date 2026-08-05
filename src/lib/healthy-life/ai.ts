@@ -228,3 +228,69 @@ export function mockFoodAnalysis(reason?: string): FoodAnalysis {
     items: [{ name: "Блюдо", calories: 450, grams: 300 }],
   };
 }
+
+const MedicationAnalysisSchema = z.object({
+  name: z.string(),
+  dosage: z.string().optional().nullable(),
+  confidence: z.number().min(0).max(1).optional().nullable(),
+});
+
+export type MedicationAnalysis = z.infer<typeof MedicationAnalysisSchema>;
+
+/** Read medication name (and dosage if visible) from a photo of a pack / blister / bottle. */
+export async function analyzeMedicationImage(
+  base64: string,
+  mimeType: string,
+  language = "Russian",
+): Promise<MedicationAnalysis> {
+  const client = getClient();
+  const response = await client.chat.completions.create({
+    model: getModel(),
+    temperature: 0.1,
+    messages: [
+      {
+        role: "system",
+        content: `You identify medications from photos (packaging, blister, bottle, label).
+Do not give medical advice. Do not ask questions.
+
+LANGUAGE: write "name" and "dosage" in ${language}.
+
+Reply ONLY with valid JSON (no markdown):
+{
+  "name": "medication trade or generic name as on the package",
+  "dosage": "strength/dose if visible (e.g. 500 mg, 1 tablet) or null",
+  "confidence": number from 0 to 1
+}
+
+If you cannot identify it, return {"name":"","dosage":null,"confidence":0}.`,
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Read the medication name from this photo. Prefer the brand/trade name on the packaging.",
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:${mimeType};base64,${base64}`,
+              detail: "low",
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  const text = response.choices[0]?.message?.content ?? "";
+  return MedicationAnalysisSchema.parse(extractJson(text));
+}
+
+export function mockMedicationAnalysis(reason?: string): MedicationAnalysis {
+  return {
+    name: "",
+    dosage: null,
+    confidence: 0,
+  };
+}

@@ -28,7 +28,7 @@ export function AuthNotice({
       role="status"
       aria-live="polite"
       className={cn(
-        "animate-rise fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-[max(0.75rem,env(safe-area-inset-top))]",
+        "animate-rise fixed inset-x-0 top-0 z-[90] flex justify-center px-4 pt-[max(0.75rem,env(safe-area-inset-top))]",
       )}
     >
       <div

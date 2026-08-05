@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/healthy-life/supabase/client";
+import { useHlToast } from "@/components/healthy-life/HlToast";
 import {
   clearAppCaches,
   invalidateRelatedCaches,
@@ -28,6 +29,7 @@ export function ProfileView() {
   const { path, fetch: hlFetch } = useHlRouting();
   const { locale, setLocale, locales, meta } = useHlI18n();
   const t = useT();
+  const toast = useHlToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [name, setName] = useState("");
   const [dailyCalorieGoal, setDailyCalorieGoal] = useState("2000");
@@ -102,9 +104,12 @@ export function ProfileView() {
       setProfile(data);
       writeCache("profile", data as Profile);
       invalidateRelatedCaches({ progress: true, advice: true, weight: true, profile: false });
-      setMessage(t("save"));
+      toast.success(t("toast.profileSaved"));
+      setMessage(null);
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : t("error"));
+      const msg = e instanceof Error ? e.message : t("error");
+      setMessage(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -160,6 +165,7 @@ export function ProfileView() {
                         onClick={() => {
                           setLocale(loc as HlLocale);
                           setLangOpen(false);
+                          toast.success(t("toast.languageChanged"));
                         }}
                       >
                         <span>{meta[loc].nativeName}</span>
@@ -202,7 +208,7 @@ export function ProfileView() {
             onChange={(e) => setHeightCm(e.target.value)}
           />
         </Field>
-        {message ? <p className="text-sm text-[var(--muted)]">{message}</p> : null}
+        {message ? <p className="text-sm text-[#8a3b2f]">{message}</p> : null}
         <Button type="button" className="w-full" disabled={saving || !profile} onClick={save}>
           {saving ? t("saving") : t("profile.saveProfile")}
         </Button>

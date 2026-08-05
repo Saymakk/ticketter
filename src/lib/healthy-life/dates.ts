@@ -1,4 +1,4 @@
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, subDays } from "date-fns";
 import { ru } from "date-fns/locale";
 
 export function todayKey(date = new Date()) {
@@ -34,6 +34,43 @@ export function monthRange(date = new Date()) {
     start: todayKey(start),
     end: todayKey(end),
     label: format(start, "LLLL yyyy", { locale: ru }),
+  };
+}
+
+/** Last fully completed period (advice is only generated after the period ends). */
+export function completedPeriodRange(period: "day" | "week" | "month", now = new Date()) {
+  if (period === "day") {
+    const d = subDays(now, 1);
+    const key = todayKey(d);
+    return {
+      periodKeyBase: key,
+      start: key,
+      end: key,
+      label: format(d, "d MMMM yyyy", { locale: ru }),
+      currentLabel: format(now, "d MMMM yyyy", { locale: ru }),
+    };
+  }
+  if (period === "week") {
+    const currentStart = startOfWeek(now, { weekStartsOn: 1 });
+    const prev = subDays(currentStart, 1);
+    const range = weekRange(prev);
+    return {
+      periodKeyBase: weekKey(prev),
+      start: range.start,
+      end: range.end,
+      label: range.label,
+      currentLabel: weekRange(now).label,
+    };
+  }
+  const currentStart = startOfMonth(now);
+  const prev = subDays(currentStart, 1);
+  const range = monthRange(prev);
+  return {
+    periodKeyBase: monthKey(prev),
+    start: range.start,
+    end: range.end,
+    label: range.label,
+    currentLabel: monthRange(now).label,
   };
 }
 

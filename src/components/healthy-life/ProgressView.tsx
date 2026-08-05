@@ -18,7 +18,9 @@ import {
 } from "@/lib/healthy-life/workouts";
 import { OverviewChart, WorkoutTypeChart } from "@/components/healthy-life/ProgressCharts";
 import { useHlRouting } from "@/lib/healthy-life/routing";
-import { Button, Card, Field, PageHeader, Shell, inputClass } from "@/components/healthy-life/ui";
+import { useT } from "@/lib/healthy-life/i18n";
+import { Button, Card, Field, PageHeader, Shell, inputClass, LoadingText } from "@/components/healthy-life/ui";
+import { useHlToast } from "@/components/healthy-life/HlToast";
 
 type Tab = "chart" | "workout" | "weight";
 
@@ -80,6 +82,8 @@ function progressKey(days: number) {
 
 export function ProgressView() {
   const { fetch: hlFetch } = useHlRouting();
+  const t = useT();
+  const toast = useHlToast();
   const [tab, setTab] = useState<Tab>("chart");
   const [rangeDays, setRangeDays] = useState(14);
   const [progress, setProgress] = useState<ProgressData | null>(null);
@@ -240,6 +244,7 @@ export function ProgressView() {
       setTab("chart");
       invalidateRelatedCaches({ day: workoutDate });
       await refreshAll();
+      toast.success(t("toast.workoutSaved"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка");
     } finally {
@@ -252,6 +257,7 @@ export function ProgressView() {
     await hlFetch(`/api/workouts?id=${id}`, { method: "DELETE" });
     invalidateRelatedCaches();
     await refreshAll();
+    toast.success(t("toast.deleted"));
   }
 
   async function saveWeight() {
@@ -273,6 +279,7 @@ export function ProgressView() {
       setTab("chart");
       invalidateRelatedCaches({ day: weightDate });
       await refreshAll();
+      toast.success(t("toast.weightSaved"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка");
     } finally {
@@ -314,7 +321,7 @@ export function ProgressView() {
       </div>
 
       {error ? <p className="mb-3 text-sm text-[#8a3b2f]">{error}</p> : null}
-      {showInitialLoading ? <p className="text-[var(--muted)]">Загрузка…</p> : null}
+      {showInitialLoading ? <LoadingText label={t("loading")} /> : null}
 
       {tab === "chart" && progress ? (
         <div className="space-y-4">
@@ -385,7 +392,7 @@ export function ProgressView() {
       ) : null}
 
       {tab === "chart" && !progress && !showInitialLoading ? (
-        <p className="text-[var(--muted)]">Загрузка показателей…</p>
+        <LoadingText label={t("loading")} />
       ) : null}
 
       {tab === "workout" && !showInitialLoading ? (

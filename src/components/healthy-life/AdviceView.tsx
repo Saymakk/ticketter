@@ -10,7 +10,7 @@ import {
 import { useHlRouting } from "@/lib/healthy-life/routing";
 import { useHlI18n, useT } from "@/lib/healthy-life/i18n";
 import type { HlMessageKey } from "@/lib/healthy-life/i18n";
-import { Button, Card, PageHeader, Shell } from "@/components/healthy-life/ui";
+import { Button, Card, LoadingText, PageHeader, Shell } from "@/components/healthy-life/ui";
 
 type Period = "day" | "week" | "month";
 
@@ -20,8 +20,11 @@ type AdvicePayload = {
     summary: string | null;
     content: string;
     periodKey: string;
-  };
+  } | null;
+  empty?: boolean;
   periodLabel: string;
+  currentPeriodLabel?: string;
+  periodStatus?: string;
   cached?: boolean;
   stats?: {
     totalCalories: number;
@@ -42,6 +45,12 @@ function adviceCacheKey(period: Period, locale: string) {
   return cacheKey("advice", period, locale);
 }
 
+function waitingKey(period: Period): HlMessageKey {
+  if (period === "week") return "advice.waitingWeek";
+  if (period === "month") return "advice.waitingMonth";
+  return "advice.waitingDay";
+}
+
 export function AdviceView() {
   const { fetch: hlFetch } = useHlRouting();
   const { locale } = useHlI18n();
@@ -51,6 +60,7 @@ export function AdviceView() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPrevious, setShowPrevious] = useState(true);
   const fetchGen = useRef(0);
 
   const load = useCallback(async (p: Period, refresh = false) => {
@@ -82,6 +92,7 @@ export function AdviceView() {
     } catch (e) {
       if (gen !== fetchGen.current) return;
       if (!cached) {
+        setData(null);
         setError(e instanceof Error ? e.message : t("error"));
       }
     } finally {
@@ -96,6 +107,9 @@ export function AdviceView() {
     load(period);
   }, [period, load]);
 
+  const hasAdvice = Boolean(data?.advice);
+  const showRetry = Boolean(!loading && !refreshing && !data && error);
+
   return (
     <Shell>
       <PageHeader title={t("advice.title")} subtitle={t("advice.subtitle")} />
@@ -107,6 +121,7 @@ export function AdviceView() {
             type="button"
             onClick={() => {
               setPeriod(tab.id);
+              setShowPrevious(true);
               const cached = readCache<AdvicePayload>(adviceCacheKey(tab.id, locale));
               if (cached) setData(cached.data);
             }}
@@ -121,47 +136,88 @@ export function AdviceView() {
         ))}
       </div>
 
-      {loading && !data ? <p className="text-[var(--muted)]">{t("loading")}</p> : null}
-      {error ? <p className="text-[#8a3b2f]">{error}</p> : null}
+      {loading && !data ? <LoadingText label={t("loading")} /> : null}
+      {error && !data ? <p className="mb-3 text-center text-sm text-[#8a3b2f]">{error}</p> : null}
       {refreshing && data ? (
-        <p className="mb-2 text-xs text-[var(--muted)]">{t("day.updating")}</p>
+        <p className="mb-2 text-center text-xs text-[var(--muted)]">{t("day.updating")}</p>
       ) : null}
 
       {data ? (
         <div
           className={`space-y-4 transition-opacity ${refreshing ? "opacity-70" : "opacity-100"}`}
         >
-          {data.stats ? (
-            <Card className="grid grid-cols-2 gap-3 bg-gradient-to-br from-[#eaf3e8] to-[var(--surface)]">
-              <Stat label={t("advice.day")} value={`${data.stats.avgCaloriesPerDay} ${t("day.kcal")}`} />
-              <Stat label={t("day.mealsTitle")} value={String(data.stats.mealCount)} />
-              <Stat label={t("day.kcal")} value={String(Math.round(data.stats.totalCalories))} />
-              <Stat
-                label={t("day.weight")}
-                value={
-                  data.stats.weightEnd != null
-                    ? `${data.stats.weightEnd.toFixed(1)} ${t("day.kg")}`
-                    : "—"
-                }
-              />
-            </Card>
-          ) : null}
-
-          <Card className="space-y-3">
-            <p className="text-xs tracking-wide text-[var(--muted)] uppercase">{data.periodLabel}</p>
-            <h2 className="font-display text-2xl">{data.advice.title}</h2>
-            {data.advice.summary ? (
-              <p className="text-[var(--accent-ink)]">{data.advice.summary}</p>
-            ) : null}
-            <div className="whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--ink)]/90">
-              {data.advice.content}
-            </div>
+          <Card className="space-y-2 bg-gradient-to-br from-[#eaf3e8] to-[var(--surface)]">
+            <p className="text-xs tracking-wide text-[var(--muted)] uppercase">
+              {data.currentPeriodLabel || t(tabs.find((x) => x.id === period)!.labelKey)}
+            </p>
+            <p className="text-[15px] leading-relaxed text-[var(--ink)]">{t(waitingKey(period))}</p>
           </Card>
 
-          <Button type="button" variant="secondary" className="w-full" onClick={() => load(period, true)}>
-            {t("advice.refresh")}
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={() => setShowPrevious((v) => !v)}
+          >
+            {showPrevious ? t("advice.hidePrevious") : t("advice.showPrevious")}
           </Button>
+
+          {showPrevious ? (
+            hasAdvice ? (
+              <div className="space-y-4">
+                {data.stats ? (
+                  <Card className="grid grid-cols-2 gap-3">
+                    <Stat
+                      label={t("advice.day")}
+                      value={`${data.stats.avgCaloriesPerDay} ${t("day.kcal")}`}
+                    />
+                    <Stat label={t("day.mealsTitle")} value={String(data.stats.mealCount)} />
+                    <Stat
+                      label={t("day.kcal")}
+                      value={String(Math.round(data.stats.totalCalories))}
+                    />
+                    <Stat
+                      label={t("day.weight")}
+                      value={
+                        data.stats.weightEnd != null
+                          ? `${data.stats.weightEnd.toFixed(1)} ${t("day.kg")}`
+                          : "—"
+                      }
+                    />
+                  </Card>
+                ) : null}
+
+                <Card className="space-y-3">
+                  <p className="text-xs tracking-wide text-[var(--muted)] uppercase">
+                    {t("advice.previousTitle")} · {data.periodLabel}
+                  </p>
+                  <h2 className="font-display text-2xl">{data.advice!.title}</h2>
+                  {data.advice!.summary ? (
+                    <p className="text-[var(--accent-ink)]">{data.advice!.summary}</p>
+                  ) : null}
+                  <div className="whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--ink)]/90">
+                    {data.advice!.content}
+                  </div>
+                </Card>
+              </div>
+            ) : (
+              <Card>
+                <p className="text-sm text-[var(--muted)]">{t("advice.noPrevious")}</p>
+              </Card>
+            )
+          ) : null}
         </div>
+      ) : null}
+
+      {showRetry ? (
+        <Button
+          type="button"
+          variant="secondary"
+          className="mt-4 w-full"
+          onClick={() => load(period, true)}
+        >
+          {t("advice.refresh")}
+        </Button>
       ) : null}
     </Shell>
   );

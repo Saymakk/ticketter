@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Literata, Manrope } from "next/font/google";
 import { headers } from "next/headers";
 import { BottomNav } from "@/components/healthy-life/BottomNav";
+import { HlToastProvider } from "@/components/healthy-life/HlToast";
 import { HealthyLifeRoutingProvider } from "@/lib/healthy-life/routing";
 import { HealthyLifeI18nProvider } from "@/lib/healthy-life/i18n/provider";
 import { getRequestHost } from "@/lib/http/host";
@@ -62,8 +63,10 @@ export default async function HealthyLifeLayout({ children }: { children: React.
       <body className="min-h-full flex flex-col text-[var(--ink)]">
         <HealthyLifeRoutingProvider prefix={pathPrefix}>
           <HealthyLifeI18nProvider>
-            <main className="flex-1">{children}</main>
-            <BottomNav />
+            <HlToastProvider>
+              <main className="flex-1">{children}</main>
+              <BottomNav />
+            </HlToastProvider>
           </HealthyLifeI18nProvider>
         </HealthyLifeRoutingProvider>
       </body>

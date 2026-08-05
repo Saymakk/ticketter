@@ -11,7 +11,9 @@ import {
   writeCache,
 } from "@/lib/healthy-life/app-cache";
 import { useHlRouting } from "@/lib/healthy-life/routing";
-import { Button, Card, Field, PageHeader, Shell, inputClass } from "@/components/healthy-life/ui";
+import { useT } from "@/lib/healthy-life/i18n";
+import { Button, Card, Field, PageHeader, Shell, inputClass, LoadingText } from "@/components/healthy-life/ui";
+import { useHlToast } from "@/components/healthy-life/HlToast";
 
 type WeightEntry = {
   id: string;
@@ -29,6 +31,8 @@ const WEIGHT_KEY = cacheKey("weight", "list");
 
 export function WeightView() {
   const { fetch: hlFetch } = useHlRouting();
+  const t = useT();
+  const toast = useHlToast();
   const [entries, setEntries] = useState<WeightEntry[]>([]);
   const [targetWeightKg, setTargetWeightKg] = useState<number | null>(null);
   const [weightKg, setWeightKg] = useState("");
@@ -93,6 +97,7 @@ export function WeightView() {
       setNote("");
       invalidateRelatedCaches({ day: date });
       await load({ force: true });
+      toast.success(t("toast.weightSaved"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка");
     } finally {
@@ -154,7 +159,7 @@ export function WeightView() {
         </Card>
 
         {loading && entries.length === 0 ? (
-          <p className="text-[var(--muted)]">Загрузка…</p>
+          <LoadingText label={t("loading")} />
         ) : (
           <div className="space-y-2">
             {entries.map((entry) => (

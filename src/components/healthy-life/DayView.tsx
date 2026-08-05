@@ -11,7 +11,7 @@ import {
 import type { ScheduleCompliance } from "@/lib/healthy-life/medications";
 import { useHlRouting } from "@/lib/healthy-life/routing";
 import { useT } from "@/lib/healthy-life/i18n";
-import { PageHeader, Shell } from "@/components/healthy-life/ui";
+import { PageHeader, Shell, LoadingText } from "@/components/healthy-life/ui";
 import { DayPanel, type DayPanelData } from "@/components/healthy-life/DayPanel";
 import { DayHistory } from "@/components/healthy-life/DayHistory";
 import { MealDetailModal, type MealDetail } from "@/components/healthy-life/MealDetailModal";
@@ -204,7 +204,7 @@ export function DayView() {
         ) : null}
       </div>
 
-      {loading && !data && <p className="text-[var(--muted)]">{t("loading")}</p>}
+      {loading && !data && <LoadingText label={t("loading")} />}
       {error && <p className="text-[#8a3b2f]">{error}</p>}
 
       {data && (

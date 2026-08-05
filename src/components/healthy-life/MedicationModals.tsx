@@ -14,9 +14,10 @@ import {
   ISO_WEEKDAYS,
 } from "@/lib/healthy-life/medications";
 import { useHlRouting } from "@/lib/healthy-life/routing";
-import { useT, type HlMessageKey } from "@/lib/healthy-life/i18n";
+import { useHlI18n, useT, type HlMessageKey } from "@/lib/healthy-life/i18n";
 import { Button, Field, Modal, medInputClass } from "@/components/healthy-life/ui";
 import { OpenablePhoto } from "@/components/healthy-life/PhotoLightbox";
+import { useHlToast } from "@/components/healthy-life/HlToast";
 
 export type MedicationIntake = {
   id: string;
@@ -100,6 +101,7 @@ export function MedicationDetailModal({
 }) {
   const { fetch: hlFetch } = useHlRouting();
   const t = useT();
+  const toast = useHlToast();
   const editable = Boolean(intake && !readOnly && isWithinEditWindow(intake.createdAt));
   const [name, setName] = useState("");
   const [dosage, setDosage] = useState("");
@@ -138,6 +140,7 @@ export function MedicationDetailModal({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || t("error"));
       onChanged();
+      toast.success(t("toast.saved"));
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("error"));
@@ -156,6 +159,7 @@ export function MedicationDetailModal({
       return;
     }
     onChanged();
+    toast.success(t("toast.medDeleted"));
     onClose();
   }
 
@@ -245,7 +249,9 @@ export function AddMedicationModal({
   onSaved: () => void;
 }) {
   const { fetch: hlFetch } = useHlRouting();
+  const { locale } = useHlI18n();
   const t = useT();
+  const toast = useHlToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [dosage, setDosage] = useState("");
@@ -256,6 +262,8 @@ export function AddMedicationModal({
   const [photoPath, setPhotoPath] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [recognizing, setRecognizing] = useState(false);
+  const [recognizeHint, setRecognizeHint] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -270,6 +278,8 @@ export function AddMedicationModal({
     setPhotoPath(null);
     setPreview(null);
     setError(null);
+    setRecognizeHint(null);
+    setRecognizing(false);
   }, [open, prefill]);
 
   const plansForDay = plans.filter((p) => isPlanScheduledOnDate(p, date));
@@ -279,21 +289,45 @@ export function AddMedicationModal({
   async function onFile(file: File | null) {
     if (!file) return;
     setUploading(true);
+    setRecognizing(true);
     setError(null);
+    setRecognizeHint(null);
     const url = URL.createObjectURL(file);
     setPreview(url);
     try {
       const form = new FormData();
       form.append("photo", file);
+      form.append("locale", locale);
       const res = await hlFetch("/api/medications/upload", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t("error"));
       setPhotoPath(data.photoPath);
+
+      const analysis = data.analysis as { name?: string; dosage?: string | null } | undefined;
+      const aiName = analysis?.name?.trim() || "";
+      const aiDosage = analysis?.dosage?.trim() || "";
+
+      // Keep schedule name if user already picked a plan; otherwise fill from photo.
+      if (aiName && !planId) {
+        setName(aiName);
+        setRecognizeHint(t("med.recognized"));
+      } else if (aiName && planId && !name.trim()) {
+        setName(aiName);
+        setRecognizeHint(t("med.recognized"));
+      } else if (!aiName) {
+        setRecognizeHint(t("med.recognizeFailed"));
+      }
+
+      if (aiDosage && !dosage.trim()) {
+        setDosage(aiDosage);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : t("error"));
       setPreview(null);
+      setRecognizeHint(null);
     } finally {
       setUploading(false);
+      setRecognizing(false);
     }
   }
 
@@ -322,6 +356,7 @@ export function AddMedicationModal({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || t("error"));
       onSaved();
+      toast.success(t("toast.medSaved"));
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("error"));
@@ -350,9 +385,24 @@ export function AddMedicationModal({
           />
         )}
 
-        <Button type="button" variant="med-secondary" className="w-full" disabled={uploading} onClick={() => fileRef.current?.click()}>
-          {uploading ? t("med.uploading") : photoPath ? t("med.replacePhoto") : t("med.addPhoto")}
+        <Button
+          type="button"
+          variant="med-secondary"
+          className="w-full"
+          disabled={uploading || recognizing}
+          onClick={() => fileRef.current?.click()}
+        >
+          {recognizing
+            ? t("med.recognizing")
+            : uploading
+              ? t("med.uploading")
+              : photoPath
+                ? t("med.replacePhoto")
+                : t("med.addPhoto")}
         </Button>
+        {recognizeHint ? (
+          <p className="text-xs text-[var(--med-accent-ink)]">{recognizeHint}</p>
+        ) : null}
 
         {plansForDay.length > 0 ? (
           <Field label={t("med.fromSchedule")}>
@@ -449,6 +499,7 @@ export function MedicationPlansModal({
 }) {
   const { fetch: hlFetch } = useHlRouting();
   const t = useT();
+  const toast = useHlToast();
   const [plans, setPlans] = useState<MedicationPlan[]>([]);
   const [name, setName] = useState("");
   const [dosage, setDosage] = useState("");
@@ -530,6 +581,7 @@ export function MedicationPlansModal({
       resetForm();
       await load();
       onChanged();
+      toast.success(t("toast.planSaved"));
     } catch (e) {
       setError(e instanceof Error ? e.message : t("error"));
     } finally {
@@ -545,6 +597,7 @@ export function MedicationPlansModal({
     });
     await load();
     onChanged();
+    toast.success(t("toast.planSaved"));
   }
 
   async function removePlan(id: string) {
@@ -552,6 +605,7 @@ export function MedicationPlansModal({
     await hlFetch(`/api/medication-plans?id=${id}`, { method: "DELETE" });
     await load();
     onChanged();
+    toast.success(t("toast.deleted"));
   }
 
   return (
@@ -665,7 +719,9 @@ export function MedicationPlansModal({
         </Button>
       </div>
 
-      {loading ? <p className="text-sm text-[var(--muted)]">{t("loading")}</p> : null}
+      {loading ? (
+        <p className="py-6 text-center text-sm text-[var(--muted)]">{t("loading")}</p>
+      ) : null}
 
       <div className="space-y-2">
         {plans.map((plan) => (

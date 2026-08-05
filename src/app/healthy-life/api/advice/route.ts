@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getOrCreateProfile, prisma } from "@/lib/healthy-life/prisma";
 import { describeAiFailure, generateAdvice } from "@/lib/healthy-life/ai";
 import { saveAiRecord, linkAiRecordToAdvice } from "@/lib/healthy-life/ai-records";
-import { monthKey, monthRange, todayKey, weekKey, weekRange } from "@/lib/healthy-life/dates";
+import { completedPeriodRange } from "@/lib/healthy-life/dates";
 import { jsonError } from "@/lib/healthy-life/api-error";
 import { HL_LOCALE_META, isHlLocale } from "@/lib/healthy-life/i18n/locales";
 
@@ -21,26 +21,11 @@ export async function GET(request: Request) {
     const aiLanguage = HL_LOCALE_META[locale].aiLanguage;
     const profile = await getOrCreateProfile();
 
-    const now = new Date();
-    let periodKeyBase = todayKey(now);
-    let start = periodKeyBase;
-    let end = periodKeyBase;
-    let periodLabel = periodKeyBase;
-
-    if (period === "week") {
-      periodKeyBase = weekKey(now);
-      const range = weekRange(now);
-      start = range.start;
-      end = range.end;
-      periodLabel = range.label;
-    } else if (period === "month") {
-      periodKeyBase = monthKey(now);
-      const range = monthRange(now);
-      start = range.start;
-      end = range.end;
-      periodLabel = range.label;
-    }
-
+    const completed = completedPeriodRange(period);
+    const periodKeyBase = completed.periodKeyBase;
+    const start = completed.start;
+    const end = completed.end;
+    const periodLabel = completed.label;
     // Cache advice per locale so language switches do not reuse wrong text.
     const periodKey = `${periodKeyBase}__${locale}`;
 
@@ -55,7 +40,36 @@ export async function GET(request: Request) {
         },
       });
       if (cached && !isStaleFallbackAdvice(cached.summary, cached.content)) {
-        return NextResponse.json({ advice: cached, cached: true, periodLabel, locale });
+        const [mealsC, weightsC, workoutsC] = await Promise.all([
+          prisma.meal.findMany({
+            where: { profileId: profile.id, date: { gte: start, lte: end } },
+          }),
+          prisma.weightEntry.findMany({
+            where: { profileId: profile.id, date: { gte: start, lte: end } },
+            orderBy: { date: "asc" },
+          }),
+          prisma.workout.findMany({
+            where: { profileId: profile.id, date: { gte: start, lte: end } },
+          }),
+        ]);
+        const dayCountC = Math.max(new Set(mealsC.map((m) => m.date)).size, 1);
+        const totalCaloriesC = mealsC.reduce((s, m) => s + m.calories, 0);
+        return NextResponse.json({
+          advice: cached,
+          cached: true,
+          periodLabel,
+          currentPeriodLabel: completed.currentLabel,
+          periodStatus: "awaiting_current",
+          locale,
+          stats: {
+            totalCalories: totalCaloriesC,
+            mealCount: mealsC.length,
+            avgCaloriesPerDay: Math.round(totalCaloriesC / dayCountC),
+            weightStart: weightsC[0]?.weightKg ?? null,
+            weightEnd: weightsC[weightsC.length - 1]?.weightKg ?? null,
+            workoutCount: workoutsC.length,
+          },
+        });
       }
     }
 
@@ -101,19 +115,39 @@ export async function GET(request: Request) {
             .map(([type, s]) => `${type}: ${s.count}x, volume ${s.quantity}`)
             .join("; ");
 
+    const stats = {
+      totalCalories,
+      mealCount: meals.length,
+      avgCaloriesPerDay: Math.round(totalCalories / dayCount),
+      weightStart: weights[0]?.weightKg ?? null,
+      weightEnd: weights[weights.length - 1]?.weightKg ?? null,
+      workoutCount: workouts.length,
+      workoutSummary,
+    };
+
+    const hasData = totalCalories > 0 || workouts.length > 0 || weights.length > 0;
+
+    // No logs for the completed period — return stub-friendly empty payload (no AI call).
+    if (!hasData) {
+      return NextResponse.json({
+        advice: null,
+        empty: true,
+        cached: false,
+        periodLabel,
+        currentPeriodLabel: completed.currentLabel,
+        periodStatus: "awaiting_current",
+        locale,
+        stats,
+      });
+    }
+
     const inputSummary = JSON.stringify({
       period,
       periodKeyBase,
       periodLabel,
       calorieGoal: profile.dailyCalorieGoal,
-      totalCalories,
-      mealCount: meals.length,
-      avgCaloriesPerDay: totalCalories / dayCount,
-      weightStart: weights[0]?.weightKg ?? null,
-      weightEnd: weights[weights.length - 1]?.weightKg ?? null,
-      targetWeight: profile.targetWeightKg,
+      ...stats,
       recentMeals: meals.slice(0, 12).map((m) => `${m.name} (${Math.round(m.calories)} kcal)`),
-      workoutSummary,
     });
 
     let advicePayload;
@@ -138,17 +172,13 @@ export async function GET(request: Request) {
       console.error(err);
       usedFallback = true;
       fallbackReason = describeAiFailure(err);
-      const hasData = totalCalories > 0 || workouts.length > 0 || weights.length > 0;
       advicePayload = {
-        title: period === "day" ? "Today" : period === "week" ? "This week" : "This month",
+        title: period === "day" ? "Yesterday" : period === "week" ? "Last week" : "Last month",
         summary: `AI temporarily unavailable: ${fallbackReason}. Summary of your data below.`,
-        content: hasData
-          ? `Period: ${Math.round(totalCalories)} kcal, ${meals.length} meals, ${workouts.length} workouts (${workoutSummary}). Average: ${Math.round(totalCalories / dayCount)} kcal/day vs goal ${profile.dailyCalorieGoal}.`
-          : "Not enough data yet. Log meals, weight, and workouts — advice will appear automatically.",
+        content: `Period: ${Math.round(totalCalories)} kcal, ${meals.length} meals, ${workouts.length} workouts (${workoutSummary}). Average: ${Math.round(totalCalories / dayCount)} kcal/day vs goal ${profile.dailyCalorieGoal}.`,
       };
     }
 
-    // Immutable per-user history of this AI response (including regenerations).
     const aiRecord = await saveAiRecord({
       profileId: profile.id,
       kind: "advice",
@@ -196,17 +226,11 @@ export async function GET(request: Request) {
       usedFallback,
       fallbackReason,
       periodLabel,
+      currentPeriodLabel: completed.currentLabel,
+      periodStatus: "awaiting_current",
       locale,
       aiRecordId: aiRecord.id,
-      stats: {
-        totalCalories,
-        mealCount: meals.length,
-        avgCaloriesPerDay: Math.round(totalCalories / dayCount),
-        weightStart: weights[0]?.weightKg ?? null,
-        weightEnd: weights[weights.length - 1]?.weightKg ?? null,
-        workoutCount: workouts.length,
-        workoutSummary,
-      },
+      stats,
     });
   } catch (error) {
     return jsonError(error);
