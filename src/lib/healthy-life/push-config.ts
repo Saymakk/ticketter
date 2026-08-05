@@ -3,15 +3,24 @@
 function readEnv(name: string): string | undefined {
   const raw = process.env[name];
   if (raw == null) return undefined;
-  const trimmed = raw.trim().replace(/^['"]|['"]$/g, "");
+  const trimmed = String(raw).trim().replace(/^['"]|['"]$/g, "");
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+/**
+ * Public VAPID key.
+ * Prefer HEALTHY_LIFE_VAPID_PUBLIC_KEY at runtime — Next may inline an empty
+ * NEXT_PUBLIC_* value from docker build if the build-arg was missing.
+ */
 export function getHealthyLifeVapidPublicKey(): string {
   const key =
-    readEnv("NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY") ||
-    readEnv("HEALTHY_LIFE_VAPID_PUBLIC_KEY");
-  if (!key) throw new Error("NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY не задан");
+    readEnv("HEALTHY_LIFE_VAPID_PUBLIC_KEY") ||
+    readEnv("NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY");
+  if (!key) {
+    throw new Error(
+      "HEALTHY_LIFE_VAPID_PUBLIC_KEY / NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY не задан",
+    );
+  }
   return key;
 }
 
@@ -31,8 +40,8 @@ export function getHealthyLifeCronSecret(): string | undefined {
 
 export function isHealthyLifePushConfigured(): boolean {
   return Boolean(
-    (readEnv("NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY") ||
-      readEnv("HEALTHY_LIFE_VAPID_PUBLIC_KEY")) &&
+    (readEnv("HEALTHY_LIFE_VAPID_PUBLIC_KEY") ||
+      readEnv("NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY")) &&
       readEnv("HEALTHY_LIFE_VAPID_PRIVATE_KEY"),
   );
 }
@@ -41,10 +50,10 @@ export function isHealthyLifePushConfigured(): boolean {
 export function getHealthyLifePushMissingEnv(): string[] {
   const missing: string[] = [];
   if (
-    !readEnv("NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY") &&
-    !readEnv("HEALTHY_LIFE_VAPID_PUBLIC_KEY")
+    !readEnv("HEALTHY_LIFE_VAPID_PUBLIC_KEY") &&
+    !readEnv("NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY")
   ) {
-    missing.push("NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY");
+    missing.push("HEALTHY_LIFE_VAPID_PUBLIC_KEY");
   }
   if (!readEnv("HEALTHY_LIFE_VAPID_PRIVATE_KEY")) {
     missing.push("HEALTHY_LIFE_VAPID_PRIVATE_KEY");
