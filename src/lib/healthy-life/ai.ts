@@ -57,10 +57,11 @@ export async function analyzeFoodImage(base64: string, mimeType: string): Promis
       {
         role: "system",
         content: `Ты нутрициолог. По фото еды оцени состав и калорийность.
+Не задавай вопросов пользователю и не проси уточнений — только оценка по фото.
 Ответь ТОЛЬКО валидным JSON без markdown:
 {
   "name": "краткое название блюда на русском",
-  "description": "что видно на фото",
+  "description": "что видно на фото (без вопросов)",
   "calories": число ккал всей порции,
   "protein": граммы белка или null,
   "carbs": граммы углеводов или null,
@@ -120,8 +121,17 @@ export async function generateAdvice(params: {
       {
         role: "system",
         content: `Ты дружелюбный русскоязычный коуч по здоровому питанию и тренировкам.
-Дай практичные советы без осуждения. Ответь ТОЛЬКО JSON:
-{"title":"короткий заголовок","summary":"1-2 предложения","content":"развёрнутый совет 3-6 коротких абзацев или пунктов"}`,
+Дай практичные советы без осуждения.
+
+КРИТИЧНО — это односторонние советы, не диалог:
+- НЕ задавай вопросов пользователю (ни прямых, ни риторических).
+- НЕ проси ответить, уточнить, написать, рассказать или «дать знать».
+- НЕ используй формулировки вроде «А как у вас с…?», «Попробуйте ответить…», «Напишите мне…», «Что думаете?».
+- Пиши только утверждения и готовые рекомендации, которые можно сразу применить.
+- Если данных мало — спокойно скажи, чего не хватает для точности, без просьбы ответить в чат.
+
+Ответь ТОЛЬКО JSON:
+{"title":"короткий заголовок","summary":"1-2 предложения без вопросов","content":"развёрнутый совет 3-6 коротких абзацев или пунктов, без вопросов пользователю"}`,
       },
       {
         role: "user",
@@ -133,7 +143,9 @@ export async function generateAdvice(params: {
 Цель по весу: ${params.targetWeight ?? "не задана"} кг
 ${weightInfo}
 Тренировки: ${params.workoutSummary || "нет данных"}
-Недавние блюда: ${params.recentMeals.slice(0, 12).join("; ") || "пока нет"}`,
+Недавние блюда: ${params.recentMeals.slice(0, 12).join("; ") || "пока нет"}
+
+Сформируй готовые советы. Не задавай вопросов.`,
       },
     ],
   });
@@ -141,10 +153,26 @@ ${weightInfo}
   const text = response.choices[0]?.message?.content ?? "";
   const data = extractJson(text) as { title?: string; content?: string; summary?: string };
   return {
-    title: data.title || "Совет по питанию",
-    content: data.content || "Продолжайте вести дневник — так советы станут точнее.",
-    summary: data.summary || "Следите за балансом калорий и регулярностью приёмов пищи.",
+    title: sanitizeAdviceCopy(data.title || "Совет по питанию"),
+    content: sanitizeAdviceCopy(
+      data.content || "Продолжайте вести дневник — так советы станут точнее.",
+    ),
+    summary: sanitizeAdviceCopy(
+      data.summary || "Следите за балансом калорий и регулярностью приёмов пищи.",
+    ),
   };
+}
+
+/** Soft cleanup: drop phrases that invite a user reply (there is no chat input). */
+function sanitizeAdviceCopy(text: string): string {
+  return text
+    .replace(
+      /(^|\n)\s*[-•*]?\s*(напишите|расскажите|ответьте|дайте знать|что думаете|как у вас|а что насчёт)[^.!?\n]*[?]?\s*/gi,
+      "$1",
+    )
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 export function describeAiFailure(err: unknown): string {

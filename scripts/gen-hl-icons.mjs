@@ -3,7 +3,8 @@ import path from "node:path";
 
 const src = "public/icons/hlapp.jpg";
 const outDir = "public/icons";
-const BG = { r: 47, g: 155, b: 106, alpha: 1 };
+/** Solid white behind the circular mark — avoids black corners on installed PWAs. */
+const WHITE = { r: 255, g: 255, b: 255, alpha: 1 };
 
 function circleSvg(size) {
   const r = size / 2;
@@ -13,35 +14,34 @@ function circleSvg(size) {
   );
 }
 
-async function circularPng(size) {
-  return sharp(src)
-    .resize(size, size, { fit: "cover" })
-    .composite([{ input: circleSvg(size), blend: "dest-in" }])
+async function circularOnWhite(size, pad = 0) {
+  const inner = Math.round(size * (1 - pad * 2));
+  const offset = Math.round((size - inner) / 2);
+  const circled = await sharp(src)
+    .resize(inner, inner, { fit: "cover" })
+    .composite([{ input: circleSvg(inner), blend: "dest-in" }])
+    .png()
+    .toBuffer();
+
+  return sharp({
+    create: { width: size, height: size, channels: 4, background: WHITE },
+  })
+    .composite([{ input: circled, left: offset, top: offset }])
     .png()
     .toBuffer();
 }
 
-async function writeAny(size, name) {
-  await sharp(await circularPng(size)).png().toFile(path.join(outDir, name));
-  console.log("any", name);
-}
-
-async function writeMaskable(size, name, pad = 0.1) {
-  const inner = Math.round(size * (1 - pad * 2));
-  const offset = Math.round((size - inner) / 2);
-  const circled = await circularPng(inner);
-  await sharp({
-    create: { width: size, height: size, channels: 4, background: BG },
-  })
-    .composite([{ input: circled, left: offset, top: offset }])
+async function write(size, name, pad = 0) {
+  await sharp(await circularOnWhite(size, pad))
     .png()
     .toFile(path.join(outDir, name));
-  console.log("maskable", name);
+  console.log("wrote", name);
 }
 
-await writeAny(192, "hl-192.png");
-await writeAny(512, "hl-512.png");
-await writeAny(180, "hl-apple-touch.png");
-await writeAny(32, "hl-32.png");
-await writeMaskable(512, "hl-512-maskable.png", 0.1);
+await write(192, "hl-192.png");
+await write(512, "hl-512.png");
+await write(180, "hl-apple-touch.png");
+await write(32, "hl-32.png");
+// Maskable also on white (safe-zone padding) so home-screen tiles stay light.
+await write(512, "hl-512-maskable.png", 0.1);
 console.log("done");

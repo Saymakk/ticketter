@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/healthy-life/supabase/client";
+import { resetAuthClient } from "@/lib/healthy-life/supabase/client";
 import {
   readRememberMePreference,
   writeRememberMePreference,
@@ -56,8 +56,6 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     setRememberMe(readRememberMePreference());
   }, []);
 
-  const supabase = useMemo(() => createClient({ rememberMe }), [rememberMe]);
-
   const clearNotice = useCallback(() => setNotice(null), []);
 
   async function finishSignedIn(successMessage: string) {
@@ -83,6 +81,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     }
 
     writeRememberMePreference(rememberMe);
+    const supabase = resetAuthClient(rememberMe);
 
     try {
       if (mode === "register") {

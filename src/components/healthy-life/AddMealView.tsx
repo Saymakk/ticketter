@@ -183,21 +183,6 @@ export function AddMealView() {
       <PageHeader
         title="Приёмы пищи"
         subtitle="Можно добавить несколько записей за день — в том числе много перекусов."
-        action={
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={analyzing}
-            aria-label="Сфотографировать еду"
-            className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent)] text-white shadow-[0_10px_24px_-14px_var(--accent)] transition active:scale-95 disabled:opacity-60"
-          >
-            {analyzing ? (
-              <span className="h-4 w-4 animate-pulse rounded-full bg-white/80" />
-            ) : (
-              <CameraGlyph />
-            )}
-          </button>
-        }
       />
 
       <input
@@ -279,11 +264,16 @@ export function AddMealView() {
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[var(--line)] bg-[var(--bg-elevated)] text-[var(--accent)]"
-              aria-label="Фото"
-              title="Фото"
+              disabled={analyzing}
+              className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)] text-white shadow-[0_10px_24px_-14px_var(--accent)] transition active:scale-95 disabled:opacity-60"
+              aria-label="Сфотографировать еду"
+              title="Сфотографировать еду"
             >
-              <CameraGlyph dark />
+              {analyzing ? (
+                <span className="h-4 w-4 animate-pulse rounded-full bg-white/80" />
+              ) : (
+                <CameraGlyph />
+              )}
             </button>
           </div>
 
@@ -352,15 +342,15 @@ export function AddMealView() {
   );
 }
 
-function CameraGlyph({ dark }: { dark?: boolean }) {
+function CameraGlyph() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
         d="M4 8.5A2.5 2.5 0 0 1 6.5 6h2l1.2-1.6A1.5 1.5 0 0 1 10.9 4h2.2a1.5 1.5 0 0 1 1.2.4L15.5 6h2A2.5 2.5 0 0 1 20 8.5v9A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-9Z"
-        stroke={dark ? "currentColor" : "white"}
+        stroke="white"
         strokeWidth="1.8"
       />
-      <circle cx="12" cy="13" r="3.2" stroke={dark ? "currentColor" : "white"} strokeWidth="1.8" />
+      <circle cx="12" cy="13" r="3.2" stroke="white" strokeWidth="1.8" />
     </svg>
   );
 }

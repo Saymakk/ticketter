@@ -47,6 +47,12 @@ export async function healthyLifeProxy(request: NextRequest): Promise<NextRespon
   }
 
   if (!user && !isAuthPage(pathname)) {
+    // API callers expect JSON, not an HTML login redirect.
+    if (pathname.startsWith("/api/")) {
+      return withForwardedCookies(
+        NextResponse.json({ error: "Нужна авторизация" }, { status: 401 }),
+      );
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);

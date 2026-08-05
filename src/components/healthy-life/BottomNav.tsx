@@ -14,8 +14,10 @@ const items = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  // Hostname rewrite keeps an internal `/healthy-life` prefix in the App Router path.
+  const path = pathname.replace(/^\/healthy-life(?=\/|$)/, "") || "/";
 
-  if (pathname.startsWith("/login") || pathname.startsWith("/register") || pathname.startsWith("/auth")) {
+  if (path.startsWith("/login") || path.startsWith("/register") || path.startsWith("/auth")) {
     return null;
   }
 
@@ -25,9 +27,9 @@ export function BottomNav() {
         {items.map((item) => {
           const active =
             item.href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(item.href) ||
-                (item.href === "/progress" && pathname.startsWith("/weight"));
+              ? path === "/"
+              : path.startsWith(item.href) ||
+                (item.href === "/progress" && path.startsWith("/weight"));
           return (
             <li key={item.href}>
               <Link

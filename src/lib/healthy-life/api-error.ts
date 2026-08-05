@@ -24,13 +24,25 @@ export function jsonError(error: unknown, fallback = "Ошибка сервер�
     );
   }
 
-  if (message.includes("userId") || message.includes("column") || message.includes("does not exist")) {
+  if (
+    message.includes("userId") ||
+    message.includes("column") ||
+    message.includes("does not exist") ||
+    message.includes("P2022")
+  ) {
     return NextResponse.json(
       {
         error:
-          "В БД нет колонки Profile.userId. Выполните миграцию Prisma (npm run healthy-life:db:push).",
+          "Схема БД Healthy Life устарела. Выполните: npm run healthy-life:db:push",
       },
       { status: 500 },
+    );
+  }
+
+  if (message.includes("P2002") || message.includes("Unique constraint")) {
+    return NextResponse.json(
+      { error: "Конфликт данных профиля, обновите страницу." },
+      { status: 409 },
     );
   }
 

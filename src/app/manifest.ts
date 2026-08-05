@@ -40,7 +40,7 @@ function healthyLifeManifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#f3efe6",
+    background_color: "#ffffff",
     theme_color: "#2f6b4f",
     icons: [
       {
