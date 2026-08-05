@@ -29,9 +29,10 @@ function withPwa(config: NextConfig): NextConfig {
 
   const withPWA = require("next-pwa")({
     dest: "public",
-    disable: process.env.NODE_ENV === "development",
+    disable: process.env.NODE_ENV === "development" && process.env.ENABLE_PWA_DEV !== "1",
     register: true,
     skipWaiting: true,
+    importScripts: ["/hl-push-sw.js"],
     runtimeCaching: [
       {
         urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith("/api/"),

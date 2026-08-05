@@ -248,6 +248,31 @@ export const en = {
     cancelEdit: "Cancel",
   },
 
+  push: {
+    title: "Notifications",
+    hint: "Push reminders for medication schedule, optional weight and meal times. Install the app on your home screen for the best experience (required on iPhone).",
+    enable: "Enable push notifications",
+    disable: "Disable on this device",
+    enabled: "Push notifications enabled",
+    disabled: "Push notifications disabled",
+    statusOn: "Enabled on this device",
+    statusOff: "Not enabled on this device",
+    timezone: "Timezone: {tz}",
+    unsupported: "This browser does not support push notifications.",
+    notConfigured: "Push notifications are not configured on the server.",
+    denied: "Notification permission was denied. Enable it in browser settings.",
+    promptConfirm:
+      "Enable push reminders for medication times? You can change this later in Profile.",
+    extraTitle: "Extra reminders",
+    weightTime: "Daily weight reminder (optional)",
+    mealTimes: "Meal reminders (optional)",
+    mealTimesPh: "e.g. 08:00, 13:00, 19:00",
+    medsAuto: "Medication reminders follow your schedule automatically.",
+    savePrefs: "Save reminder times",
+    prefsSaved: "Reminder preferences saved",
+    invalidTime: "Enter a valid time (HH:mm)",
+  },
+
   common: {
     food: "food",
   },

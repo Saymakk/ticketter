@@ -18,6 +18,18 @@ model Profile {
   dailyCalorieGoal Int                @default(2000)
   targetWeightKg   Float?
   heightCm         Float?
+  /** IANA timezone, e.g. Asia/Almaty — used for scheduled push reminders */
+  timezone         String             @default("UTC")
+  /** Master switch: send push reminders when subscriptions exist */
+  pushEnabled      Boolean            @default(true)
+  /** Optional daily weight log reminder "HH:mm" local time; null = off */
+  weightReminderTime String?
+  /** Optional meal log reminders as JSON array of "HH:mm" local times.
+   * Empty array = off.
+   */
+  mealReminderTimesJson String          @default("[]")
+  /** UI / push locale hint (en, ru, …) */
+  preferredLocale  String             @default("en")
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   meals            Meal[]
@@ -27,6 +39,38 @@ model Profile {
   medicationPlans  MedicationPlan[]
   medicationIntakes MedicationIntake[]
   aiRecords        AiRecord[]
+  pushSubscriptions PushSubscription[]
+  pushRemindersSent PushReminderSent[]
+}
+
+/** Web Push subscription for a device (PWA). */
+model PushSubscription {
+  id        String   @id @default(cuid())
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([profileId])
+}
+
+/** Idempotency log so the same reminder slot is not pushed twice. */
+model PushReminderSent {
+  id         String   @id @default(cuid())
+  profileId  String
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  /** medication | weight | meal */
+  kind       String
+  /** e.g. planId|2026-08-05|08:00 or weight|2026-08-05|08:00 */
+  dedupeKey  String
+  createdAt  DateTime @default(now())
+
+  @@unique([profileId, kind, dedupeKey])
+  @@index([profileId, createdAt])
 }
 
 model Meal {

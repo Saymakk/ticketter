@@ -15,6 +15,7 @@ import { useHlRouting } from "@/lib/healthy-life/routing";
 import { useHlI18n, useT } from "@/lib/healthy-life/i18n";
 import type { HlLocale } from "@/lib/healthy-life/i18n";
 import { Button, Card, Field, PageHeader, Shell, inputClass } from "@/components/healthy-life/ui";
+import { PushNotificationsCard } from "@/components/healthy-life/PushNotificationsCard";
 
 type Profile = {
   id: string;
@@ -179,6 +180,11 @@ export function ProfileView() {
                           setLocale(loc as HlLocale);
                           setLangOpen(false);
                           toast.success(t("toast.languageChanged"));
+                          void hlFetch("/api/profile", {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ preferredLocale: loc }),
+                          }).catch(() => null);
                         }}
                       >
                         <span>{meta[loc].nativeName}</span>
@@ -260,6 +266,8 @@ export function ProfileView() {
           {t("profile.signOut")}
         </Button>
       </Card>
+
+      <PushNotificationsCard />
     </Shell>
   );
 }

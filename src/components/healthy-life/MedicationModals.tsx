@@ -18,6 +18,7 @@ import { useHlI18n, useT, type HlMessageKey } from "@/lib/healthy-life/i18n";
 import { Button, Field, Modal, medInputClass } from "@/components/healthy-life/ui";
 import { OpenablePhoto } from "@/components/healthy-life/PhotoLightbox";
 import { useHlToast } from "@/components/healthy-life/HlToast";
+import { ensurePushPrompt } from "@/components/healthy-life/PushNotificationsCard";
 
 export type MedicationIntake = {
   id: string;
@@ -493,6 +494,7 @@ export function MedicationPlansModal({
   onChanged: () => void;
 }) {
   const { fetch: hlFetch } = useHlRouting();
+  const { locale } = useHlI18n();
   const t = useT();
   const toast = useHlToast();
   const [plans, setPlans] = useState<MedicationPlan[]>([]);
@@ -577,6 +579,7 @@ export function MedicationPlansModal({
       await load();
       onChanged();
       toast.success(t("toast.planSaved"));
+      void ensurePushPrompt({ hlFetch, t, toast, locale });
     } catch (e) {
       setError(e instanceof Error ? e.message : t("error"));
     } finally {
