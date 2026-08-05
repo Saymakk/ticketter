@@ -25,6 +25,35 @@ function detectTimezone() {
   }
 }
 
+/** Avoid hanging on serviceWorker.ready when no SW is registered. */
+async function getOrRegisterServiceWorker(): Promise<ServiceWorkerRegistration> {
+  if (!("serviceWorker" in navigator)) {
+    throw new Error("NO_SW");
+  }
+
+  let reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) {
+    try {
+      reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    } catch {
+      throw new Error("NO_SW");
+    }
+  }
+
+  // Wait for active worker with timeout (ready can hang forever).
+  if (reg.active) return reg;
+
+  await Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<void>((_, reject) => {
+      window.setTimeout(() => reject(new Error("NO_SW")), 8000);
+    }),
+  ]);
+
+  reg = (await navigator.serviceWorker.getRegistration()) || reg;
+  return reg;
+}
+
 type Status = {
   configured: boolean;
   pushEnabled: boolean;
@@ -34,6 +63,7 @@ type Status = {
   weightReminderTime: string | null;
   mealReminderTimes: string[];
   loadError?: string | null;
+  publicKey?: string | null;
 };
 
 export function PushNotificationsCard() {
@@ -49,7 +79,10 @@ export function PushNotificationsCard() {
 
   const refresh = useCallback(async () => {
     const vapidRes = await hlFetch("/api/push/vapid");
-    const vapid = await vapidRes.json().catch(() => ({} as Record<string, unknown>));
+    const vapid = (await vapidRes.json().catch(() => ({}))) as {
+      configured?: boolean;
+      publicKey?: string | null;
+    };
 
     if (vapidRes.status === 401) {
       setStatus({
@@ -79,7 +112,8 @@ export function PushNotificationsCard() {
       return;
     }
 
-    if (!vapid.configured) {
+    const configured = Boolean(vapid.configured || vapid.publicKey);
+    if (!configured) {
       setStatus({
         configured: false,
         pushEnabled: false,
@@ -89,53 +123,64 @@ export function PushNotificationsCard() {
         weightReminderTime: null,
         mealReminderTimes: [],
         loadError: null,
+        publicKey: null,
       });
-      void hlFetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timezone: detectTimezone(), preferredLocale: locale }),
-      }).catch(() => null);
       return;
     }
 
+    // Mark configured immediately — do not depend on SW / POST succeeding.
     let endpoint: string | undefined;
-    if ("serviceWorker" in navigator) {
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        const sub = await reg.pushManager.getSubscription();
-        endpoint = sub?.endpoint;
-      } catch {
-        /* ignore */
-      }
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = reg ? await reg.pushManager.getSubscription() : null;
+      endpoint = sub?.endpoint;
+    } catch {
+      /* ignore */
     }
 
-    const res = await hlFetch("/api/push/vapid", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ endpoint }),
-    });
-    const json = await res.json();
-    if (!res.ok) return;
-
+    let pushEnabled = true;
+    let thisDevice = false;
+    let subscriptionCount = 0;
+    let timezone = detectTimezone();
+    let weightReminderTime: string | null = null;
     let mealReminderTimes: string[] = [];
+
     try {
-      mealReminderTimes = JSON.parse(json.mealReminderTimesJson || "[]");
+      const res = await hlFetch("/api/push/vapid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        pushEnabled = Boolean(json.pushEnabled);
+        thisDevice = Boolean(json.thisDevice);
+        subscriptionCount = Number(json.subscriptionCount || 0);
+        timezone = json.timezone || timezone;
+        weightReminderTime = json.weightReminderTime ?? null;
+        try {
+          mealReminderTimes = JSON.parse(json.mealReminderTimesJson || "[]");
+        } catch {
+          mealReminderTimes = [];
+        }
+      }
     } catch {
-      mealReminderTimes = [];
+      /* status POST is optional */
     }
 
     setStatus({
       configured: true,
-      pushEnabled: Boolean(json.pushEnabled),
-      thisDevice: Boolean(json.thisDevice),
-      subscriptionCount: Number(json.subscriptionCount || 0),
-      timezone: json.timezone || detectTimezone(),
-      weightReminderTime: json.weightReminderTime ?? null,
+      pushEnabled,
+      thisDevice,
+      subscriptionCount,
+      timezone,
+      weightReminderTime,
       mealReminderTimes,
+      publicKey: vapid.publicKey ?? null,
     });
-    setWeightTime(json.weightReminderTime ?? "");
+    setWeightTime(weightReminderTime ?? "");
     setMealTimes(mealReminderTimes.join(", "));
-  }, [hlFetch, locale]);
+  }, [hlFetch, t]);
 
   useEffect(() => {
     const ok =
@@ -147,7 +192,6 @@ export function PushNotificationsCard() {
     void refresh();
   }, [refresh]);
 
-  // Keep profile timezone in sync for day compliance / reminders.
   useEffect(() => {
     void hlFetch("/api/profile", {
       method: "PATCH",
@@ -163,17 +207,24 @@ export function PushNotificationsCard() {
 
       const vapidRes = await hlFetch("/api/push/vapid");
       const vapid = await vapidRes.json();
-      if (!vapid.publicKey) throw new Error(t("push.notConfigured"));
+      const publicKey = vapid.publicKey || status?.publicKey;
+      if (!publicKey) throw new Error(t("push.notConfigured"));
 
       const permission = await Notification.requestPermission();
       if (permission !== "granted") throw new Error(t("push.denied"));
 
-      const reg = await navigator.serviceWorker.ready;
+      let reg: ServiceWorkerRegistration;
+      try {
+        reg = await getOrRegisterServiceWorker();
+      } catch {
+        throw new Error(t("push.noServiceWorker"));
+      }
+
       let sub = await reg.pushManager.getSubscription();
       if (!sub) {
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapid.publicKey),
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
         });
       }
 
@@ -205,8 +256,8 @@ export function PushNotificationsCard() {
     try {
       let endpoint: string | undefined;
       if ("serviceWorker" in navigator) {
-        const reg = await navigator.serviceWorker.ready;
-        const sub = await reg.pushManager.getSubscription();
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = reg ? await reg.pushManager.getSubscription() : null;
         endpoint = sub?.endpoint;
         if (sub) await sub.unsubscribe().catch(() => null);
       }
@@ -263,9 +314,11 @@ export function PushNotificationsCard() {
         <p className="mt-1 text-sm text-[var(--muted)]">{t("push.hint")}</p>
       </div>
 
-      {!status?.configured ? (
+      {!status ? (
+        <p className="text-sm text-[var(--muted)]">{t("loading")}</p>
+      ) : !status.configured ? (
         <p className="text-sm text-[var(--muted)]">
-          {status?.loadError || t("push.notConfigured")}
+          {status.loadError || t("push.notConfigured")}
         </p>
       ) : !supported ? (
         <p className="text-sm text-[var(--muted)]">{t("push.unsupported")}</p>
@@ -273,7 +326,7 @@ export function PushNotificationsCard() {
         <>
           <p className="text-sm text-[var(--ink)]">
             {on ? t("push.statusOn") : t("push.statusOff")}
-            {status?.timezone ? (
+            {status.timezone ? (
               <span className="mt-1 block text-xs text-[var(--muted)]">
                 {t("push.timezone", { tz: status.timezone })}
               </span>
@@ -337,7 +390,7 @@ export async function ensurePushPrompt(opts: {
     const vapidRes = await opts.hlFetch("/api/push/vapid");
     const vapid = await vapidRes.json();
     if (!vapid.publicKey) throw new Error(opts.t("push.notConfigured"));
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await getOrRegisterServiceWorker();
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
       sub = await reg.pushManager.subscribe({

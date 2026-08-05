@@ -265,6 +265,8 @@ export const ru = defineMessages({
       "Пуш-уведомления не настроены на сервере. Нужен git pull + пересборка образа (не только restart). В .env: HEALTHY_LIFE_VAPID_PUBLIC_KEY и HEALTHY_LIFE_VAPID_PRIVATE_KEY, без SKIP_PWA_BUILD=1.",
     loadError:
       "Не удалось проверить настройки пушей. Задеплойте свежий код (git pull + rebuild) и обновите страницу.",
+    noServiceWorker:
+      "Service Worker не найден. Откройте сайт по HTTPS (healthy-life.myworkspace.su), обновите страницу и убедитесь, что образ собран без SKIP_PWA_BUILD=1.",
     denied: "Разрешение на уведомления отклонено. Включите его в настройках браузера.",
     promptConfirm:
       "Включить пуш-напоминания о приёме лекарств? Позже можно изменить в профиле.",

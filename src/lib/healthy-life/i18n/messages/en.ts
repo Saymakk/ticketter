@@ -262,6 +262,8 @@ export const en = {
     notConfigured:
       "Push notifications are not configured on the server. Set NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY and HEALTHY_LIFE_VAPID_PRIVATE_KEY, rebuild without SKIP_PWA_BUILD=1.",
     loadError: "Could not check push settings. Redeploy the app with the latest code, then refresh.",
+    noServiceWorker:
+      "Service worker not found. Open the site over HTTPS, refresh, and rebuild without SKIP_PWA_BUILD=1.",
     denied: "Notification permission was denied. Enable it in browser settings.",
     promptConfirm:
       "Enable push reminders for medication times? You can change this later in Profile.",
