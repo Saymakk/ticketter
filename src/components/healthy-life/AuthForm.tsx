@@ -1,9 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/healthy-life/supabase/client";
+import {
+  readRememberMePreference,
+  writeRememberMePreference,
+} from "@/lib/healthy-life/auth-prefs";
+import { AuthNotice, type AuthNoticeTone } from "@/components/healthy-life/AuthNotice";
 import { Button, Card, Field, PageHeader, Shell, inputClass } from "@/components/healthy-life/ui";
 
 type AuthMode = "login" | "register";
@@ -25,39 +30,64 @@ function authErrorMessage(message: string) {
   return message;
 }
 
+function delay(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/";
-  const supabase = useMemo(() => createClient(), []);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(
-    params.get("error") === "auth" ? "Не удалось войти. Попробуйте ещё раз." : null,
+  const [notice, setNotice] = useState<{ message: string; tone: AuthNoticeTone } | null>(
+    params.get("error") === "auth"
+      ? { message: "Не удалось войти. Попробуйте ещё раз.", tone: "error" }
+      : null,
   );
+
+  useEffect(() => {
+    setRememberMe(readRememberMePreference());
+  }, []);
+
+  const supabase = useMemo(() => createClient({ rememberMe }), [rememberMe]);
+
+  const clearNotice = useCallback(() => setNotice(null), []);
+
+  async function finishSignedIn(successMessage: string) {
+    setNotice({ message: successMessage, tone: "success" });
+    await delay(1100);
+    router.replace(next);
+    router.refresh();
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (loading) return;
 
     setLoading(true);
-    setMessage(null);
+    setNotice(null);
 
     const trimmedEmail = email.trim().toLowerCase();
 
     if (password.length < 6) {
       setLoading(false);
-      setMessage("Пароль должен быть не короче 6 символов.");
+      setNotice({ message: "Пароль должен быть не короче 6 символов.", tone: "error" });
       return;
     }
+
+    writeRememberMePreference(rememberMe);
 
     try {
       if (mode === "register") {
         if (password !== confirmPassword) {
-          setMessage("Пароли не совпадают.");
+          setNotice({ message: "Пароли не совпадают.", tone: "error" });
           return;
         }
 
@@ -67,18 +97,29 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         });
 
         if (error) {
-          setMessage(authErrorMessage(error.message));
+          setNotice({ message: authErrorMessage(error.message), tone: "error" });
           return;
         }
 
-        if (data.session) {
-          router.replace(next);
-          router.refresh();
-          return;
+        // Prefer the session from signUp; otherwise sign in immediately (auto-login).
+        if (!data.session) {
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: trimmedEmail,
+            password,
+          });
+
+          if (signInError) {
+            setNotice({
+              message:
+                "Аккаунт создан. Подтвердите email в письме, затем войдите — или отключите Confirm email в Supabase.",
+              tone: "info",
+            });
+            router.push(`/login?next=${encodeURIComponent(next)}`);
+            return;
+          }
         }
 
-        setMessage("Аккаунт создан. Если нужно подтверждение почты — проверьте письмо, затем войдите.");
-        router.push(`/login?next=${encodeURIComponent(next)}`);
+        await finishSignedIn("Регистрация успешна — вход выполнен");
         return;
       }
 
@@ -88,14 +129,16 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       });
 
       if (error) {
-        setMessage(authErrorMessage(error.message));
+        setNotice({ message: authErrorMessage(error.message), tone: "error" });
         return;
       }
 
-      router.replace(next);
-      router.refresh();
+      await finishSignedIn(rememberMe ? "С возвращением!" : "Вход выполнен");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Ошибка");
+      setNotice({
+        message: err instanceof Error ? err.message : "Ошибка",
+        tone: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -105,6 +148,15 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
   return (
     <Shell className="relative z-10 pb-10">
+      {notice ? (
+        <AuthNotice
+          message={notice.message}
+          tone={notice.tone}
+          onDismiss={clearNotice}
+          autoHideMs={notice.tone === "error" ? 6000 : 0}
+        />
+      ) : null}
+
       <PageHeader
         title={mode === "login" ? "Вход" : "Регистрация"}
         subtitle="Email и пароль"
@@ -152,6 +204,27 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             </Field>
           ) : null}
 
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl px-1 py-1 touch-manipulation">
+            <input
+              type="checkbox"
+              className="h-5 w-5 shrink-0 rounded-md border-[var(--line)] accent-[var(--accent)]"
+              checked={rememberMe}
+              onChange={(e) => {
+                const nextValue = e.target.checked;
+                setRememberMe(nextValue);
+                writeRememberMePreference(nextValue);
+              }}
+            />
+            <span className="text-sm text-[var(--ink)]">
+              Запомнить меня
+              <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                {rememberMe
+                  ? "Оставаться в аккаунте на этом устройстве"
+                  : "Короткая сессия — около 12 часов"}
+              </span>
+            </span>
+          </label>
+
           <Button
             type="submit"
             className="w-full touch-manipulation"
@@ -167,8 +240,6 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                 : "Зарегистрироваться"}
           </Button>
         </form>
-
-        {message ? <p className="mt-3 text-sm text-[var(--muted)]">{message}</p> : null}
       </Card>
 
       <p className="relative z-10 mt-5 text-center text-sm text-[var(--muted)]">

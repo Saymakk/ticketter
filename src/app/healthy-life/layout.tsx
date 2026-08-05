@@ -16,13 +16,27 @@ const body = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Healthy Life — учёт еды и калорий",
+  applicationName: "Healthy Life",
+  title: {
+    default: "Healthy Life",
+    template: "%s · Healthy Life",
+  },
   description:
     "Мобильный дневник питания: фото еды, ИИ-оценка калорий, вес и советы по прогрессу.",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     title: "Healthy Life",
     statusBarStyle: "default",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/hl-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/hl-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/hl-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/hl-apple-touch.png", sizes: "180x180", type: "image/png" }],
+    shortcut: ["/icons/hl-192.png"],
   },
 };
 
