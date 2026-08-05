@@ -2,23 +2,27 @@ import { NextResponse } from "next/server";
 import { getOrCreateProfile, prisma } from "@/lib/healthy-life/prisma";
 import { jsonError } from "@/lib/healthy-life/api-error";
 import {
-  getHealthyLifeVapidPublicKey,
+  getHealthyLifePushEnvDebug,
   getHealthyLifePushMissingEnv,
+  getHealthyLifeVapidPublicKey,
   isHealthyLifePushConfigured,
 } from "@/lib/healthy-life/push-config";
 
 export async function GET() {
   try {
-    if (!isHealthyLifePushConfigured()) {
+    const configured = isHealthyLifePushConfigured();
+    if (!configured) {
       return NextResponse.json({
         configured: false,
         publicKey: null,
         missing: getHealthyLifePushMissingEnv(),
+        debug: getHealthyLifePushEnvDebug(),
       });
     }
     return NextResponse.json({
       configured: true,
       publicKey: getHealthyLifeVapidPublicKey(),
+      debug: getHealthyLifePushEnvDebug(),
     });
   } catch (error) {
     return jsonError(error);

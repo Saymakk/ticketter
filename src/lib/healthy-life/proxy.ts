@@ -26,6 +26,27 @@ function isCronPath(appPath: string): boolean {
   return appPath.startsWith("/api/cron/");
 }
 
+/** Public VAPID key only — safe without login (same as NEXT_PUBLIC_*). */
+function isPublicPushVapidGet(request: NextRequest, appPath: string): boolean {
+  return request.method === "GET" && appPath === "/api/push/vapid";
+}
+
+function passThroughOrRewrite(
+  request: NextRequest,
+  alreadyPrefixed: boolean,
+  appPath: string,
+  withForwardedCookies: (res: NextResponse) => NextResponse,
+): NextResponse {
+  if (alreadyPrefixed) {
+    return withForwardedCookies(NextResponse.next({ request: { headers: request.headers } }));
+  }
+  const rewriteUrl = request.nextUrl.clone();
+  rewriteUrl.pathname = `${PREFIX}${appPath}`;
+  return withForwardedCookies(
+    NextResponse.rewrite(rewriteUrl, { request: { headers: request.headers } }),
+  );
+}
+
 /**
  * Own auth check (separate Supabase project/users from Ticketter), plus hostname→segment rewrite.
  * Also supports path-based local access at `/healthy-life/*` (no rewrite needed).
@@ -66,16 +87,8 @@ export async function healthyLifeProxy(request: NextRequest): Promise<NextRespon
   }
 
   if (!user && !isAuthPage(appPath)) {
-    if (isCronPath(appPath)) {
-      // Cron authenticates via HEALTHY_LIFE_CRON_SECRET inside the route.
-      if (alreadyPrefixed) {
-        return withForwardedCookies(NextResponse.next({ request: { headers: request.headers } }));
-      }
-      const rewriteUrl = request.nextUrl.clone();
-      rewriteUrl.pathname = `${PREFIX}${appPath}`;
-      return withForwardedCookies(
-        NextResponse.rewrite(rewriteUrl, { request: { headers: request.headers } }),
-      );
+    if (isCronPath(appPath) || isPublicPushVapidGet(request, appPath)) {
+      return passThroughOrRewrite(request, alreadyPrefixed, appPath, withForwardedCookies);
     }
     if (appPath.startsWith("/api/")) {
       return withForwardedCookies(
