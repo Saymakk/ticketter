@@ -121,6 +121,13 @@ export default function AdminPage() {
               description={t("admin.home.tileAuditDesc")}
             />
           )}
+          {role === "super_admin" && (
+            <HomeNavTile
+              href="/super-admin/external-projects"
+              title={t("admin.home.tileExternalProjectsTitle")}
+              description={t("admin.home.tileExternalProjectsDesc")}
+            />
+          )}
           <HomeNavTile
             href={scannerListHref(true)}
             title={t("admin.home.tileScannerTitle")}
