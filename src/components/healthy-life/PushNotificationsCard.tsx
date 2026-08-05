@@ -76,6 +76,7 @@ export function PushNotificationsCard() {
   const [weightTime, setWeightTime] = useState("");
   const [mealTimes, setMealTimes] = useState("");
   const [supported, setSupported] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   const refresh = useCallback(async () => {
     const vapidRes = await hlFetch("/api/push/vapid");
@@ -183,6 +184,7 @@ export function PushNotificationsCard() {
   }, [hlFetch, t]);
 
   useEffect(() => {
+    setMounted(true);
     const ok =
       typeof window !== "undefined" &&
       "serviceWorker" in navigator &&
@@ -306,6 +308,19 @@ export function PushNotificationsCard() {
   }
 
   const on = Boolean(status?.thisDevice || (status?.subscriptionCount && status.subscriptionCount > 0));
+
+  // Avoid SSR/client text mismatch (React #418) — render only after mount.
+  if (!mounted) {
+    return (
+      <Card className="mt-4 space-y-3">
+        <div>
+          <h2 className="text-base font-semibold text-[var(--ink)]">{t("push.title")}</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">{t("push.hint")}</p>
+        </div>
+        <p className="text-sm text-[var(--muted)]">{t("loading")}</p>
+      </Card>
+    );
+  }
 
   return (
     <Card className="mt-4 space-y-3">
