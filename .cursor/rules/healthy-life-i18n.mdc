@@ -1,0 +1,19 @@
+---
+description: Healthy Life i18n — always update all locales when changing UI copy
+globs: src/components/healthy-life/**/*,src/lib/healthy-life/i18n/**/*,src/app/healthy-life/**/*
+alwaysApply: false
+---
+
+# Healthy Life localization
+
+When adding or changing any user-visible string in Healthy Life:
+
+1. Add or update the key in `src/lib/healthy-life/i18n/messages/en.ts` (source of truth).
+2. Update **every** locale file in `src/lib/healthy-life/i18n/messages/` for the same keys:
+   `ru`, `ar`, `zh`, `fr`, `es`, `kk`, `ky`, `uz`, `ko`, `ja` (plus `en`).
+3. Use `useT()` / `t("section.key")` in components — do not hardcode UI copy.
+4. AI-facing text (advice prompts) must follow the selected app locale via `locale` query / `aiLanguage`.
+5. Placeholders like `{pct}` / `{reason}` must stay identical across all locales.
+6. Default language is English when the device language is unsupported; device language is preferred when supported.
+
+Supported locales: en, ru, ar, zh, fr, es, kk, ky, uz, ko, ja (UN official + Kazakh, Kyrgyz, Uzbek, Korean, Japanese).

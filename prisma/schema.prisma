@@ -12,18 +12,21 @@ datasource db {
 }
 
 model Profile {
-  id               String        @id @default(cuid())
-  userId           String?       @unique // Healthy Life Supabase auth.users.id
-  name             String        @default("Пользователь")
-  dailyCalorieGoal Int           @default(2000)
+  id               String             @id @default(cuid())
+  userId           String?            @unique // Healthy Life Supabase auth.users.id
+  name             String             @default("Пользователь")
+  dailyCalorieGoal Int                @default(2000)
   targetWeightKg   Float?
   heightCm         Float?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
   meals            Meal[]
   weights          WeightEntry[]
   advice           Advice[]
   workouts         Workout[]
+  medicationPlans  MedicationPlan[]
+  medicationIntakes MedicationIntake[]
+  aiRecords        AiRecord[]
 }
 
 model Meal {
@@ -44,11 +47,14 @@ model Meal {
   aiCalories     Float?
   aiConfidence   Float?
   aiRawResponse  String?  @db.Text
+  aiRecordId     String?
+  aiUsedFallback Boolean  @default(false)
   userCorrected  Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   @@index([profileId, date])
+  @@index([aiRecordId])
 }
 
 model WeightEntry {
@@ -66,18 +72,49 @@ model WeightEntry {
 }
 
 model Advice {
-  id        String   @id @default(cuid())
-  profileId String
-  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  period    String // day | week | month
-  periodKey String // 2026-08-04 | 2026-W32 | 2026-08
-  title     String
-  content   String   @db.Text
-  summary   String?
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  profileId    String
+  profile      Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  period       String // day | week | month
+  periodKey    String // 2026-08-04__en | 2026-W32__ru | …
+  title        String
+  content      String   @db.Text
+  summary      String?
+  locale       String   @default("en")
+  usedFallback Boolean  @default(false)
+  aiRecordId   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
   @@unique([profileId, period, periodKey])
   @@index([profileId, period])
+  @@index([aiRecordId])
+}
+
+/**
+ * Immutable per-user log of every AI response (food analysis, advice, …).
+ * Current “latest advice” also lives in Advice; meals keep a snapshot + aiRecordId.
+ */
+model AiRecord {
+  id             String   @id @default(cuid())
+  profileId      String
+  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  /** food_analysis | advice */
+  kind           String
+  locale         String?
+  /** Short context: photo URL, period, etc. */
+  inputSummary   String?  @db.Text
+  /** Full model output as JSON text */
+  outputJson     String   @db.Text
+  usedFallback   Boolean  @default(false)
+  fallbackReason String?
+  /** Optional links back to domain rows */
+  mealId         String?
+  adviceId       String?
+  createdAt      DateTime @default(now())
+
+  @@index([profileId, kind, createdAt])
+  @@index([profileId, createdAt])
 }
 
 model Workout {
@@ -96,4 +133,54 @@ model Workout {
 
   @@index([profileId, date])
   @@index([profileId, type])
+}
+
+/** Recurring medication schedule (times of day + day periodicity). AI must never advise on these. */
+model MedicationPlan {
+  id           String             @id @default(cuid())
+  profileId    String
+  profile      Profile            @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name         String
+  dosage       String?
+  reason       String?
+  /** JSON array of "HH:mm" local times, e.g. ["08:00","20:00"] */
+  timesJson    String             @default("[]")
+  /** daily | weekly | interval */
+  recurrence   String             @default("daily")
+  /** For weekly: JSON array of ISO weekdays 1=Mon … 7=Sun */
+  weekdaysJson String             @default("[]")
+  /** For interval: take every N days (N >= 1) */
+  intervalDays Int                @default(1)
+  /** YYYY-MM-DD anchor / start date for interval (and optional schedule start) */
+  anchorDate   String?
+  active       Boolean            @default(true)
+  note         String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  intakes      MedicationIntake[]
+
+  @@index([profileId, active])
+}
+
+/** Actual medication intake logged for a day (optionally linked to a plan slot). */
+model MedicationIntake {
+  id            String          @id @default(cuid())
+  profileId     String
+  profile       Profile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  planId        String?
+  plan          MedicationPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  date          String // YYYY-MM-DD
+  name          String
+  dosage        String?
+  reason        String?
+  photoPath     String?
+  /** Planned slot "HH:mm" when taken against a schedule */
+  scheduledTime String?
+  /** Wall-clock time when the dose was logged "HH:mm" */
+  takenTime     String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([profileId, date])
+  @@index([planId, date])
 }

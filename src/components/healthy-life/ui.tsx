@@ -62,7 +62,7 @@ export function Button({
   variant = "primary",
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "ghost" | "danger";
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "med" | "med-secondary";
 }) {
   return (
     <button
@@ -72,6 +72,8 @@ export function Button({
         variant === "secondary" && "bg-[var(--accent-soft)] text-[var(--accent-ink)]",
         variant === "ghost" && "bg-transparent text-[var(--ink)]",
         variant === "danger" && "bg-[#f3d9d4] text-[#8a3b2f]",
+        variant === "med" && "bg-[var(--med-accent)] text-white shadow-[0_12px_28px_-16px_var(--med-accent)]",
+        variant === "med-secondary" && "bg-[var(--med-soft)] text-[var(--med-accent-ink)]",
         className,
       )}
       {...props}
@@ -98,3 +100,69 @@ export function Field({
 
 export const inputClass =
   "w-full rounded-2xl border border-[var(--line)] bg-[var(--bg-elevated)] px-3 py-3 text-base text-[var(--ink)] outline-none transition focus:border-[var(--accent)]";
+
+export const medInputClass =
+  "w-full rounded-2xl border border-[var(--med-line)] bg-[var(--med-surface)] px-3 py-3 text-base text-[var(--ink)] outline-none transition focus:border-[var(--med-accent)]";
+
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  tone = "default",
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+  tone?: "default" | "med";
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+      <button
+        type="button"
+        aria-label="Закрыть"
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className={cn(
+          "relative z-10 flex max-h-[min(92dvh,100%)] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.75rem] border shadow-2xl animate-rise sm:rounded-[1.75rem]",
+          tone === "med"
+            ? "border-[var(--med-line)] bg-[var(--med-surface)]"
+            : "border-[var(--line)] bg-[var(--surface)]",
+        )}
+      >
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-transparent px-4 pt-4 pb-3">
+          <h2
+            className={cn(
+              "font-display text-2xl leading-tight",
+              tone === "med" ? "text-[var(--med-accent-ink)]" : "text-[var(--ink)]",
+            )}
+          >
+            {title}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl px-2 py-1 text-sm text-[var(--muted)]"
+          >
+            ✕
+          </button>
+        </div>
+        <div
+          className={cn(
+            "hl-modal-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
+            tone === "med" && "hl-modal-scroll--med",
+          )}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}

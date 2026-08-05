@@ -31,8 +31,9 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = getRequestHost(request);
 
-  // healthy-life.myworkspace.su → its own app (own Supabase/users), routed to /healthy-life/*
-  if (isHealthyLifeHost(host)) {
+  // healthy-life.myworkspace.su → rewrite to /healthy-life/*
+  // Also accept direct /healthy-life/* (local path-based access on localhost).
+  if (isHealthyLifeHost(host) || pathname === "/healthy-life" || pathname.startsWith("/healthy-life/")) {
     return healthyLifeProxy(request);
   }
 

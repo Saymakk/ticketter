@@ -1,8 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { todayKey } from "@/lib/healthy-life/dates";
 import { formatKg } from "@/lib/healthy-life/format";
+import {
+  cacheKey,
+  invalidateRelatedCaches,
+  isCacheStale,
+  readCache,
+  writeCache,
+} from "@/lib/healthy-life/app-cache";
 import {
   WORKOUT_TYPES,
   WORKOUT_UNITS,
@@ -10,6 +17,7 @@ import {
   workoutTypeLabel,
 } from "@/lib/healthy-life/workouts";
 import { OverviewChart, WorkoutTypeChart } from "@/components/healthy-life/ProgressCharts";
+import { useHlRouting } from "@/lib/healthy-life/routing";
 import { Button, Card, Field, PageHeader, Shell, inputClass } from "@/components/healthy-life/ui";
 
 type Tab = "chart" | "workout" | "weight";
@@ -58,7 +66,20 @@ type WeightEntry = {
   note: string | null;
 };
 
+type WeightPayload = {
+  entries: WeightEntry[];
+  profile: { targetWeightKg: number | null } | null;
+};
+
+const WORKOUTS_KEY = cacheKey("workouts", "limit", 40);
+const WEIGHT_KEY = cacheKey("weight", "limit", 30);
+
+function progressKey(days: number) {
+  return cacheKey("progress", days);
+}
+
 export function ProgressView() {
+  const { fetch: hlFetch } = useHlRouting();
   const [tab, setTab] = useState<Tab>("chart");
   const [rangeDays, setRangeDays] = useState(14);
   const [progress, setProgress] = useState<ProgressData | null>(null);
@@ -66,7 +87,9 @@ export function ProgressView() {
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [targetWeightKg, setTargetWeightKg] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [metricsRefreshing, setMetricsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const progressGen = useRef(0);
 
   const [workoutDate, setWorkoutDate] = useState(todayKey());
   const [workoutType, setWorkoutType] = useState<string>("running");
@@ -82,43 +105,121 @@ export function ProgressView() {
   const [weightNote, setWeightNote] = useState("");
   const [savingWeight, setSavingWeight] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [pRes, wRes, wtRes] = await Promise.all([
-        fetch(`/api/progress?days=${rangeDays}`),
-        fetch("/api/workouts?limit=40"),
-        fetch("/api/weight?limit=30"),
-      ]);
-      if (!pRes.ok || !wRes.ok || !wtRes.ok) throw new Error("Не удалось загрузить прогресс");
-      const [pData, wData, wtData] = await Promise.all([pRes.json(), wRes.json(), wtRes.json()]);
-      setProgress(pData);
-      setWorkouts(wData.workouts || []);
-      setWeights(wtData.entries || []);
-      setTargetWeightKg(wtData.profile?.targetWeightKg ?? null);
-      setWeightKg((cur) => cur || (wtData.entries?.[0] ? String(wtData.entries[0].weightKg) : ""));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка");
-    } finally {
-      setLoading(false);
-    }
-  }, [rangeDays]);
+  const applyWeightPayload = useCallback((wtData: WeightPayload) => {
+    setWeights(wtData.entries || []);
+    setTargetWeightKg(wtData.profile?.targetWeightKg ?? null);
+    setWeightKg((cur) => cur || (wtData.entries?.[0] ? String(wtData.entries[0].weightKg) : ""));
+  }, []);
+
+  const loadLists = useCallback(
+    async (opts?: { force?: boolean }) => {
+      const wCached = readCache<Workout[]>(WORKOUTS_KEY);
+      const wtCached = readCache<WeightPayload>(WEIGHT_KEY);
+
+      if (wCached) setWorkouts(wCached.data);
+      if (wtCached) applyWeightPayload(wtCached.data);
+
+      const listsFresh =
+        wCached &&
+        wtCached &&
+        !opts?.force &&
+        !isCacheStale(wCached) &&
+        !isCacheStale(wtCached);
+
+      if (listsFresh) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const [wRes, wtRes] = await Promise.all([
+          hlFetch("/api/workouts?limit=40"),
+          hlFetch("/api/weight?limit=30"),
+        ]);
+        if (!wRes.ok || !wtRes.ok) throw new Error("Не удалось загрузить прогресс");
+        const [wData, wtData] = await Promise.all([wRes.json(), wtRes.json()]);
+        const workoutsList = (wData.workouts || []) as Workout[];
+        const weightPayload: WeightPayload = {
+          entries: wtData.entries || [],
+          profile: wtData.profile ?? null,
+        };
+        setWorkouts(workoutsList);
+        applyWeightPayload(weightPayload);
+        writeCache(WORKOUTS_KEY, workoutsList);
+        writeCache(WEIGHT_KEY, weightPayload);
+      } catch (e) {
+        if (!wCached && !wtCached) {
+          setError(e instanceof Error ? e.message : "Ошибка");
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [applyWeightPayload, hlFetch],
+  );
+
+  const loadProgress = useCallback(
+    async (days: number, opts?: { force?: boolean }) => {
+      const key = progressKey(days);
+      const cached = readCache<ProgressData>(key);
+      if (cached) {
+        setProgress(cached.data);
+        if (!opts?.force && !isCacheStale(cached)) {
+          setMetricsRefreshing(false);
+          return;
+        }
+      }
+
+      // Keep existing chart visible; only blank on first visit with no cache.
+      setMetricsRefreshing(true);
+      setError(null);
+      const gen = ++progressGen.current;
+
+      try {
+        const pRes = await hlFetch(`/api/progress?days=${days}`);
+        if (gen !== progressGen.current) return;
+        if (!pRes.ok) throw new Error("Не удалось загрузить прогресс");
+        const pData = (await pRes.json()) as ProgressData;
+        if (gen !== progressGen.current) return;
+        setProgress(pData);
+        writeCache(key, pData);
+      } catch (e) {
+        if (gen !== progressGen.current) return;
+        if (!cached) {
+          setError(e instanceof Error ? e.message : "Ошибка");
+        }
+      } finally {
+        if (gen === progressGen.current) {
+          setMetricsRefreshing(false);
+        }
+      }
+    },
+    [hlFetch],
+  );
 
   useEffect(() => {
-    load();
-  }, [load]);
+    loadLists();
+  }, [loadLists]);
+
+  useEffect(() => {
+    loadProgress(rangeDays);
+  }, [rangeDays, loadProgress]);
 
   useEffect(() => {
     const meta = WORKOUT_TYPES.find((t) => t.id === workoutType);
     if (meta) setWorkoutUnit(meta.defaultUnit);
   }, [workoutType]);
 
+  async function refreshAll() {
+    invalidateRelatedCaches({ progress: true, workouts: true, weight: true, advice: true });
+    await Promise.all([loadLists({ force: true }), loadProgress(rangeDays, { force: true })]);
+  }
+
   async function saveWorkout() {
     setSavingWorkout(true);
     setError(null);
     try {
-      const res = await fetch("/api/workouts", {
+      const res = await hlFetch("/api/workouts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -137,7 +238,8 @@ export function ProgressView() {
       setWorkoutName("");
       setWorkoutBurn("");
       setTab("chart");
-      await load();
+      invalidateRelatedCaches({ day: workoutDate });
+      await refreshAll();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка");
     } finally {
@@ -147,15 +249,16 @@ export function ProgressView() {
 
   async function removeWorkout(id: string) {
     if (!confirm("Удалить тренировку?")) return;
-    await fetch(`/api/workouts?id=${id}`, { method: "DELETE" });
-    await load();
+    await hlFetch(`/api/workouts?id=${id}`, { method: "DELETE" });
+    invalidateRelatedCaches();
+    await refreshAll();
   }
 
   async function saveWeight() {
     setSavingWeight(true);
     setError(null);
     try {
-      const res = await fetch("/api/weight", {
+      const res = await hlFetch("/api/weight", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -168,7 +271,8 @@ export function ProgressView() {
       if (!res.ok) throw new Error(data.error || "Ошибка");
       setWeightNote("");
       setTab("chart");
-      await load();
+      invalidateRelatedCaches({ day: weightDate });
+      await refreshAll();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка");
     } finally {
@@ -177,6 +281,7 @@ export function ProgressView() {
   }
 
   const latestWeight = weights[0];
+  const showInitialLoading = loading && !progress && workouts.length === 0 && weights.length === 0;
 
   return (
     <Shell>
@@ -209,16 +314,20 @@ export function ProgressView() {
       </div>
 
       {error ? <p className="mb-3 text-sm text-[#8a3b2f]">{error}</p> : null}
-      {loading ? <p className="text-[var(--muted)]">Загрузка…</p> : null}
+      {showInitialLoading ? <p className="text-[var(--muted)]">Загрузка…</p> : null}
 
-      {!loading && tab === "chart" && progress ? (
-        <div className="space-y-4 animate-rise">
-          <div className="flex gap-2">
+      {tab === "chart" && progress ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
             {[7, 14, 30].map((d) => (
               <button
                 key={d}
                 type="button"
-                onClick={() => setRangeDays(d)}
+                onClick={() => {
+                  setRangeDays(d);
+                  const cached = readCache<ProgressData>(progressKey(d));
+                  if (cached) setProgress(cached.data);
+                }}
                 className={`rounded-xl px-3 py-1.5 text-xs font-semibold ${
                   rangeDays === d
                     ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]"
@@ -228,9 +337,16 @@ export function ProgressView() {
                 {d} дн.
               </button>
             ))}
+            {metricsRefreshing ? (
+              <span className="ml-auto text-xs text-[var(--muted)]">Обновляем…</span>
+            ) : null}
           </div>
 
-          <Card className="space-y-3 bg-gradient-to-br from-[#eaf3e8] to-[var(--surface)]">
+          <Card
+            className={`space-y-3 bg-gradient-to-br from-[#eaf3e8] to-[var(--surface)] transition-opacity ${
+              metricsRefreshing ? "opacity-70" : "opacity-100"
+            }`}
+          >
             <div className="grid grid-cols-3 gap-2 text-center">
               <Stat label="Ккал" value={String(progress.totals.calories)} />
               <Stat label="Тренировок" value={String(progress.totals.workouts)} />
@@ -268,8 +384,12 @@ export function ProgressView() {
         </div>
       ) : null}
 
-      {!loading && tab === "workout" ? (
-        <div className="space-y-4 animate-rise">
+      {tab === "chart" && !progress && !showInitialLoading ? (
+        <p className="text-[var(--muted)]">Загрузка показателей…</p>
+      ) : null}
+
+      {tab === "workout" && !showInitialLoading ? (
+        <div className="space-y-4">
           <Card className="space-y-3">
             <Field label="Дата">
               <input
@@ -388,8 +508,8 @@ export function ProgressView() {
         </div>
       ) : null}
 
-      {!loading && tab === "weight" ? (
-        <div className="space-y-4 animate-rise">
+      {tab === "weight" && !showInitialLoading ? (
+        <div className="space-y-4">
           <Card className="space-y-3">
             <Field label="Дата">
               <input

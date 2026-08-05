@@ -8,27 +8,12 @@ import {
   readRememberMePreference,
   writeRememberMePreference,
 } from "@/lib/healthy-life/auth-prefs";
+import { useHlRouting } from "@/lib/healthy-life/routing";
+import { useT } from "@/lib/healthy-life/i18n";
 import { AuthNotice, type AuthNoticeTone } from "@/components/healthy-life/AuthNotice";
 import { Button, Card, Field, PageHeader, Shell, inputClass } from "@/components/healthy-life/ui";
 
 type AuthMode = "login" | "register";
-
-function authErrorMessage(message: string) {
-  const lower = message.toLowerCase();
-  if (lower.includes("invalid login credentials")) {
-    return "Неверный email или пароль.";
-  }
-  if (lower.includes("email not confirmed")) {
-    return "Подтвердите email в письме или отключите Confirm email в Supabase.";
-  }
-  if (lower.includes("user already registered")) {
-    return "Этот email уже зарегистрирован. Войдите.";
-  }
-  if (lower.includes("password")) {
-    return message;
-  }
-  return message;
-}
 
 function delay(ms: number) {
   return new Promise<void>((resolve) => {
@@ -38,17 +23,21 @@ function delay(ms: number) {
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
+  const { path } = useHlRouting();
+  const t = useT();
   const params = useSearchParams();
   const next = params.get("next") || "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<{ message: string; tone: AuthNoticeTone } | null>(
     params.get("error") === "auth"
-      ? { message: "Не удалось войти. Попробуйте ещё раз.", tone: "error" }
+      ? { message: t("auth.authFailed"), tone: "error" }
       : null,
   );
 
@@ -58,10 +47,28 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
   const clearNotice = useCallback(() => setNotice(null), []);
 
+  function authErrorMessage(message: string) {
+    const lower = message.toLowerCase();
+    if (lower.includes("invalid login credentials")) {
+      return t("auth.invalidCredentials");
+    }
+    if (lower.includes("email not confirmed")) {
+      return t("auth.emailNotConfirmed");
+    }
+    if (lower.includes("user already registered")) {
+      return t("auth.alreadyRegistered");
+    }
+    if (lower.includes("password")) {
+      return message;
+    }
+    return message;
+  }
+
   async function finishSignedIn(successMessage: string) {
     setNotice({ message: successMessage, tone: "success" });
     await delay(1100);
-    router.replace(next);
+    const dest = next.startsWith("/") ? next : `/${next}`;
+    router.replace(path(dest));
     router.refresh();
   }
 
@@ -76,7 +83,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
     if (password.length < 6) {
       setLoading(false);
-      setNotice({ message: "Пароль должен быть не короче 6 символов.", tone: "error" });
+      setNotice({ message: t("auth.passwordTooShort"), tone: "error" });
       return;
     }
 
@@ -86,7 +93,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     try {
       if (mode === "register") {
         if (password !== confirmPassword) {
-          setNotice({ message: "Пароли не совпадают.", tone: "error" });
+          setNotice({ message: t("auth.passwordsMismatch"), tone: "error" });
           return;
         }
 
@@ -109,16 +116,15 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
           if (signInError) {
             setNotice({
-              message:
-                "Аккаунт создан. Подтвердите email в письме, затем войдите — или отключите Confirm email в Supabase.",
+              message: t("auth.confirmEmailNeeded"),
               tone: "info",
             });
-            router.push(`/login?next=${encodeURIComponent(next)}`);
+            router.push(path(`/login?next=${encodeURIComponent(next)}`));
             return;
           }
         }
 
-        await finishSignedIn("Регистрация успешна — вход выполнен");
+        await finishSignedIn(t("auth.successRegister"));
         return;
       }
 
@@ -132,10 +138,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         return;
       }
 
-      await finishSignedIn(rememberMe ? "С возвращением!" : "Вход выполнен");
+      await finishSignedIn(rememberMe ? t("auth.welcomeBack") : t("auth.signedIn"));
     } catch (err) {
       setNotice({
-        message: err instanceof Error ? err.message : "Ошибка",
+        message: err instanceof Error ? err.message : t("error"),
         tone: "error",
       });
     } finally {
@@ -157,13 +163,13 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       ) : null}
 
       <PageHeader
-        title={mode === "login" ? "Вход" : "Регистрация"}
-        subtitle="Email и пароль"
+        title={mode === "login" ? t("auth.loginTitle") : t("auth.registerTitle")}
+        subtitle={t("auth.subtitle")}
       />
 
       <Card className="relative z-10">
         <form className="space-y-3" onSubmit={onSubmit} noValidate>
-          <Field label="Email">
+          <Field label={t("auth.email")}>
             <input
               className={inputClass}
               type="email"
@@ -177,30 +183,58 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               placeholder="you@email.com"
             />
           </Field>
-          <Field label="Пароль">
-            <input
-              className={inputClass}
-              type="password"
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="минимум 6 символов"
-            />
-          </Field>
-          {mode === "register" ? (
-            <Field label="Повторите пароль">
+          <div className="block space-y-1.5">
+            <span className="text-xs font-medium tracking-wide text-[var(--muted)] uppercase">
+              {t("auth.password")}
+            </span>
+            <div className="relative">
               <input
-                className={inputClass}
-                type="password"
-                autoComplete="new-password"
+                className={`${inputClass} pr-12`}
+                type={showPassword ? "text" : "password"}
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
                 required
                 minLength={6}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={t("auth.passwordHint")}
               />
-            </Field>
+              <button
+                type="button"
+                className="absolute top-1/2 right-2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-[var(--muted)] touch-manipulation"
+                aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
+                title={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
+                onClick={() => setShowPassword((v) => !v)}
+              >
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            </div>
+          </div>
+          {mode === "register" ? (
+            <div className="block space-y-1.5">
+              <span className="text-xs font-medium tracking-wide text-[var(--muted)] uppercase">
+                {t("auth.confirmPassword")}
+              </span>
+              <div className="relative">
+                <input
+                  className={`${inputClass} pr-12`}
+                  type={showConfirmPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  required
+                  minLength={6}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="absolute top-1/2 right-2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-[var(--muted)] touch-manipulation"
+                  aria-label={showConfirmPassword ? t("auth.hidePassword") : t("auth.showPassword")}
+                  title={showConfirmPassword ? t("auth.hidePassword") : t("auth.showPassword")}
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                >
+                  {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
+            </div>
           ) : null}
 
           <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl px-1 py-1 touch-manipulation">
@@ -215,11 +249,9 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               }}
             />
             <span className="text-sm text-[var(--ink)]">
-              Запомнить меня
+              {t("auth.rememberMe")}
               <span className="mt-0.5 block text-xs text-[var(--muted)]">
-                {rememberMe
-                  ? "Оставаться в аккаунте на этом устройстве"
-                  : "Короткая сессия — около 12 часов"}
+                {rememberMe ? t("auth.rememberOn") : t("auth.rememberOff")}
               </span>
             </span>
           </label>
@@ -232,11 +264,11 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           >
             {loading
               ? mode === "login"
-                ? "Входим…"
-                : "Создаём…"
+                ? t("auth.signingIn")
+                : t("auth.registering")
               : mode === "login"
-                ? "Войти"
-                : "Зарегистрироваться"}
+                ? t("auth.signIn")
+                : t("auth.register")}
           </Button>
         </form>
       </Card>
@@ -244,26 +276,54 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       <p className="relative z-10 mt-5 text-center text-sm text-[var(--muted)]">
         {mode === "login" ? (
           <>
-            Нет аккаунта?{" "}
+            {t("auth.noAccount")}{" "}
             <Link
-              href={`/register${nextQuery}`}
+              href={path(`/register${nextQuery}`)}
               className="inline-block min-h-11 px-1 py-2 font-semibold text-[var(--accent)] touch-manipulation underline-offset-2"
             >
-              Регистрация
+              {t("auth.registerLink")}
             </Link>
           </>
         ) : (
           <>
-            Уже есть аккаунт?{" "}
+            {t("auth.hasAccount")}{" "}
             <Link
-              href={`/login${nextQuery}`}
+              href={path(`/login${nextQuery}`)}
               className="inline-block min-h-11 px-1 py-2 font-semibold text-[var(--accent)] touch-manipulation underline-offset-2"
             >
-              Войти
+              {t("auth.loginLink")}
             </Link>
           </>
         )}
       </p>
     </Shell>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="2.6" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M3 3l18 18M10.5 10.7a2.6 2.6 0 0 0 3.7 3.7M9.4 5.6C10.2 5.3 11.1 5.1 12 5.1c6 0 9.5 6.9 9.5 6.9a16 16 0 0 1-3.3 3.8M6.2 6.4A15.6 15.6 0 0 0 2.5 12S6 18.5 12 18.5c1.2 0 2.3-.3 3.3-.7"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

@@ -3,6 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { todayKey } from "@/lib/healthy-life/dates";
 import { formatKg } from "@/lib/healthy-life/format";
+import {
+  cacheKey,
+  invalidateRelatedCaches,
+  isCacheStale,
+  readCache,
+  writeCache,
+} from "@/lib/healthy-life/app-cache";
+import { useHlRouting } from "@/lib/healthy-life/routing";
 import { Button, Card, Field, PageHeader, Shell, inputClass } from "@/components/healthy-life/ui";
 
 type WeightEntry = {
@@ -12,7 +20,15 @@ type WeightEntry = {
   note: string | null;
 };
 
+type WeightPayload = {
+  entries: WeightEntry[];
+  profile: { targetWeightKg: number | null } | null;
+};
+
+const WEIGHT_KEY = cacheKey("weight", "list");
+
 export function WeightView() {
+  const { fetch: hlFetch } = useHlRouting();
   const [entries, setEntries] = useState<WeightEntry[]>([]);
   const [targetWeightKg, setTargetWeightKg] = useState<number | null>(null);
   const [weightKg, setWeightKg] = useState("");
@@ -22,18 +38,38 @@ export function WeightView() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/weight");
-      const data = await res.json();
-      setEntries(data.entries || []);
-      setTargetWeightKg(data.profile?.targetWeightKg ?? null);
-      setWeightKg((current) => current || (data.entries?.[0] ? String(data.entries[0].weightKg) : ""));
-    } finally {
-      setLoading(false);
-    }
+  const applyPayload = useCallback((data: WeightPayload) => {
+    setEntries(data.entries || []);
+    setTargetWeightKg(data.profile?.targetWeightKg ?? null);
+    setWeightKg((current) => current || (data.entries?.[0] ? String(data.entries[0].weightKg) : ""));
   }, []);
+
+  const load = useCallback(
+    async (opts?: { force?: boolean }) => {
+      const cached = readCache<WeightPayload>(WEIGHT_KEY);
+      if (cached) {
+        applyPayload(cached.data);
+        setLoading(false);
+        if (!opts?.force && !isCacheStale(cached)) return;
+      } else {
+        setLoading(true);
+      }
+
+      try {
+        const res = await hlFetch("/api/weight");
+        const data = await res.json();
+        const payload: WeightPayload = {
+          entries: data.entries || [],
+          profile: data.profile ?? null,
+        };
+        applyPayload(payload);
+        writeCache(WEIGHT_KEY, payload);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [applyPayload, hlFetch],
+  );
 
   useEffect(() => {
     load();
@@ -43,7 +79,7 @@ export function WeightView() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/weight", {
+      const res = await hlFetch("/api/weight", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -55,7 +91,8 @@ export function WeightView() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка");
       setNote("");
-      await load();
+      invalidateRelatedCaches({ day: date });
+      await load({ force: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка");
     } finally {
@@ -78,20 +115,22 @@ export function WeightView() {
           <p className="font-display text-4xl">
             {latest ? formatKg(latest.weightKg) : "—"}
           </p>
-          <div className="mt-2 flex gap-4 text-sm text-[var(--muted)]">
-            <span>Цель: {targetWeightKg != null ? formatKg(targetWeightKg) : "не задана"}</span>
-            {delta != null ? (
-              <span>
-                За период: {delta > 0 ? "+" : ""}
-                {delta.toFixed(1)} кг
-              </span>
-            ) : null}
-          </div>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            Цель: {targetWeightKg != null ? formatKg(targetWeightKg) : "не задана"}
+            {delta != null ? ` · Δ ${delta > 0 ? "+" : ""}${delta.toFixed(1)} кг` : ""}
+          </p>
         </Card>
+
+        {error ? <p className="text-sm text-[#8a3b2f]">{error}</p> : null}
 
         <Card className="space-y-3">
           <Field label="Дата">
-            <input type="date" className={inputClass} value={date} onChange={(e) => setDate(e.target.value)} />
+            <input
+              type="date"
+              className={inputClass}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </Field>
           <Field label="Вес, кг">
             <input
@@ -103,32 +142,32 @@ export function WeightView() {
             />
           </Field>
           <Field label="Заметка">
-            <input className={inputClass} value={note} onChange={(e) => setNote(e.target.value)} placeholder="утро, натощак" />
+            <input
+              className={inputClass}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
           </Field>
-          {error ? <p className="text-sm text-[#8a3b2f]">{error}</p> : null}
           <Button type="button" className="w-full" disabled={saving} onClick={save}>
-            {saving ? "Сохраняем…" : "Сохранить вес"}
+            {saving ? "Сохраняем…" : "Сохранить"}
           </Button>
         </Card>
 
-        <div className="space-y-2">
-          <h2 className="font-display text-xl">История</h2>
-          {loading ? <p className="text-[var(--muted)]">Загрузка…</p> : null}
-          {!loading && entries.length === 0 ? (
-            <Card>
-              <p className="text-[var(--muted)]">Записей пока нет.</p>
-            </Card>
-          ) : null}
-          {entries.map((entry) => (
-            <Card key={entry.id} className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold">{entry.date}</p>
-                {entry.note ? <p className="text-sm text-[var(--muted)]">{entry.note}</p> : null}
-              </div>
-              <p className="font-display text-xl">{formatKg(entry.weightKg)}</p>
-            </Card>
-          ))}
-        </div>
+        {loading && entries.length === 0 ? (
+          <p className="text-[var(--muted)]">Загрузка…</p>
+        ) : (
+          <div className="space-y-2">
+            {entries.map((entry) => (
+              <Card key={entry.id} className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold">{entry.date}</p>
+                  {entry.note ? <p className="text-sm text-[var(--muted)]">{entry.note}</p> : null}
+                </div>
+                <p className="font-display text-xl">{formatKg(entry.weightKg)}</p>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </Shell>
   );

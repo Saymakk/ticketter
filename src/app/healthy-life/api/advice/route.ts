@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { getOrCreateProfile, prisma } from "@/lib/healthy-life/prisma";
 import { describeAiFailure, generateAdvice } from "@/lib/healthy-life/ai";
+import { saveAiRecord, linkAiRecordToAdvice } from "@/lib/healthy-life/ai-records";
 import { monthKey, monthRange, todayKey, weekKey, weekRange } from "@/lib/healthy-life/dates";
 import { jsonError } from "@/lib/healthy-life/api-error";
+import { HL_LOCALE_META, isHlLocale } from "@/lib/healthy-life/i18n/locales";
 
 function isStaleFallbackAdvice(summary: string | null, content: string) {
   const text = `${summary ?? ""}\n${content}`;
-  return /OPENAI_API_KEY|Добавьте OPENAI/i.test(text);
+  return /OPENAI_API_KEY|Добавьте OPENAI|HEALTHY_LIFE_OPENAI/i.test(text);
 }
 
 export async function GET(request: Request) {
@@ -14,27 +16,33 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const period = (searchParams.get("period") || "day") as "day" | "week" | "month";
     const refresh = searchParams.get("refresh") === "1";
+    const localeRaw = searchParams.get("locale") || "en";
+    const locale = isHlLocale(localeRaw) ? localeRaw : "en";
+    const aiLanguage = HL_LOCALE_META[locale].aiLanguage;
     const profile = await getOrCreateProfile();
 
     const now = new Date();
-    let periodKey = todayKey(now);
-    let start = periodKey;
-    let end = periodKey;
-    let periodLabel = periodKey;
+    let periodKeyBase = todayKey(now);
+    let start = periodKeyBase;
+    let end = periodKeyBase;
+    let periodLabel = periodKeyBase;
 
     if (period === "week") {
-      periodKey = weekKey(now);
+      periodKeyBase = weekKey(now);
       const range = weekRange(now);
       start = range.start;
       end = range.end;
       periodLabel = range.label;
     } else if (period === "month") {
-      periodKey = monthKey(now);
+      periodKeyBase = monthKey(now);
       const range = monthRange(now);
       start = range.start;
       end = range.end;
       periodLabel = range.label;
     }
+
+    // Cache advice per locale so language switches do not reuse wrong text.
+    const periodKey = `${periodKeyBase}__${locale}`;
 
     if (!refresh) {
       const cached = await prisma.advice.findUnique({
@@ -47,7 +55,7 @@ export async function GET(request: Request) {
         },
       });
       if (cached && !isStaleFallbackAdvice(cached.summary, cached.content)) {
-        return NextResponse.json({ advice: cached, cached: true, periodLabel });
+        return NextResponse.json({ advice: cached, cached: true, periodLabel, locale });
       }
     }
 
@@ -88,10 +96,25 @@ export async function GET(request: Request) {
     }
     const workoutSummary =
       workouts.length === 0
-        ? "тренировок не было"
+        ? "no workouts"
         : [...workoutByType.entries()]
-            .map(([type, s]) => `${type}: ${s.count} раз, объём ${s.quantity}`)
+            .map(([type, s]) => `${type}: ${s.count}x, volume ${s.quantity}`)
             .join("; ");
+
+    const inputSummary = JSON.stringify({
+      period,
+      periodKeyBase,
+      periodLabel,
+      calorieGoal: profile.dailyCalorieGoal,
+      totalCalories,
+      mealCount: meals.length,
+      avgCaloriesPerDay: totalCalories / dayCount,
+      weightStart: weights[0]?.weightKg ?? null,
+      weightEnd: weights[weights.length - 1]?.weightKg ?? null,
+      targetWeight: profile.targetWeightKg,
+      recentMeals: meals.slice(0, 12).map((m) => `${m.name} (${Math.round(m.calories)} kcal)`),
+      workoutSummary,
+    });
 
     let advicePayload;
     let usedFallback = false;
@@ -107,8 +130,9 @@ export async function GET(request: Request) {
         weightStart: weights[0]?.weightKg ?? null,
         weightEnd: weights[weights.length - 1]?.weightKg ?? null,
         targetWeight: profile.targetWeightKg,
-        recentMeals: meals.map((m) => `${m.name} (${Math.round(m.calories)} ккал)`),
+        recentMeals: meals.map((m) => `${m.name} (${Math.round(m.calories)} kcal)`),
         workoutSummary,
+        language: aiLanguage,
       });
     } catch (err) {
       console.error(err);
@@ -116,13 +140,24 @@ export async function GET(request: Request) {
       fallbackReason = describeAiFailure(err);
       const hasData = totalCalories > 0 || workouts.length > 0 || weights.length > 0;
       advicePayload = {
-        title: period === "day" ? "Совет на сегодня" : period === "week" ? "Итоги недели" : "Итоги месяца",
-        summary: `ИИ временно недоступен: ${fallbackReason}. Ниже — краткая сводка по вашим данным.`,
+        title: period === "day" ? "Today" : period === "week" ? "This week" : "This month",
+        summary: `AI temporarily unavailable: ${fallbackReason}. Summary of your data below.`,
         content: hasData
-          ? `За период: ${Math.round(totalCalories)} ккал, ${meals.length} приёмов пищи, ${workouts.length} тренировок (${workoutSummary}). Среднее: ${Math.round(totalCalories / dayCount)} ккал/день при цели ${profile.dailyCalorieGoal}.`
-          : "Пока мало данных. Начните с фото еды, веса и тренировок — советы появятся автоматически.",
+          ? `Period: ${Math.round(totalCalories)} kcal, ${meals.length} meals, ${workouts.length} workouts (${workoutSummary}). Average: ${Math.round(totalCalories / dayCount)} kcal/day vs goal ${profile.dailyCalorieGoal}.`
+          : "Not enough data yet. Log meals, weight, and workouts — advice will appear automatically.",
       };
     }
+
+    // Immutable per-user history of this AI response (including regenerations).
+    const aiRecord = await saveAiRecord({
+      profileId: profile.id,
+      kind: "advice",
+      locale,
+      inputSummary,
+      output: advicePayload,
+      usedFallback,
+      fallbackReason,
+    });
 
     const advice = await prisma.advice.upsert({
       where: {
@@ -139,13 +174,21 @@ export async function GET(request: Request) {
         title: advicePayload.title,
         content: advicePayload.content,
         summary: advicePayload.summary,
+        locale,
+        usedFallback,
+        aiRecordId: aiRecord.id,
       },
       update: {
         title: advicePayload.title,
         content: advicePayload.content,
         summary: advicePayload.summary,
+        locale,
+        usedFallback,
+        aiRecordId: aiRecord.id,
       },
     });
+
+    await linkAiRecordToAdvice(aiRecord.id, advice.id);
 
     return NextResponse.json({
       advice,
@@ -153,6 +196,8 @@ export async function GET(request: Request) {
       usedFallback,
       fallbackReason,
       periodLabel,
+      locale,
+      aiRecordId: aiRecord.id,
       stats: {
         totalCalories,
         mealCount: meals.length,

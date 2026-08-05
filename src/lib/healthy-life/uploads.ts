@@ -5,13 +5,13 @@ import { getMealPhotosBucket, getSupabaseAdmin } from "@/lib/healthy-life/supaba
 const MAX_EDGE_PX = 1600;
 const WEBP_QUALITY = 80;
 
+export type SavedPhoto = { photoPath: string; buffer: Buffer; mimeType: string };
+
 /**
- * Normalize any meal photo to WebP (EXIF-rotated, downscaled) before Storage upload.
- * Returns the public URL plus the WebP bytes used for AI analysis.
+ * Normalize any photo to WebP (EXIF-rotated, downscaled) before Storage upload.
+ * `folder` separates meals vs medications in the same bucket.
  */
-export async function saveMealPhoto(
-  file: File,
-): Promise<{ photoPath: string; buffer: Buffer; mimeType: string }> {
+export async function savePhoto(file: File, folder: "meals" | "medications"): Promise<SavedPhoto> {
   const input = Buffer.from(await file.arrayBuffer());
   const webp = await sharp(input)
     .rotate()
@@ -25,7 +25,7 @@ export async function saveMealPhoto(
     .toBuffer();
 
   const mimeType = "image/webp";
-  const objectPath = `meals/${new Date().toISOString().slice(0, 10)}/${Date.now()}-${randomUUID()}.webp`;
+  const objectPath = `${folder}/${new Date().toISOString().slice(0, 10)}/${Date.now()}-${randomUUID()}.webp`;
 
   const supabase = getSupabaseAdmin();
   const bucket = getMealPhotosBucket();
@@ -47,4 +47,9 @@ export async function saveMealPhoto(
     buffer: webp,
     mimeType,
   };
+}
+
+/** @deprecated use savePhoto(file, "meals") */
+export async function saveMealPhoto(file: File): Promise<SavedPhoto> {
+  return savePhoto(file, "meals");
 }

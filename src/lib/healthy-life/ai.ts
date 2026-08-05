@@ -105,14 +105,17 @@ export async function generateAdvice(params: {
   targetWeight?: number | null;
   recentMeals: string[];
   workoutSummary?: string;
+  /** Language the model must write in (e.g. "Russian", "English"). */
+  language?: string;
 }): Promise<{ title: string; content: string; summary: string }> {
   const client = getClient();
+  const language = params.language || "English";
   const weightInfo =
     params.weightStart != null && params.weightEnd != null
-      ? `Вес: с ${params.weightStart} кг до ${params.weightEnd} кг.`
+      ? `Weight: from ${params.weightStart} kg to ${params.weightEnd} kg.`
       : params.weightEnd != null
-        ? `Текущий вес: ${params.weightEnd} кг.`
-        : "Данных о весе мало.";
+        ? `Current weight: ${params.weightEnd} kg.`
+        : "Little weight data.";
 
   const response = await client.chat.completions.create({
     model: getModel(),
@@ -120,32 +123,40 @@ export async function generateAdvice(params: {
     messages: [
       {
         role: "system",
-        content: `Ты дружелюбный русскоязычный коуч по здоровому питанию и тренировкам.
-Дай практичные советы без осуждения.
+        content: `You are a friendly coach for healthy eating and workouts.
+Give practical, non-judgmental advice.
 
-КРИТИЧНО — это односторонние советы, не диалог:
-- НЕ задавай вопросов пользователю (ни прямых, ни риторических).
-- НЕ проси ответить, уточнить, написать, рассказать или «дать знать».
-- НЕ используй формулировки вроде «А как у вас с…?», «Попробуйте ответить…», «Напишите мне…», «Что думаете?».
-- Пиши только утверждения и готовые рекомендации, которые можно сразу применить.
-- Если данных мало — спокойно скажи, чего не хватает для точности, без просьбы ответить в чат.
+LANGUAGE (critical):
+- Write title, summary, and content ENTIRELY in ${language}.
+- Do not mix languages.
 
-Ответь ТОЛЬКО JSON:
-{"title":"короткий заголовок","summary":"1-2 предложения без вопросов","content":"развёрнутый совет 3-6 коротких абзацев или пунктов, без вопросов пользователю"}`,
+CRITICAL — one-way advice, not a dialogue:
+- NEVER ask the user questions (direct or rhetorical).
+- NEVER ask them to reply, clarify, write back, or “let you know”.
+- Write only statements and ready-to-use recommendations.
+- If data is sparse, calmly say what is missing for accuracy — without asking for a chat reply.
+
+CRITICAL — medications are out of scope:
+- NEVER mention medications, drugs, vitamins, supplements, dosages, or dosing schedules.
+- NEVER give medical or pharmaceutical recommendations.
+- Advice only about food, calories, eating habits, and physical activity.
+
+Reply ONLY with JSON:
+{"title":"short title","summary":"1-2 sentences without questions","content":"expanded advice, 3-6 short paragraphs or bullets, no questions"}`,
       },
       {
         role: "user",
-        content: `Период: ${params.period} (${params.periodLabel})
-Цель калорий/день: ${params.calorieGoal}
-Суммарно калорий за период: ${params.totalCalories}
-Среднее в день: ${Math.round(params.avgCaloriesPerDay)}
-Приёмов пищи: ${params.mealCount}
-Цель по весу: ${params.targetWeight ?? "не задана"} кг
+        content: `Period: ${params.period} (${params.periodLabel})
+Daily calorie goal: ${params.calorieGoal}
+Total calories in period: ${params.totalCalories}
+Average per day: ${Math.round(params.avgCaloriesPerDay)}
+Meals logged: ${params.mealCount}
+Weight goal: ${params.targetWeight ?? "not set"} kg
 ${weightInfo}
-Тренировки: ${params.workoutSummary || "нет данных"}
-Недавние блюда: ${params.recentMeals.slice(0, 12).join("; ") || "пока нет"}
+Workouts: ${params.workoutSummary || "no data"}
+Recent meals: ${params.recentMeals.slice(0, 12).join("; ") || "none yet"}
 
-Сформируй готовые советы. Не задавай вопросов.`,
+Write ready-to-use advice in ${language}. Do not ask questions. Do not mention medications.`,
       },
     ],
   });
@@ -153,12 +164,12 @@ ${weightInfo}
   const text = response.choices[0]?.message?.content ?? "";
   const data = extractJson(text) as { title?: string; content?: string; summary?: string };
   return {
-    title: sanitizeAdviceCopy(data.title || "Совет по питанию"),
+    title: sanitizeAdviceCopy(data.title || "Nutrition tip"),
     content: sanitizeAdviceCopy(
-      data.content || "Продолжайте вести дневник — так советы станут точнее.",
+      data.content || "Keep logging meals — advice will get more precise.",
     ),
     summary: sanitizeAdviceCopy(
-      data.summary || "Следите за балансом калорий и регулярностью приёмов пищи.",
+      data.summary || "Watch calorie balance and regular meals.",
     ),
   };
 }

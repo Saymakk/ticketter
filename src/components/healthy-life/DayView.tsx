@@ -1,91 +1,185 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { formatDayLabel, mealTypeLabel, todayKey } from "@/lib/healthy-life/dates";
-import { formatKcal, progressPercent } from "@/lib/healthy-life/format";
-import { formatWorkoutQuantity, workoutTypeLabel } from "@/lib/healthy-life/workouts";
-import { Button, Card, PageHeader, Shell } from "@/components/healthy-life/ui";
-
-type Meal = {
-  id: string;
-  name: string;
-  description: string | null;
-  calories: number;
-  mealType: string;
-  photoPath: string | null;
-  userCorrected: boolean;
-  protein: number | null;
-  carbs: number | null;
-  fat: number | null;
-};
-
-type Workout = {
-  id: string;
-  type: string;
-  quantity: number;
-  unit: string;
-  name: string | null;
-};
-
-type DayData = {
-  date: string;
-  totalCalories: number;
-  remainingCalories: number;
-  meals: Meal[];
-  profile: { dailyCalorieGoal: number; name: string };
-  weight: { weightKg: number } | null;
-};
+import { useCallback, useEffect, useRef, useState } from "react";
+import { formatDayLabel, todayKey } from "@/lib/healthy-life/dates";
+import { invalidateRelatedCaches } from "@/lib/healthy-life/app-cache";
+import {
+  isDayCacheStale,
+  readDayCache,
+  writeDayCache,
+} from "@/lib/healthy-life/day-cache";
+import type { ScheduleCompliance } from "@/lib/healthy-life/medications";
+import { useHlRouting } from "@/lib/healthy-life/routing";
+import { useT } from "@/lib/healthy-life/i18n";
+import { PageHeader, Shell } from "@/components/healthy-life/ui";
+import { DayPanel, type DayPanelData } from "@/components/healthy-life/DayPanel";
+import { DayHistory } from "@/components/healthy-life/DayHistory";
+import { MealDetailModal, type MealDetail } from "@/components/healthy-life/MealDetailModal";
+import { AddMealModal } from "@/components/healthy-life/AddMealModal";
+import {
+  AddMedicationModal,
+  MedicationDetailModal,
+  MedicationPlansModal,
+  type MedicationIntake,
+  type MedicationPlan,
+} from "@/components/healthy-life/MedicationModals";
+import {
+  FoodActionIcon,
+  IconActionButton,
+  IconActionLink,
+  MedActionIcon,
+  ScheduleActionIcon,
+  WorkoutActionIcon,
+} from "@/components/healthy-life/DayActionIcons";
 
 export function DayView() {
+  const { path, fetch: hlFetch } = useHlRouting();
+  const t = useT();
   const [date, setDate] = useState(todayKey());
-  const [data, setData] = useState<DayData | null>(null);
-  const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [data, setData] = useState<DayPanelData | null>(null);
+  const [plans, setPlans] = useState<MedicationPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const fetchGen = useRef(0);
 
-  const load = useCallback(async (d: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [mealRes, workoutRes] = await Promise.all([
-        fetch(`/api/meals?date=${d}`),
-        fetch(`/api/workouts?date=${d}`),
-      ]);
-      const mealJson = await mealRes.json().catch(() => ({}));
-      if (!mealRes.ok) {
-        throw new Error(mealJson.error || "Не удалось загрузить день");
+  const [selectedMeal, setSelectedMeal] = useState<MealDetail | null>(null);
+  const [selectedIntake, setSelectedIntake] = useState<MedicationIntake | null>(null);
+  const [addMealOpen, setAddMealOpen] = useState(false);
+  const [addMedOpen, setAddMedOpen] = useState(false);
+  const [plansOpen, setPlansOpen] = useState(false);
+  const [medPrefill, setMedPrefill] = useState<{
+    planId?: string;
+    scheduledTime?: string;
+    name?: string;
+    dosage?: string | null;
+  } | null>(null);
+
+  const applyPayload = useCallback(
+    (d: string, mealJson: Record<string, unknown>, workouts: DayPanelData["workouts"], medJson: Record<string, unknown>) => {
+      const nextPlans = (medJson.plans as MedicationPlan[]) || [];
+      const nextData: DayPanelData = {
+        date: (mealJson.date as string) || d,
+        totalCalories: Number(mealJson.totalCalories) || 0,
+        remainingCalories: Number(mealJson.remainingCalories) || 0,
+        meals: (mealJson.meals as MealDetail[]) || [],
+        workouts,
+        intakes: (medJson.intakes as MedicationIntake[]) || [],
+        compliance: (medJson.compliance as ScheduleCompliance[]) || [],
+        weight: (mealJson.weight as DayPanelData["weight"]) ?? null,
+        profile: (mealJson.profile as DayPanelData["profile"]) || {
+          dailyCalorieGoal: 2000,
+          name: "",
+        },
+      };
+      setPlans(nextPlans);
+      setData(nextData);
+      writeDayCache(d, nextData, nextPlans);
+    },
+    [],
+  );
+
+  const load = useCallback(
+    async (d: string, opts?: { force?: boolean; silent?: boolean }) => {
+      const cached = readDayCache(d);
+      if (cached) {
+        setData(cached.data);
+        setPlans(cached.plans);
+        setLoading(false);
+        setError(null);
+        if (!opts?.force && !isDayCacheStale(cached)) {
+          return;
+        }
       }
-      setData(mealJson);
-      if (workoutRes.ok) {
-        const w = await workoutRes.json();
-        setWorkouts(w.workouts || []);
-      } else {
-        setWorkouts([]);
+
+      if (!cached) setLoading(true);
+      else setRefreshing(true);
+      setError(null);
+
+      const gen = ++fetchGen.current;
+      try {
+        const [mealRes, workoutRes, medRes] = await Promise.all([
+          hlFetch(`/api/meals?date=${d}`),
+          hlFetch(`/api/workouts?date=${d}`),
+          hlFetch(`/api/medications?date=${d}`),
+        ]);
+        if (gen !== fetchGen.current) return;
+
+        const mealJson = await mealRes.json().catch(() => ({}));
+        if (!mealRes.ok) throw new Error(mealJson.error || t("error"));
+
+        const workouts = workoutRes.ok ? ((await workoutRes.json()).workouts || []) : [];
+        const medJson = medRes.ok ? await medRes.json() : { intakes: [], plans: [], compliance: [] };
+
+        applyPayload(d, mealJson, workouts, medJson);
+      } catch (e) {
+        if (gen !== fetchGen.current) return;
+        if (!cached) {
+          setError(e instanceof Error ? e.message : t("error"));
+        }
+      } finally {
+        if (gen === fetchGen.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [applyPayload, hlFetch, t],
+  );
 
   useEffect(() => {
-    load(date);
-  }, [date, load]);
+    if (!showHistory) load(date);
+  }, [date, load, showHistory]);
 
-  async function removeMeal(id: string) {
-    if (!confirm("Удалить запись?")) return;
-    await fetch(`/api/meals?id=${id}`, { method: "DELETE" });
-    load(date);
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState !== "visible" || showHistory) return;
+      const cached = readDayCache(date);
+      if (!cached || isDayCacheStale(cached)) {
+        load(date, { silent: true });
+      }
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [date, load, showHistory]);
+
+  function openTake(row: ScheduleCompliance) {
+    setMedPrefill({
+      planId: row.planId,
+      scheduledTime: row.scheduledTime,
+      name: row.name,
+      dosage: row.dosage,
+    });
+    setAddMedOpen(true);
   }
 
-  const pct = data ? progressPercent(data.totalCalories, data.profile.dailyCalorieGoal) : 0;
+  function refreshAfterMutation() {
+    invalidateRelatedCaches({ day: date });
+    load(date, { force: true });
+  }
+
+  if (showHistory) {
+    return (
+      <Shell>
+        <DayHistory
+          onClose={() => {
+            setShowHistory(false);
+            load(date, { silent: true });
+          }}
+        />
+      </Shell>
+    );
+  }
 
   return (
     <Shell>
       <PageHeader
-        title="Сегодня"
+        title={t("day.title")}
         subtitle={formatDayLabel(date)}
         action={
           <input
@@ -97,126 +191,93 @@ export function DayView() {
         }
       />
 
-      {loading && <p className="text-[var(--muted)]">Загрузка…</p>}
+      <div className="-mt-3 mb-5 flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setShowHistory(true)}
+          className="text-sm font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+        >
+          {t("day.historyLink")}
+        </button>
+        {refreshing ? (
+          <span className="text-[11px] font-medium text-[var(--muted)]">{t("day.updating")}</span>
+        ) : null}
+      </div>
+
+      {loading && !data && <p className="text-[var(--muted)]">{t("loading")}</p>}
       {error && <p className="text-[#8a3b2f]">{error}</p>}
 
-      {data && !loading && (
+      {data && (
         <div className="space-y-4 animate-rise">
-          <Card className="overflow-hidden bg-gradient-to-br from-[#e7f3ea] via-[var(--surface)] to-[#f3efe4]">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <p className="text-sm text-[var(--muted)]">Съедено</p>
-                <p className="font-display text-4xl text-[var(--ink)]">
-                  {Math.round(data.totalCalories)}
-                  <span className="ml-1 text-lg text-[var(--muted)]">ккал</span>
-                </p>
-                <p className="mt-1 text-sm text-[var(--muted)]">
-                  Цель {data.profile.dailyCalorieGoal} · осталось{" "}
-                  {Math.round(Math.max(0, data.remainingCalories))}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-[var(--muted)]">Вес</p>
-                <p className="font-display text-2xl">
-                  {data.weight ? `${data.weight.weightKg.toFixed(1)} кг` : "—"}
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--accent-soft)]">
-              <div
-                className="h-full rounded-full bg-[var(--accent)] transition-all duration-700"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-          </Card>
-
-          <div className="flex gap-2">
-            <Link href="/add" className="flex-1">
-              <Button className="w-full" type="button">
-                Добавить еду
-              </Button>
-            </Link>
-            <Link href="/progress">
-              <Button variant="secondary" type="button">
-                Тренировка
-              </Button>
-            </Link>
+          <div className="flex items-center justify-between gap-2 rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface)] px-2 py-2">
+            <IconActionButton
+              label={t("day.addFood")}
+              tone="primary"
+              icon={<FoodActionIcon />}
+              onClick={() => setAddMealOpen(true)}
+            />
+            <IconActionLink
+              label={t("day.workout")}
+              tone="secondary"
+              href={path("/progress")}
+              icon={<WorkoutActionIcon />}
+            />
+            <IconActionButton
+              label={t("day.medication")}
+              tone="med"
+              icon={<MedActionIcon />}
+              onClick={() => {
+                setMedPrefill(null);
+                setAddMedOpen(true);
+              }}
+            />
+            <IconActionButton
+              label={t("day.schedule")}
+              tone="med-secondary"
+              icon={<ScheduleActionIcon />}
+              onClick={() => setPlansOpen(true)}
+            />
           </div>
 
-          {workouts.length > 0 ? (
-            <div className="space-y-2">
-              <h2 className="font-display text-xl">Тренировки</h2>
-              {workouts.map((w) => (
-                <Card key={w.id} className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-semibold">
-                      {workoutTypeLabel(w.type)}
-                      {w.name ? ` · ${w.name}` : ""}
-                    </p>
-                    <p className="text-sm text-[var(--muted)]">
-                      {formatWorkoutQuantity(w.quantity, w.unit)}
-                    </p>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          ) : null}
-
-          <div className="space-y-3">
-            <h2 className="font-display text-xl">Приёмы пищи</h2>
-            {data.meals.length === 0 ? (
-              <Card>
-                <p className="text-[var(--muted)]">
-                  Пока пусто. Сделайте фото блюда — ИИ распознает еду и оценит калории, а вы сможете
-                  поправить результат.
-                </p>
-              </Card>
-            ) : (
-              data.meals.map((meal) => (
-                <Card key={meal.id} className="flex gap-3">
-                  {meal.photoPath ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={meal.photoPath}
-                      alt={meal.name}
-                      className="h-20 w-20 shrink-0 rounded-2xl object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)]">
-                      еда
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-xs text-[var(--muted)]">{mealTypeLabel(meal.mealType)}</p>
-                        <h3 className="truncate font-semibold">{meal.name}</h3>
-                      </div>
-                      <p className="shrink-0 font-semibold">{formatKcal(meal.calories)}</p>
-                    </div>
-                    {meal.description ? (
-                      <p className="mt-1 line-clamp-2 text-sm text-[var(--muted)]">{meal.description}</p>
-                    ) : null}
-                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--muted)]">
-                      {meal.userCorrected ? <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5">скорректировано</span> : null}
-                      {meal.protein != null ? <span>Б {Math.round(meal.protein)}г</span> : null}
-                      {meal.carbs != null ? <span>У {Math.round(meal.carbs)}г</span> : null}
-                      {meal.fat != null ? <span>Ж {Math.round(meal.fat)}г</span> : null}
-                      <button
-                        type="button"
-                        onClick={() => removeMeal(meal.id)}
-                        className="ml-auto text-[#8a3b2f]"
-                      >
-                        удалить
-                      </button>
-                    </div>
-                  </div>
-                </Card>
-              ))
-            )}
-          </div>
+          <DayPanel
+            data={data}
+            onMealClick={setSelectedMeal}
+            onIntakeClick={setSelectedIntake}
+            onTakeScheduled={openTake}
+          />
         </div>
       )}
+
+      <AddMealModal
+        open={addMealOpen}
+        date={date}
+        onClose={() => setAddMealOpen(false)}
+        onSaved={refreshAfterMutation}
+      />
+      <MealDetailModal
+        meal={selectedMeal}
+        onClose={() => setSelectedMeal(null)}
+        onSaved={refreshAfterMutation}
+        onDeleted={refreshAfterMutation}
+      />
+      <MedicationDetailModal
+        intake={selectedIntake}
+        onClose={() => setSelectedIntake(null)}
+        onChanged={refreshAfterMutation}
+      />
+      <AddMedicationModal
+        open={addMedOpen}
+        date={date}
+        plans={plans}
+        prefill={medPrefill}
+        onClose={() => setAddMedOpen(false)}
+        onSaved={refreshAfterMutation}
+      />
+      <MedicationPlansModal
+        open={plansOpen}
+        onClose={() => setPlansOpen(false)}
+        onChanged={refreshAfterMutation}
+      />
     </Shell>
   );
 }
