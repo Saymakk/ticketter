@@ -10,7 +10,14 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Prisma's query engine binary isn't picked up by the standalone file tracer by default.
   outputFileTracingIncludes: {
-    "/*": ["./node_modules/.prisma/client/**/*"],
+    "/*": [
+      "./node_modules/.prisma/client/**/*",
+      "./node_modules/web-push/**/*",
+      "./node_modules/asn1.js/**/*",
+      "./node_modules/http_ece/**/*",
+      "./node_modules/https-proxy-agent/**/*",
+      "./node_modules/jws/**/*",
+    ],
   },
   // Healthy Life module allows LAN testing from a phone during development.
   allowedDevOrigins: ["192.168.8.108", "localhost", "127.0.0.1"],

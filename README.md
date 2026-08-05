@@ -37,8 +37,9 @@ Required env vars (see `.env.local`):
 - `HEALTHY_LIFE_SUPABASE_MEAL_PHOTOS_BUCKET`
 - `HEALTHY_LIFE_DATABASE_URL` / `HEALTHY_LIFE_DIRECT_URL` (Prisma, pooled + direct connection)
 - `HEALTHY_LIFE_OPENAI_API_KEY` / `HEALTHY_LIFE_OPENAI_MODEL`
-- `NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY` / `HEALTHY_LIFE_VAPID_PRIVATE_KEY` / `HEALTHY_LIFE_VAPID_SUBJECT` (Web Push)
+- `NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY` / `HEALTHY_LIFE_VAPID_PRIVATE_KEY` / `HEALTHY_LIFE_VAPID_SUBJECT` (Web Push; public key also needed at **docker build** time)
 - `HEALTHY_LIFE_CRON_SECRET` (protects `/api/cron/healthy-life-reminders`, run every minute)
+- Do **not** set `SKIP_PWA_BUILD=1` if you need PWA push (service worker)
 
 Push reminders (PWA): medication schedule times, optional daily weight time, optional meal times.
 Enable in Profile → Notifications. On iOS, install the app to the home screen first.

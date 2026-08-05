@@ -1,6 +1,7 @@
 # На сервере: SUPABASE_PROVIDER=cloud и ключи облачного Supabase (*_CLOUD или NEXT_PUBLIC_*).
 # Сборка: docker compose --env-file .env build --progress=plain
 # На слабом VPS: добавьте swap 2G, сборка 15–40 мин — это нормально.
+# Для пушей Healthy Life: в .env должны быть VAPID-ключи; SKIP_PWA_BUILD не ставьте в 1.
 # Запуск: docker compose --env-file .env up -d
 services:
   ticketter:
@@ -12,6 +13,8 @@ services:
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
         NEXT_PUBLIC_HEALTHY_LIFE_SUPABASE_URL: ${NEXT_PUBLIC_HEALTHY_LIFE_SUPABASE_URL}
         NEXT_PUBLIC_HEALTHY_LIFE_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_HEALTHY_LIFE_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY}
+        SKIP_PWA_BUILD: ${SKIP_PWA_BUILD:-}
     ports:
       # Проверка по IP: http://ВАШ_IP:3001 — затем в UFW: ufw allow 3001/tcp
       # Когда настроите домен и прокси в Apache, смените на "127.0.0.1:3001:3000"
