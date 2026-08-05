@@ -33,6 +33,7 @@ type Status = {
   timezone: string;
   weightReminderTime: string | null;
   mealReminderTimes: string[];
+  loadError?: string | null;
 };
 
 export function PushNotificationsCard() {
@@ -48,8 +49,9 @@ export function PushNotificationsCard() {
 
   const refresh = useCallback(async () => {
     const vapidRes = await hlFetch("/api/push/vapid");
-    const vapid = await vapidRes.json().catch(() => ({}));
-    if (!vapidRes.ok || !vapid.configured) {
+    const vapid = await vapidRes.json().catch(() => ({} as Record<string, unknown>));
+
+    if (vapidRes.status === 401) {
       setStatus({
         configured: false,
         pushEnabled: false,
@@ -58,8 +60,36 @@ export function PushNotificationsCard() {
         timezone: detectTimezone(),
         weightReminderTime: null,
         mealReminderTimes: [],
+        loadError: t("unauthorized"),
       });
-      // Persist device timezone so medication compliance uses local day/time.
+      return;
+    }
+
+    if (!vapidRes.ok) {
+      setStatus({
+        configured: false,
+        pushEnabled: false,
+        thisDevice: false,
+        subscriptionCount: 0,
+        timezone: detectTimezone(),
+        weightReminderTime: null,
+        mealReminderTimes: [],
+        loadError: t("push.loadError"),
+      });
+      return;
+    }
+
+    if (!vapid.configured) {
+      setStatus({
+        configured: false,
+        pushEnabled: false,
+        thisDevice: false,
+        subscriptionCount: 0,
+        timezone: detectTimezone(),
+        weightReminderTime: null,
+        mealReminderTimes: [],
+        loadError: null,
+      });
       void hlFetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -234,7 +264,9 @@ export function PushNotificationsCard() {
       </div>
 
       {!status?.configured ? (
-        <p className="text-sm text-[var(--muted)]">{t("push.notConfigured")}</p>
+        <p className="text-sm text-[var(--muted)]">
+          {status?.loadError || t("push.notConfigured")}
+        </p>
       ) : !supported ? (
         <p className="text-sm text-[var(--muted)]">{t("push.unsupported")}</p>
       ) : (

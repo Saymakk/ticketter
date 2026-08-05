@@ -263,6 +263,8 @@ export const ru = defineMessages({
     unsupported: "Этот браузер не поддерживает пуш-уведомления.",
     notConfigured:
       "Пуш-уведомления не настроены на сервере. Добавьте NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY и HEALTHY_LIFE_VAPID_PRIVATE_KEY в .env и пересоберите образ без SKIP_PWA_BUILD=1.",
+    loadError:
+      "Не удалось проверить настройки пушей. Задеплойте свежий код (git pull + rebuild) и обновите страницу.",
     denied: "Разрешение на уведомления отклонено. Включите его в настройках браузера.",
     promptConfirm:
       "Включить пуш-напоминания о приёме лекарств? Позже можно изменить в профиле.",
