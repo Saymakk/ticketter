@@ -38,6 +38,7 @@ export type MedicationPlan = {
   name: string;
   dosage: string | null;
   reason: string | null;
+  photoPath?: string | null;
   timesJson: string;
   recurrence?: string | null;
   weekdaysJson?: string | null;
@@ -510,6 +511,12 @@ export function MedicationPlansModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [recognizing, setRecognizing] = useState(false);
+  const [recognizeHint, setRecognizeHint] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -535,12 +542,51 @@ export function MedicationPlansModal({
     setWeekdays([]);
     setIntervalDays(2);
     setAnchorDate(todayKey());
+    setPhotoPath(null);
+    setPreview(null);
+    setRecognizeHint(null);
+    setError(null);
   }
 
   function toggleWeekday(day: IsoWeekday) {
     setWeekdays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b),
     );
+  }
+
+  async function onFile(file: File | null) {
+    if (!file) return;
+    setUploading(true);
+    setRecognizing(true);
+    setError(null);
+    setRecognizeHint(null);
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    try {
+      const form = new FormData();
+      form.append("photo", file);
+      form.append("locale", locale);
+      const res = await hlFetch("/api/medications/upload", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || t("error"));
+      setPhotoPath(data.photoPath);
+
+      const analysis = data.analysis as { name?: string } | undefined;
+      const aiName = analysis?.name?.trim() || "";
+      if (aiName) {
+        setName(aiName);
+        setRecognizeHint(t("med.recognized"));
+      } else {
+        setRecognizeHint(t("med.recognizeFailed"));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("error"));
+      setPreview(null);
+      setRecognizeHint(null);
+    } finally {
+      setUploading(false);
+      setRecognizing(false);
+    }
   }
 
   async function createPlan() {
@@ -566,6 +612,7 @@ export function MedicationPlansModal({
           name: name.trim(),
           dosage: dosage.trim() || null,
           reason: reason.trim() || null,
+          photoPath,
           times,
           recurrence,
           weekdays: recurrence === "weekly" ? weekdays : [],
@@ -611,6 +658,40 @@ export function MedicationPlansModal({
       <p className="mb-4 text-sm text-[var(--muted)]">{t("med.plansHint")}</p>
 
       <div className="mb-5 space-y-3 rounded-2xl border border-[var(--med-line)] bg-white/60 p-3">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
+        />
+        {(preview || photoPath) && (
+          <OpenablePhoto
+            src={preview || photoPath || ""}
+            alt=""
+            className="h-36 w-full object-cover"
+          />
+        )}
+        <Button
+          type="button"
+          variant="med-secondary"
+          className="w-full"
+          disabled={uploading || recognizing || saving}
+          onClick={() => fileRef.current?.click()}
+        >
+          {recognizing
+            ? t("med.recognizing")
+            : uploading
+              ? t("med.uploading")
+              : photoPath
+                ? t("med.replacePhoto")
+                : t("med.addPhoto")}
+        </Button>
+        {recognizeHint ? (
+          <p className="text-xs text-[var(--med-accent-ink)]">{recognizeHint}</p>
+        ) : null}
+
         <Field label={t("med.name")}>
           <input className={medInputClass} value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
@@ -728,7 +809,16 @@ export function MedicationPlansModal({
             className={`rounded-2xl border p-3 ${plan.active ? "border-[var(--med-line)] bg-white/70" : "border-dashed border-[var(--med-line)] opacity-60"}`}
           >
             <div className="flex items-start justify-between gap-2">
-              <div>
+              <div className="flex min-w-0 flex-1 gap-3">
+                {plan.photoPath ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={plan.photoPath}
+                    alt=""
+                    className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                  />
+                ) : null}
+                <div className="min-w-0">
                 <p className="font-semibold text-[var(--med-accent-ink)]">{plan.name}</p>
                 <p className="text-xs text-[var(--muted)]">
                   {formatPlanRecurrence(plan, t)}
@@ -737,6 +827,7 @@ export function MedicationPlansModal({
                   {plan.dosage ? ` · ${plan.dosage}` : ""}
                 </p>
                 {plan.reason ? <p className="mt-1 text-xs text-[var(--muted)]">{plan.reason}</p> : null}
+                </div>
               </div>
               <div className="flex flex-col gap-1">
                 <button type="button" className="text-xs text-[var(--med-accent)]" onClick={() => toggleActive(plan)}>

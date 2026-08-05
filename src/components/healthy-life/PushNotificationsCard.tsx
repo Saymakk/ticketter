@@ -49,7 +49,7 @@ export function PushNotificationsCard() {
   const refresh = useCallback(async () => {
     const vapidRes = await hlFetch("/api/push/vapid");
     const vapid = await vapidRes.json().catch(() => ({}));
-    if (!vapid.configured) {
+    if (!vapidRes.ok || !vapid.configured) {
       setStatus({
         configured: false,
         pushEnabled: false,
@@ -59,6 +59,12 @@ export function PushNotificationsCard() {
         weightReminderTime: null,
         mealReminderTimes: [],
       });
+      // Persist device timezone so medication compliance uses local day/time.
+      void hlFetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timezone: detectTimezone(), preferredLocale: locale }),
+      }).catch(() => null);
       return;
     }
 
@@ -99,7 +105,7 @@ export function PushNotificationsCard() {
     });
     setWeightTime(json.weightReminderTime ?? "");
     setMealTimes(mealReminderTimes.join(", "));
-  }, [hlFetch]);
+  }, [hlFetch, locale]);
 
   useEffect(() => {
     const ok =
@@ -110,6 +116,15 @@ export function PushNotificationsCard() {
     setSupported(ok);
     void refresh();
   }, [refresh]);
+
+  // Keep profile timezone in sync for day compliance / reminders.
+  useEffect(() => {
+    void hlFetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ timezone: detectTimezone(), preferredLocale: locale }),
+    }).catch(() => null);
+  }, [hlFetch, locale]);
 
   async function enable() {
     setBusy(true);

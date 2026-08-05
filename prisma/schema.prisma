@@ -197,6 +197,8 @@ model MedicationPlan {
   intervalDays Int                @default(1)
   /** YYYY-MM-DD anchor / start date for interval (and optional schedule start) */
   anchorDate   String?
+  /** Optional pack photo URL */
+  photoPath   String?
   active       Boolean            @default(true)
   note         String?
   createdAt    DateTime           @default(now())

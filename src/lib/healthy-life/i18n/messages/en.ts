@@ -259,7 +259,8 @@ export const en = {
     statusOff: "Not enabled on this device",
     timezone: "Timezone: {tz}",
     unsupported: "This browser does not support push notifications.",
-    notConfigured: "Push notifications are not configured on the server.",
+    notConfigured:
+      "Push notifications are not configured on the server. Set NEXT_PUBLIC_HEALTHY_LIFE_VAPID_PUBLIC_KEY and HEALTHY_LIFE_VAPID_PRIVATE_KEY, rebuild without SKIP_PWA_BUILD=1.",
     denied: "Notification permission was denied. Enable it in browser settings.",
     promptConfirm:
       "Enable push reminders for medication times? You can change this later in Profile.",

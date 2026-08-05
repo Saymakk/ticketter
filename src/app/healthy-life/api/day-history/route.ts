@@ -5,21 +5,22 @@ import { todayKey } from "@/lib/healthy-life/dates";
 import { jsonError } from "@/lib/healthy-life/api-error";
 import {
   buildDayCompliance,
-  nowTimeKey,
 } from "@/lib/healthy-life/medications";
+import { getZonedNow } from "@/lib/healthy-life/reminders";
 
 /** Load N past days ending before `before` (exclusive). Default: 7 days before today. */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const days = Math.min(14, Math.max(1, Number(searchParams.get("days") || 7)));
-    const beforeRaw = searchParams.get("before") || todayKey();
+    const profile = await getOrCreateProfile();
+    const zoned = getZonedNow(profile.timezone || "UTC");
+    const beforeRaw = searchParams.get("before") || zoned.dateKey;
     const beforeDate = parseISO(beforeRaw);
     if (Number.isNaN(beforeDate.getTime())) {
       return NextResponse.json({ error: "Некорректная дата" }, { status: 400 });
     }
 
-    const profile = await getOrCreateProfile();
     const end = todayKey(subDays(beforeDate, 1));
     const start = todayKey(subDays(parseISO(end), days - 1));
 
@@ -49,8 +50,8 @@ export async function GET(request: Request) {
       }),
     ]);
 
-    const today = todayKey();
-    const nowTime = nowTimeKey();
+    const today = zoned.dateKey;
+    const nowTime = zoned.timeKey;
 
     const daysPayload = dayKeys.map((date) => {
       const dayMeals = meals.filter((m) => m.date === date);

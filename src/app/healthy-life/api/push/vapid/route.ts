@@ -3,13 +3,18 @@ import { getOrCreateProfile, prisma } from "@/lib/healthy-life/prisma";
 import { jsonError } from "@/lib/healthy-life/api-error";
 import {
   getHealthyLifeVapidPublicKey,
+  getHealthyLifePushMissingEnv,
   isHealthyLifePushConfigured,
 } from "@/lib/healthy-life/push-config";
 
 export async function GET() {
   try {
     if (!isHealthyLifePushConfigured()) {
-      return NextResponse.json({ configured: false, publicKey: null });
+      return NextResponse.json({
+        configured: false,
+        publicKey: null,
+        missing: getHealthyLifePushMissingEnv(),
+      });
     }
     return NextResponse.json({
       configured: true,

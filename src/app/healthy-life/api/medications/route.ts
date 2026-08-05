@@ -9,16 +9,19 @@ import {
   nowTimeKey,
   parsePlanTimes,
 } from "@/lib/healthy-life/medications";
+import { getZonedNow } from "@/lib/healthy-life/reminders";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const date = searchParams.get("date") || todayKey();
+    const date = searchParams.get("date") || undefined;
     const profile = await getOrCreateProfile();
+    const zoned = getZonedNow(profile.timezone || "UTC");
+    const day = date || zoned.dateKey;
 
     const [intakes, plans] = await Promise.all([
       prisma.medicationIntake.findMany({
-        where: { profileId: profile.id, date },
+        where: { profileId: profile.id, date: day },
         orderBy: [{ takenTime: "asc" }, { createdAt: "asc" }],
       }),
       prisma.medicationPlan.findMany({
@@ -30,12 +33,12 @@ export async function GET(request: Request) {
     const compliance = buildDayCompliance({
       plans,
       intakes,
-      date,
-      today: todayKey(),
-      nowTime: nowTimeKey(),
+      date: day,
+      today: zoned.dateKey,
+      nowTime: zoned.timeKey,
     });
 
-    return NextResponse.json({ date, intakes, plans, compliance });
+    return NextResponse.json({ date: day, intakes, plans, compliance });
   } catch (error) {
     return jsonError(error);
   }

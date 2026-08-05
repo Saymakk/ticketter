@@ -176,11 +176,11 @@ export function DayPanel({
             onTake={onTakeScheduled}
           />
 
-          {data.intakes.length === 0 ? (
+          {data.intakes.length === 0 && data.compliance.length === 0 ? (
             <p className="text-sm text-[var(--muted)]">
               {readOnly ? t("day.medsEmptyReadonly") : t("day.medsEmpty")}
             </p>
-          ) : (
+          ) : data.intakes.length === 0 ? null : (
             <div className="space-y-2">
               {data.intakes.map((intake) => (
                 <button

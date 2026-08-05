@@ -110,9 +110,25 @@ export function DayView() {
         if (!mealRes.ok) throw new Error(mealJson.error || t("error"));
 
         const workouts = workoutRes.ok ? ((await workoutRes.json()).workouts || []) : [];
-        const medJson = medRes.ok ? await medRes.json() : { intakes: [], plans: [], compliance: [] };
-
-        applyPayload(d, mealJson, workouts, medJson);
+        if (medRes.ok) {
+          const medJson = await medRes.json();
+          applyPayload(d, mealJson, workouts, medJson);
+        } else if (!cached) {
+          applyPayload(d, mealJson, workouts, { intakes: [], plans: [], compliance: [] });
+        } else {
+          // Keep cached meds if medications API failed — avoid empty flicker.
+          setData({
+            ...cached.data,
+            date: (mealJson.date as string) || d,
+            totalCalories: Number(mealJson.totalCalories) || 0,
+            remainingCalories: Number(mealJson.remainingCalories) || 0,
+            meals: (mealJson.meals as MealDetail[]) || [],
+            workouts,
+            weight: (mealJson.weight as DayPanelData["weight"]) ?? null,
+            profile: (mealJson.profile as DayPanelData["profile"]) || cached.data.profile,
+          });
+          setPlans(cached.plans);
+        }
       } catch (e) {
         if (gen !== fetchGen.current) return;
         if (!cached) {

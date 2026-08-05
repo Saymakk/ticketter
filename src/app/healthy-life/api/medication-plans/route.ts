@@ -16,13 +16,13 @@ function parseAnchorDate(raw: unknown): string | null {
 
 function planRecurrenceData(body: Record<string, unknown>) {
   const recurrence = normalizeRecurrence(body.recurrence);
-  let weekdays: unknown[] = [];
+  let weekdays: Array<string | number> = [];
   if (Array.isArray(body.weekdays)) {
-    weekdays = body.weekdays;
+    weekdays = body.weekdays as Array<string | number>;
   } else if (typeof body.weekdaysJson === "string") {
     try {
       const parsed = JSON.parse(body.weekdaysJson || "[]") as unknown;
-      weekdays = Array.isArray(parsed) ? parsed : [];
+      weekdays = Array.isArray(parsed) ? (parsed as Array<string | number>) : [];
     } catch {
       weekdays = [];
     }
@@ -82,6 +82,7 @@ export async function POST(request: Request) {
         dosage: body.dosage?.trim() || null,
         reason: body.reason?.trim() || null,
         note: body.note?.trim() || null,
+        photoPath: body.photoPath?.trim() || null,
         timesJson: serializePlanTimes(times),
         recurrence: recurrence.recurrence,
         weekdaysJson: recurrence.weekdaysJson,
@@ -141,6 +142,7 @@ export async function PATCH(request: Request) {
         dosage: body.dosage !== undefined ? body.dosage?.trim() || null : undefined,
         reason: body.reason !== undefined ? body.reason?.trim() || null : undefined,
         note: body.note !== undefined ? body.note?.trim() || null : undefined,
+        photoPath: body.photoPath !== undefined ? body.photoPath?.trim() || null : undefined,
         timesJson: Array.isArray(body.times) ? serializePlanTimes(body.times.map(String)) : undefined,
         active: body.active != null ? Boolean(body.active) : undefined,
         ...(recurrencePatch && !("error" in recurrencePatch)
