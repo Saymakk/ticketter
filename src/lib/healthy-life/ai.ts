@@ -231,13 +231,12 @@ export function mockFoodAnalysis(reason?: string): FoodAnalysis {
 
 const MedicationAnalysisSchema = z.object({
   name: z.string(),
-  dosage: z.string().optional().nullable(),
   confidence: z.number().min(0).max(1).optional().nullable(),
 });
 
 export type MedicationAnalysis = z.infer<typeof MedicationAnalysisSchema>;
 
-/** Read medication name (and dosage if visible) from a photo of a pack / blister / bottle. */
+/** Read medication name from a photo of a pack / blister / bottle. */
 export async function analyzeMedicationImage(
   base64: string,
   mimeType: string,
@@ -253,23 +252,23 @@ export async function analyzeMedicationImage(
         content: `You identify medications from photos (packaging, blister, bottle, label).
 Do not give medical advice. Do not ask questions.
 
-LANGUAGE: write "name" and "dosage" in ${language}.
+LANGUAGE: write "name" in ${language}.
 
 Reply ONLY with valid JSON (no markdown):
 {
-  "name": "medication trade or generic name as on the package",
-  "dosage": "strength/dose if visible (e.g. 500 mg, 1 tablet) or null",
+  "name": "medication trade or generic name; if strength/volume/count is visible, append it in parentheses, e.g. \\"Nurofen (200 mg)\\" or \\"Amoxicillin (20 tablets)\\"",
   "confidence": number from 0 to 1
 }
 
-If you cannot identify it, return {"name":"","dosage":null,"confidence":0}.`,
+Do NOT return a separate dosage field — put amount/volume only inside the name in parentheses when visible.
+If you cannot identify it, return {"name":"","confidence":0}.`,
       },
       {
         role: "user",
         content: [
           {
             type: "text",
-            text: "Read the medication name from this photo. Prefer the brand/trade name on the packaging.",
+            text: "Read the medication name from this photo. Prefer the brand/trade name. Put strength or pack size in parentheses next to the name if visible.",
           },
           {
             type: "image_url",
@@ -287,10 +286,9 @@ If you cannot identify it, return {"name":"","dosage":null,"confidence":0}.`,
   return MedicationAnalysisSchema.parse(extractJson(text));
 }
 
-export function mockMedicationAnalysis(reason?: string): MedicationAnalysis {
+export function mockMedicationAnalysis(_reason?: string): MedicationAnalysis {
   return {
     name: "",
-    dosage: null,
     confidence: 0,
   };
 }

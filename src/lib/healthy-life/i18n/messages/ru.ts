@@ -246,6 +246,8 @@ export const ru = defineMessages({
     height: "Рост (см)",
     saveProfile: "Сохранить профиль",
     signOut: "Выйти",
+    edit: "Редактировать профиль",
+    cancelEdit: "Отмена",
   },
 
   common: {

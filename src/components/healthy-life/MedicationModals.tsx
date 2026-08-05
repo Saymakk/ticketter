@@ -303,9 +303,8 @@ export function AddMedicationModal({
       if (!res.ok) throw new Error(data.error || t("error"));
       setPhotoPath(data.photoPath);
 
-      const analysis = data.analysis as { name?: string; dosage?: string | null } | undefined;
+      const analysis = data.analysis as { name?: string } | undefined;
       const aiName = analysis?.name?.trim() || "";
-      const aiDosage = analysis?.dosage?.trim() || "";
 
       // Keep schedule name if user already picked a plan; otherwise fill from photo.
       if (aiName && !planId) {
@@ -316,10 +315,6 @@ export function AddMedicationModal({
         setRecognizeHint(t("med.recognized"));
       } else if (!aiName) {
         setRecognizeHint(t("med.recognizeFailed"));
-      }
-
-      if (aiDosage && !dosage.trim()) {
-        setDosage(aiDosage);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : t("error"));

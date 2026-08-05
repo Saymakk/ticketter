@@ -35,20 +35,21 @@ export function ProfileView() {
   const [dailyCalorieGoal, setDailyCalorieGoal] = useState("2000");
   const [targetWeightKg, setTargetWeightKg] = useState("");
   const [heightCm, setHeightCm] = useState("");
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function apply(p: Profile) {
-      setProfile(p);
-      setName(p.name);
-      setDailyCalorieGoal(String(p.dailyCalorieGoal));
-      setTargetWeightKg(p.targetWeightKg != null ? String(p.targetWeightKg) : "");
-      setHeightCm(p.heightCm != null ? String(p.heightCm) : "");
-    }
+  function apply(p: Profile) {
+    setProfile(p);
+    setName(p.name);
+    setDailyCalorieGoal(String(p.dailyCalorieGoal));
+    setTargetWeightKg(p.targetWeightKg != null ? String(p.targetWeightKg) : "");
+    setHeightCm(p.heightCm != null ? String(p.heightCm) : "");
+  }
 
+  useEffect(() => {
     const cached = readCache<Profile>("profile");
     if (cached) apply(cached.data);
     if (cached && !isCacheStale(cached)) return;
@@ -85,6 +86,12 @@ export function ProfileView() {
     };
   }, [langOpen]);
 
+  function cancelEdit() {
+    if (profile) apply(profile);
+    setEditing(false);
+    setMessage(null);
+  }
+
   async function save() {
     setSaving(true);
     setMessage(null);
@@ -101,11 +108,12 @@ export function ProfileView() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t("error"));
-      setProfile(data);
+      apply(data as Profile);
       writeCache("profile", data as Profile);
       invalidateRelatedCaches({ progress: true, advice: true, weight: true, profile: false });
       toast.success(t("toast.profileSaved"));
       setMessage(null);
+      setEditing(false);
     } catch (e) {
       const msg = e instanceof Error ? e.message : t("error");
       setMessage(msg);
@@ -122,6 +130,11 @@ export function ProfileView() {
     router.replace(path("/login"));
     router.refresh();
   }
+
+  const displayName = name.trim() || "—";
+  const displayGoal = dailyCalorieGoal || "—";
+  const displayWeight = targetWeightKg.trim() ? targetWeightKg : "—";
+  const displayHeight = heightCm.trim() ? heightCm : "—";
 
   return (
     <Shell>
@@ -180,43 +193,105 @@ export function ProfileView() {
         }
       />
 
-      <Card className="space-y-3">
-        <Field label={t("profile.name")}>
-          <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
-        </Field>
-        <Field label={t("profile.calorieGoal")}>
-          <input
-            className={inputClass}
-            inputMode="numeric"
-            value={dailyCalorieGoal}
-            onChange={(e) => setDailyCalorieGoal(e.target.value)}
-          />
-        </Field>
-        <Field label={t("profile.targetWeight")}>
-          <input
-            className={inputClass}
-            inputMode="decimal"
-            value={targetWeightKg}
-            onChange={(e) => setTargetWeightKg(e.target.value)}
-          />
-        </Field>
-        <Field label={t("profile.height")}>
-          <input
-            className={inputClass}
-            inputMode="decimal"
-            value={heightCm}
-            onChange={(e) => setHeightCm(e.target.value)}
-          />
-        </Field>
-        {message ? <p className="text-sm text-[#8a3b2f]">{message}</p> : null}
-        <Button type="button" className="w-full" disabled={saving || !profile} onClick={save}>
-          {saving ? t("saving") : t("profile.saveProfile")}
-        </Button>
+      <Card className="relative space-y-3">
+        <button
+          type="button"
+          onClick={() => (editing ? cancelEdit() : setEditing(true))}
+          disabled={!profile}
+          className="absolute top-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)] text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40 touch-manipulation"
+          aria-label={editing ? t("profile.cancelEdit") : t("profile.edit")}
+          title={editing ? t("profile.cancelEdit") : t("profile.edit")}
+        >
+          {editing ? <CloseGlyph /> : <EditGlyph />}
+        </button>
+
+        {editing ? (
+          <>
+            <Field label={t("profile.name")}>
+              <input
+                className={inputClass}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus
+              />
+            </Field>
+            <Field label={t("profile.calorieGoal")}>
+              <input
+                className={inputClass}
+                inputMode="numeric"
+                value={dailyCalorieGoal}
+                onChange={(e) => setDailyCalorieGoal(e.target.value)}
+              />
+            </Field>
+            <Field label={t("profile.targetWeight")}>
+              <input
+                className={inputClass}
+                inputMode="decimal"
+                value={targetWeightKg}
+                onChange={(e) => setTargetWeightKg(e.target.value)}
+              />
+            </Field>
+            <Field label={t("profile.height")}>
+              <input
+                className={inputClass}
+                inputMode="decimal"
+                value={heightCm}
+                onChange={(e) => setHeightCm(e.target.value)}
+              />
+            </Field>
+            {message ? <p className="text-sm text-[#8a3b2f]">{message}</p> : null}
+            <Button type="button" className="w-full" disabled={saving || !profile} onClick={save}>
+              {saving ? t("saving") : t("profile.saveProfile")}
+            </Button>
+            <Button type="button" variant="secondary" className="w-full" disabled={saving} onClick={cancelEdit}>
+              {t("profile.cancelEdit")}
+            </Button>
+          </>
+        ) : (
+          <div className="space-y-4 pr-10">
+            <ReadonlyRow label={t("profile.name")} value={displayName} />
+            <ReadonlyRow label={t("profile.calorieGoal")} value={displayGoal} />
+            <ReadonlyRow label={t("profile.targetWeight")} value={displayWeight} />
+            <ReadonlyRow label={t("profile.height")} value={displayHeight} />
+          </div>
+        )}
+
         <Button type="button" variant="ghost" className="w-full" onClick={logout}>
           {t("profile.signOut")}
         </Button>
       </Card>
     </Shell>
+  );
+}
+
+function ReadonlyRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="mb-1 text-sm text-[var(--muted)]">{label}</p>
+      <p className="text-base font-semibold text-[var(--ink)]">{value}</p>
+    </div>
+  );
+}
+
+function EditGlyph() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M4 20h4.5L19 9.5a2.1 2.1 0 0 0-3-3L5.5 17V20Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M13.5 6.5l3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CloseGlyph() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
   );
 }
 

@@ -244,6 +244,8 @@ export const en = {
     height: "Height (cm)",
     saveProfile: "Save profile",
     signOut: "Sign out",
+    edit: "Edit profile",
+    cancelEdit: "Cancel",
   },
 
   common: {
