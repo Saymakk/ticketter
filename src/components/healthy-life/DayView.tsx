@@ -181,6 +181,38 @@ export function DayView() {
     load(date, { force: true });
   }
 
+  function applyMealUpdate(updated?: MealDetail) {
+    if (updated && data) {
+      const meals = data.meals.map((m) => (m.id === updated.id ? { ...m, ...updated } : m));
+      const totalCalories = meals.reduce((sum, m) => sum + (Number(m.calories) || 0), 0);
+      const next: DayPanelData = {
+        ...data,
+        meals,
+        totalCalories,
+        remainingCalories: data.profile.dailyCalorieGoal - totalCalories,
+      };
+      setData(next);
+      writeDayCache(date, next, plans);
+    }
+    refreshAfterMutation();
+  }
+
+  function applyMealDelete(id?: string) {
+    if (id && data) {
+      const meals = data.meals.filter((m) => m.id !== id);
+      const totalCalories = meals.reduce((sum, m) => sum + (Number(m.calories) || 0), 0);
+      const next: DayPanelData = {
+        ...data,
+        meals,
+        totalCalories,
+        remainingCalories: data.profile.dailyCalorieGoal - totalCalories,
+      };
+      setData(next);
+      writeDayCache(date, next, plans);
+    }
+    refreshAfterMutation();
+  }
+
   if (showHistory) {
     return (
       <Shell>
@@ -275,8 +307,8 @@ export function DayView() {
       <MealDetailModal
         meal={selectedMeal}
         onClose={() => setSelectedMeal(null)}
-        onSaved={refreshAfterMutation}
-        onDeleted={refreshAfterMutation}
+        onSaved={applyMealUpdate}
+        onDeleted={applyMealDelete}
       />
       <MedicationDetailModal
         intake={selectedIntake}

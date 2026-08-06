@@ -8,6 +8,7 @@ import type { HlMessageKey } from "@/lib/healthy-life/i18n";
 import { Button, Field, Modal, inputClass } from "@/components/healthy-life/ui";
 import { OpenablePhoto } from "@/components/healthy-life/PhotoLightbox";
 import { useHlToast } from "@/components/healthy-life/HlToast";
+import { sanitizeDecimalInput, parseOptionalNumber } from "@/lib/healthy-life/number-input";
 
 type Analysis = {
   name: string;
@@ -191,11 +192,11 @@ export function AddMealModal({
           mealType,
           name: name.trim(),
           description: description.trim() || null,
-          calories: Number(calories),
-          protein: protein === "" ? null : Number(protein),
-          carbs: carbs === "" ? null : Number(carbs),
-          fat: fat === "" ? null : Number(fat),
-          portionGrams: portionGrams === "" ? null : Number(portionGrams),
+          calories: Number(calories) || 0,
+          protein: parseOptionalNumber(protein),
+          carbs: parseOptionalNumber(carbs),
+          fat: parseOptionalNumber(fat),
+          portionGrams: parseOptionalNumber(portionGrams),
           photoPath,
           aiDetectedName: aiBaseline?.name ?? null,
           aiCalories: aiBaseline?.calories ?? null,
@@ -326,7 +327,7 @@ export function AddMealModal({
               className={inputClass}
               inputMode="decimal"
               value={calories}
-              onChange={(e) => setCalories(e.target.value)}
+              onChange={(e) => setCalories(sanitizeDecimalInput(e.target.value))}
               placeholder="450"
             />
           </Field>
@@ -335,7 +336,7 @@ export function AddMealModal({
               className={inputClass}
               inputMode="decimal"
               value={portionGrams}
-              onChange={(e) => setPortionGrams(e.target.value)}
+              onChange={(e) => setPortionGrams(sanitizeDecimalInput(e.target.value))}
               placeholder="300"
             />
           </Field>
@@ -343,13 +344,28 @@ export function AddMealModal({
 
         <div className="grid grid-cols-3 gap-3">
           <Field label={t("meal.proteins")}>
-            <input className={inputClass} inputMode="decimal" value={protein} onChange={(e) => setProtein(e.target.value)} />
+            <input
+              className={inputClass}
+              inputMode="decimal"
+              value={protein}
+              onChange={(e) => setProtein(sanitizeDecimalInput(e.target.value))}
+            />
           </Field>
           <Field label={t("meal.carbs")}>
-            <input className={inputClass} inputMode="decimal" value={carbs} onChange={(e) => setCarbs(e.target.value)} />
+            <input
+              className={inputClass}
+              inputMode="decimal"
+              value={carbs}
+              onChange={(e) => setCarbs(sanitizeDecimalInput(e.target.value))}
+            />
           </Field>
           <Field label={t("meal.fats")}>
-            <input className={inputClass} inputMode="decimal" value={fat} onChange={(e) => setFat(e.target.value)} />
+            <input
+              className={inputClass}
+              inputMode="decimal"
+              value={fat}
+              onChange={(e) => setFat(sanitizeDecimalInput(e.target.value))}
+            />
           </Field>
         </div>
 

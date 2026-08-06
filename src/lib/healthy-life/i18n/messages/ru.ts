@@ -101,7 +101,7 @@ export const ru = defineMessages({
     name: "Название",
     description: "Описание",
     calories: "Калории",
-    portion: "Порция, г",
+    portion: "Порция, г/мл",
     proteins: "Белки",
     carbs: "Углеводы",
     fats: "Жиры",

@@ -85,23 +85,27 @@ export async function POST(request: Request) {
     }
 
     if (Boolean(body.userCorrected) && body.aiDetectedName) {
-      await saveAiCorrection({
-        profileId: profile.id,
-        kind: "food_analysis",
-        ai: {
-          name: body.aiDetectedName,
-          calories: body.aiCalories != null ? Number(body.aiCalories) : null,
-        },
-        user: {
-          name: meal.name,
-          calories: meal.calories,
-          protein: meal.protein,
-          carbs: meal.carbs,
-          fat: meal.fat,
-          portionGrams: meal.portionGrams,
-        },
-        sourceId: meal.id,
-      });
+      try {
+        await saveAiCorrection({
+          profileId: profile.id,
+          kind: "food_analysis",
+          ai: {
+            name: body.aiDetectedName,
+            calories: body.aiCalories != null ? Number(body.aiCalories) : null,
+          },
+          user: {
+            name: meal.name,
+            calories: meal.calories,
+            protein: meal.protein,
+            carbs: meal.carbs,
+            fat: meal.fat,
+            portionGrams: meal.portionGrams,
+          },
+          sourceId: meal.id,
+        });
+      } catch (err) {
+        console.error("saveAiCorrection failed after meal POST:", err);
+      }
     }
 
     return NextResponse.json(meal, { status: 201 });
@@ -130,44 +134,84 @@ export async function PATCH(request: Request) {
       );
     }
 
+    const nextName =
+      body.name != null ? String(body.name).trim() || existing.name : existing.name;
+    const nextDescription =
+      body.description !== undefined
+        ? body.description == null || body.description === ""
+          ? null
+          : String(body.description)
+        : existing.description;
+    const nextCalories =
+      body.calories != null && body.calories !== ""
+        ? Number(body.calories) || 0
+        : existing.calories;
+    const nextProtein =
+      body.protein !== undefined
+        ? body.protein === "" || body.protein == null
+          ? null
+          : Number(body.protein)
+        : existing.protein;
+    const nextCarbs =
+      body.carbs !== undefined
+        ? body.carbs === "" || body.carbs == null
+          ? null
+          : Number(body.carbs)
+        : existing.carbs;
+    const nextFat =
+      body.fat !== undefined
+        ? body.fat === "" || body.fat == null
+          ? null
+          : Number(body.fat)
+        : existing.fat;
+    const nextPortion =
+      body.portionGrams !== undefined
+        ? body.portionGrams === "" || body.portionGrams == null
+          ? null
+          : Number(body.portionGrams)
+        : existing.portionGrams;
+    const nextMealType =
+      body.mealType != null && String(body.mealType).trim()
+        ? String(body.mealType).trim()
+        : existing.mealType;
+
     const meal = await prisma.meal.update({
       where: { id: existing.id },
       data: {
-        name: body.name,
-        description: body.description,
-        calories: body.calories != null ? Number(body.calories) : undefined,
-        protein: body.protein !== undefined ? (body.protein === "" || body.protein == null ? null : Number(body.protein)) : undefined,
-        carbs: body.carbs !== undefined ? (body.carbs === "" || body.carbs == null ? null : Number(body.carbs)) : undefined,
-        fat: body.fat !== undefined ? (body.fat === "" || body.fat == null ? null : Number(body.fat)) : undefined,
-        portionGrams:
-          body.portionGrams !== undefined
-            ? body.portionGrams === "" || body.portionGrams == null
-              ? null
-              : Number(body.portionGrams)
-            : undefined,
-        mealType: body.mealType,
+        name: nextName,
+        description: nextDescription,
+        calories: nextCalories,
+        protein: nextProtein,
+        carbs: nextCarbs,
+        fat: nextFat,
+        portionGrams: nextPortion,
+        mealType: nextMealType,
         userCorrected: true,
       },
     });
 
     if (existing.aiDetectedName || existing.aiCalories != null) {
-      await saveAiCorrection({
-        profileId: profile.id,
-        kind: "food_analysis",
-        ai: {
-          name: existing.aiDetectedName ?? existing.name,
-          calories: existing.aiCalories,
-        },
-        user: {
-          name: meal.name,
-          calories: meal.calories,
-          protein: meal.protein,
-          carbs: meal.carbs,
-          fat: meal.fat,
-          portionGrams: meal.portionGrams,
-        },
-        sourceId: meal.id,
-      });
+      try {
+        await saveAiCorrection({
+          profileId: profile.id,
+          kind: "food_analysis",
+          ai: {
+            name: existing.aiDetectedName ?? existing.name,
+            calories: existing.aiCalories,
+          },
+          user: {
+            name: meal.name,
+            calories: meal.calories,
+            protein: meal.protein,
+            carbs: meal.carbs,
+            fat: meal.fat,
+            portionGrams: meal.portionGrams,
+          },
+          sourceId: meal.id,
+        });
+      } catch (err) {
+        console.error("saveAiCorrection failed after meal PATCH:", err);
+      }
     }
 
     return NextResponse.json(meal);

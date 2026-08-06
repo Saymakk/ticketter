@@ -99,7 +99,7 @@ export const en = {
     name: "Name",
     description: "Description",
     calories: "Calories",
-    portion: "Portion, g",
+    portion: "Portion, g/ml",
     proteins: "Protein",
     carbs: "Carbs",
     fats: "Fat",

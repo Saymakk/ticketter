@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { MEAL_TYPES } from "@/lib/healthy-life/dates";
 import { formatKcal } from "@/lib/healthy-life/format";
 import { isWithinEditWindow } from "@/lib/healthy-life/edit-window";
+import { sanitizeDecimalInput, parseOptionalNumber } from "@/lib/healthy-life/number-input";
 import { useHlRouting } from "@/lib/healthy-life/routing";
 import { useT } from "@/lib/healthy-life/i18n";
 import type { HlMessageKey } from "@/lib/healthy-life/i18n";
@@ -42,8 +43,8 @@ export function MealDetailModal({
   meal: MealDetail | null;
   readOnly?: boolean;
   onClose: () => void;
-  onSaved: () => void;
-  onDeleted: () => void;
+  onSaved: (meal?: MealDetail) => void;
+  onDeleted: (id?: string) => void;
 }) {
   const { fetch: hlFetch } = useHlRouting();
   const t = useT();
@@ -71,7 +72,7 @@ export function MealDetailModal({
     setPortionGrams(meal.portionGrams != null ? String(Math.round(meal.portionGrams)) : "");
     setMealType(meal.mealType);
     setError(null);
-  }, [meal]);
+  }, [meal?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- reset only when opening another meal
 
   if (!meal) return null;
 
@@ -87,17 +88,25 @@ export function MealDetailModal({
           id: meal!.id,
           name: name.trim(),
           description: description.trim() || null,
-          calories: Number(calories),
-          protein: protein === "" ? null : Number(protein),
-          carbs: carbs === "" ? null : Number(carbs),
-          fat: fat === "" ? null : Number(fat),
-          portionGrams: portionGrams === "" ? null : Number(portionGrams),
+          calories: Number(calories) || 0,
+          protein: parseOptionalNumber(protein),
+          carbs: parseOptionalNumber(carbs),
+          fat: parseOptionalNumber(fat),
+          portionGrams: parseOptionalNumber(portionGrams),
           mealType,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || t("meal.saveFailed"));
-      onSaved();
+      const updated = data as MealDetail;
+      onSaved({
+        ...meal!,
+        ...updated,
+        createdAt:
+          typeof updated.createdAt === "string"
+            ? updated.createdAt
+            : meal!.createdAt,
+      });
       toast.success(t("toast.mealSaved"));
       onClose();
     } catch (e) {
@@ -115,7 +124,7 @@ export function MealDetailModal({
       const res = await hlFetch(`/api/meals?id=${meal!.id}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || t("meal.deleteFailed"));
-      onDeleted();
+      onDeleted(meal!.id);
       toast.success(t("toast.mealDeleted"));
       onClose();
     } catch (e) {
@@ -192,21 +201,46 @@ export function MealDetailModal({
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label={t("meal.calories")}>
-              <input className={inputClass} inputMode="decimal" value={calories} onChange={(e) => setCalories(e.target.value)} />
+              <input
+                className={inputClass}
+                inputMode="decimal"
+                value={calories}
+                onChange={(e) => setCalories(sanitizeDecimalInput(e.target.value))}
+              />
             </Field>
             <Field label={t("meal.portion")}>
-              <input className={inputClass} inputMode="decimal" value={portionGrams} onChange={(e) => setPortionGrams(e.target.value)} />
+              <input
+                className={inputClass}
+                inputMode="decimal"
+                value={portionGrams}
+                onChange={(e) => setPortionGrams(sanitizeDecimalInput(e.target.value))}
+              />
             </Field>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Field label={t("meal.proteins")}>
-              <input className={inputClass} inputMode="decimal" value={protein} onChange={(e) => setProtein(e.target.value)} />
+              <input
+                className={inputClass}
+                inputMode="decimal"
+                value={protein}
+                onChange={(e) => setProtein(sanitizeDecimalInput(e.target.value))}
+              />
             </Field>
             <Field label={t("meal.carbs")}>
-              <input className={inputClass} inputMode="decimal" value={carbs} onChange={(e) => setCarbs(e.target.value)} />
+              <input
+                className={inputClass}
+                inputMode="decimal"
+                value={carbs}
+                onChange={(e) => setCarbs(sanitizeDecimalInput(e.target.value))}
+              />
             </Field>
             <Field label={t("meal.fats")}>
-              <input className={inputClass} inputMode="decimal" value={fat} onChange={(e) => setFat(e.target.value)} />
+              <input
+                className={inputClass}
+                inputMode="decimal"
+                value={fat}
+                onChange={(e) => setFat(sanitizeDecimalInput(e.target.value))}
+              />
             </Field>
           </div>
           {error ? <p className="text-sm text-[#8a3b2f]">{error}</p> : null}

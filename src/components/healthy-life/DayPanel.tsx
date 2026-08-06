@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { formatKcal, progressPercent } from "@/lib/healthy-life/format";
 import { formatWorkoutQuantity, workoutTypeLabel } from "@/lib/healthy-life/workouts";
 import { isWithinEditWindow } from "@/lib/healthy-life/edit-window";
@@ -39,6 +40,8 @@ function mealTypeKey(id: string): HlMessageKey {
   return "meal.title";
 }
 
+type DayTab = "meals" | "meds";
+
 export function DayPanel({
   data,
   readOnly,
@@ -53,6 +56,7 @@ export function DayPanel({
   onTakeScheduled?: (row: ScheduleCompliance) => void;
 }) {
   const t = useT();
+  const [tab, setTab] = useState<DayTab>("meals");
   const pct = progressPercent(data.totalCalories, data.profile.dailyCalorieGoal);
 
   return (
@@ -105,121 +109,173 @@ export function DayPanel({
       ) : null}
 
       <div className="space-y-3">
-        <h2 className="font-display text-xl">{t("day.mealsTitle")}</h2>
-        {data.meals.length === 0 ? (
-          <Card>
-            <p className="text-[var(--muted)]">
-              {readOnly ? t("day.mealsEmptyReadonly") : t("day.mealsEmpty")}
-            </p>
-          </Card>
-        ) : (
-          data.meals.map((meal) => {
-            const canEdit = !readOnly && isWithinEditWindow(meal.createdAt);
-            return (
-              <button
-                key={meal.id}
-                type="button"
-                onClick={() => onMealClick(meal)}
-                className="w-full text-left"
-              >
-                <Card className="flex gap-3 transition hover:border-[var(--accent)]/40">
-                  {meal.photoPath ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={meal.photoPath}
-                      alt={meal.name}
-                      className="h-20 w-20 shrink-0 rounded-2xl object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)]">
-                      {t("common.food")}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs text-[var(--muted)]">{t(mealTypeKey(meal.mealType))}</p>
-                        <h3 className="break-words font-semibold">{meal.name}</h3>
+        <div
+          className="grid grid-cols-2 gap-1 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-1"
+          role="tablist"
+          aria-label={`${t("day.mealsTitle")} / ${t("day.medsTitle")}`}
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "meals"}
+            onClick={() => setTab("meals")}
+            className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+              tab === "meals"
+                ? "bg-[var(--accent)] text-white shadow-sm"
+                : "text-[var(--muted)] hover:text-[var(--ink)]"
+            }`}
+          >
+            {t("day.mealsTitle")}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "meds"}
+            onClick={() => setTab("meds")}
+            className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+              tab === "meds"
+                ? "bg-[var(--med-accent)] text-white shadow-sm"
+                : "text-[var(--muted)] hover:text-[var(--med-accent-ink)]"
+            }`}
+          >
+            {t("day.medsTitle")}
+          </button>
+        </div>
+
+        {tab === "meals" ? (
+          <div className="space-y-3" role="tabpanel">
+            {data.meals.length === 0 ? (
+              <Card>
+                <p className="text-[var(--muted)]">
+                  {readOnly ? t("day.mealsEmptyReadonly") : t("day.mealsEmpty")}
+                </p>
+              </Card>
+            ) : (
+              data.meals.map((meal) => {
+                const canEdit = !readOnly && isWithinEditWindow(meal.createdAt);
+                return (
+                  <button
+                    key={meal.id}
+                    type="button"
+                    onClick={() => onMealClick(meal)}
+                    className="w-full text-left"
+                  >
+                    <Card className="flex gap-3 transition hover:border-[var(--accent)]/40">
+                      {meal.photoPath ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={meal.photoPath}
+                          alt={meal.name}
+                          className="h-20 w-20 shrink-0 rounded-2xl object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)]">
+                          {t("common.food")}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs text-[var(--muted)]">{t(mealTypeKey(meal.mealType))}</p>
+                            <h3 className="break-words font-semibold">{meal.name}</h3>
+                          </div>
+                          <p className="shrink-0 font-semibold">{formatKcal(meal.calories)}</p>
+                        </div>
+                        {meal.description ? (
+                          <p className="mt-1 line-clamp-2 text-sm text-[var(--muted)]">{meal.description}</p>
+                        ) : null}
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--muted)]">
+                          {meal.userCorrected ? (
+                            <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5">
+                              {t("day.corrected")}
+                            </span>
+                          ) : null}
+                          {canEdit ? (
+                            <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[var(--accent-ink)]">
+                              {t("day.canEdit")}
+                            </span>
+                          ) : null}
+                          {meal.protein != null ? (
+                            <span>
+                              {t("day.protein")} {Math.round(meal.protein)}g
+                            </span>
+                          ) : null}
+                          {meal.carbs != null ? (
+                            <span>
+                              {t("day.carbs")} {Math.round(meal.carbs)}g
+                            </span>
+                          ) : null}
+                          {meal.fat != null ? (
+                            <span>
+                              {t("day.fat")} {Math.round(meal.fat)}g
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
-                      <p className="shrink-0 font-semibold">{formatKcal(meal.calories)}</p>
-                    </div>
-                    {meal.description ? (
-                      <p className="mt-1 line-clamp-2 text-sm text-[var(--muted)]">{meal.description}</p>
-                    ) : null}
-                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--muted)]">
-                      {meal.userCorrected ? (
-                        <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5">{t("day.corrected")}</span>
-                      ) : null}
-                      {canEdit ? (
-                        <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[var(--accent-ink)]">
-                          {t("day.canEdit")}
-                        </span>
-                      ) : null}
-                      {meal.protein != null ? <span>{t("day.protein")} {Math.round(meal.protein)}g</span> : null}
-                      {meal.carbs != null ? <span>{t("day.carbs")} {Math.round(meal.carbs)}g</span> : null}
-                      {meal.fat != null ? <span>{t("day.fat")} {Math.round(meal.fat)}g</span> : null}
-                    </div>
-                  </div>
-                </Card>
-              </button>
-            );
-          })
-        )}
-      </div>
+                    </Card>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        ) : (
+          <Card
+            className="space-y-3 border-[var(--med-line)] bg-gradient-to-br from-[#e8f1f9] via-[var(--med-surface)] to-[#eef3f8]"
+            role="tabpanel"
+          >
+            <ComplianceList
+              compliance={data.compliance}
+              readOnly={readOnly}
+              onTake={onTakeScheduled}
+            />
 
-      <div className="space-y-3">
-        <h2 className="font-display text-xl text-[var(--med-accent-ink)]">{t("day.medsTitle")}</h2>
-        <Card className="space-y-3 border-[var(--med-line)] bg-gradient-to-br from-[#e8f1f9] via-[var(--med-surface)] to-[#eef3f8]">
-          <ComplianceList
-            compliance={data.compliance}
-            readOnly={readOnly}
-            onTake={onTakeScheduled}
-          />
-
-          {data.intakes.length === 0 && data.compliance.length === 0 ? (
-            <p className="text-sm text-[var(--muted)]">
-              {readOnly ? t("day.medsEmptyReadonly") : t("day.medsEmpty")}
-            </p>
-          ) : data.intakes.length === 0 ? null : (
-            <div className="space-y-2">
-              {data.intakes.map((intake) => (
-                <button
-                  key={intake.id}
-                  type="button"
-                  onClick={() => onIntakeClick(intake)}
-                  className="flex w-full gap-3 rounded-2xl border border-[var(--med-line)] bg-white/80 p-3 text-left transition hover:border-[var(--med-accent)]/50"
-                >
-                  {intake.photoPath ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={intake.photoPath}
-                      alt={intake.name}
-                      className="h-14 w-14 shrink-0 rounded-xl object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[var(--med-soft)] text-xs text-[var(--med-accent)]">
-                      Rx
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="min-w-0 break-words font-semibold text-[var(--med-accent-ink)]">{intake.name}</p>
-                      <span className="shrink-0 text-xs text-[var(--med-accent)]">{intake.takenTime}</span>
-                    </div>
-                    <p className="text-xs text-[var(--muted)]">
-                      {[intake.dosage, intake.reason].filter(Boolean).join(" · ") || t("med.noDetails")}
-                    </p>
-                    {intake.scheduledTime ? (
-                      <p className="mt-1 text-xs text-[var(--med-accent)]">
-                        {t("med.scheduled")} {intake.scheduledTime}
+            {data.intakes.length === 0 && data.compliance.length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">
+                {readOnly ? t("day.medsEmptyReadonly") : t("day.medsEmpty")}
+              </p>
+            ) : data.intakes.length === 0 ? null : (
+              <div className="space-y-2">
+                {data.intakes.map((intake) => (
+                  <button
+                    key={intake.id}
+                    type="button"
+                    onClick={() => onIntakeClick(intake)}
+                    className="flex w-full gap-3 rounded-2xl border border-[var(--med-line)] bg-white/80 p-3 text-left transition hover:border-[var(--med-accent)]/50"
+                  >
+                    {intake.photoPath ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={intake.photoPath}
+                        alt={intake.name}
+                        className="h-14 w-14 shrink-0 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[var(--med-soft)] text-xs text-[var(--med-accent)]">
+                        Rx
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="min-w-0 break-words font-semibold text-[var(--med-accent-ink)]">
+                          {intake.name}
+                        </p>
+                        <span className="shrink-0 text-xs text-[var(--med-accent)]">{intake.takenTime}</span>
+                      </div>
+                      <p className="text-xs text-[var(--muted)]">
+                        {[intake.dosage, intake.reason].filter(Boolean).join(" · ") || t("med.noDetails")}
                       </p>
-                    ) : null}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </Card>
+                      {intake.scheduledTime ? (
+                        <p className="mt-1 text-xs text-[var(--med-accent)]">
+                          {t("med.scheduled")} {intake.scheduledTime}
+                        </p>
+                      ) : null}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
       </div>
     </div>
   );
