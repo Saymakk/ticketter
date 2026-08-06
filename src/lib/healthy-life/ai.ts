@@ -238,6 +238,147 @@ export function mockFoodAnalysis(reason?: string): FoodAnalysis {
   };
 }
 
+const NutritionLabelSchema = z.object({
+  caloriesPer100: z.number().optional().nullable(),
+  proteinPer100: z.number().optional().nullable(),
+  carbsPer100: z.number().optional().nullable(),
+  fatPer100: z.number().optional().nullable(),
+  /** How the label states nutrients before normalization */
+  labelBasis: z
+    .enum(["per_100g", "per_100ml", "per_serving", "other"])
+    .optional()
+    .nullable(),
+  /** Serving size in g/ml when label is per serving (used to convert if needed) */
+  servingGrams: z.number().optional().nullable(),
+  /**
+   * Actual weight/volume to use for the logged portion when visible in the photo:
+   * net weight, pack size, serving size, or handwritten/scale weight.
+   */
+  weightGrams: z.number().optional().nullable(),
+  productName: z.string().optional().nullable(),
+  confidence: z.number().min(0).max(1).optional().nullable(),
+});
+
+export type NutritionLabelAnalysis = z.infer<typeof NutritionLabelSchema>;
+
+/**
+ * Read nutrition facts from a label / packaging / screen photo.
+ * Always returns values normalized per 100 g or 100 ml when possible.
+ */
+export async function analyzeNutritionLabelImage(
+  base64: string,
+  mimeType: string,
+): Promise<NutritionLabelAnalysis> {
+  const client = getClient();
+  const response = await client.chat.completions.create({
+    model: getModel(),
+    temperature: 0.1,
+    messages: [
+      {
+        role: "system",
+        content: `You read nutrition labels and weight info from photos (packaging, nutrition facts table, scales, handwritten notes, app screenshots, restaurant cards).
+Do not ask questions. Do not give medical advice.
+
+Normalize ALL nutrient numbers to PER 100 grams or PER 100 ml:
+- If the label already shows "per 100 g" / "per 100 ml" / "на 100 г" / "на 100 мл", copy those numbers.
+- If the label shows per serving / per portion, convert to per 100 using serving size in grams or ml.
+- If you cannot convert (no serving size), still fill caloriesPer100/proteinPer100/carbsPer100/fatPer100 only when the label clearly shows per-100 values; otherwise use null.
+
+WEIGHT (important):
+- If any usable weight/volume is visible in the photo, fill "weightGrams" (grams or ml as a number).
+- Prefer in this order: portion/serving size for the nutrients, net weight (нетто / net wt), pack size, kitchen scale reading, handwritten weight.
+- Also set "servingGrams" when a serving size is explicitly shown.
+- If weight is not visible, use null.
+
+Reply ONLY with valid JSON (no markdown):
+{
+  "caloriesPer100": number or null,
+  "proteinPer100": number or null,
+  "carbsPer100": number or null,
+  "fatPer100": number or null,
+  "labelBasis": "per_100g" | "per_100ml" | "per_serving" | "other",
+  "servingGrams": serving size in g/ml if visible, else null,
+  "weightGrams": portion/net/pack/scale weight in g/ml if visible, else null,
+  "productName": product name if visible, else null,
+  "confidence": 0..1
+}
+
+Numbers must be plain numbers (not strings). Use null when unknown.
+If the image has no nutrition data and no weight, return nutrient fields and weightGrams as null and confidence 0.`,
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Read nutrition facts per 100 g/ml and any visible weight/volume from this photo.",
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:${mimeType};base64,${base64}`,
+              detail: "high",
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  const text = response.choices[0]?.message?.content ?? "";
+  return NutritionLabelSchema.parse(extractJson(text));
+}
+
+export function mockNutritionLabelAnalysis(_reason?: string): NutritionLabelAnalysis {
+  return {
+    caloriesPer100: null,
+    proteinPer100: null,
+    carbsPer100: null,
+    fatPer100: null,
+    labelBasis: "other",
+    servingGrams: null,
+    weightGrams: null,
+    productName: null,
+    confidence: 0,
+  };
+}
+
+/** Prefer explicit weightGrams, else serving size when positive. */
+export function nutritionLabelDetectedWeight(analysis: NutritionLabelAnalysis): number | null {
+  const candidates = [analysis.weightGrams, analysis.servingGrams];
+  for (const raw of candidates) {
+    if (raw == null) continue;
+    const n = Number(raw);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return null;
+}
+
+/** Normalize label analysis into per-100 nutrient numbers (client/server shared). */
+export function nutritionLabelToPer100(analysis: NutritionLabelAnalysis): {
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+} {
+  const hasPer100 =
+    analysis.caloriesPer100 != null ||
+    analysis.proteinPer100 != null ||
+    analysis.carbsPer100 != null ||
+    analysis.fatPer100 != null;
+
+  if (hasPer100) {
+    return {
+      calories: analysis.caloriesPer100 ?? null,
+      protein: analysis.proteinPer100 ?? null,
+      carbs: analysis.carbsPer100 ?? null,
+      fat: analysis.fatPer100 ?? null,
+    };
+  }
+
+  return { calories: null, protein: null, carbs: null, fat: null };
+}
+
 const MedicationAnalysisSchema = z.object({
   name: z.string(),
   confidence: z.number().min(0).max(1).optional().nullable(),

@@ -8,7 +8,17 @@ import type { HlMessageKey } from "@/lib/healthy-life/i18n";
 import { Button, Field, Modal, inputClass } from "@/components/healthy-life/ui";
 import { OpenablePhoto } from "@/components/healthy-life/PhotoLightbox";
 import { useHlToast } from "@/components/healthy-life/HlToast";
-import { sanitizeDecimalInput, parseOptionalNumber, formatNumberValue } from "@/lib/healthy-life/number-input";
+import { formatNumberValue, parseOptionalNumber } from "@/lib/healthy-life/number-input";
+import {
+  nutrientSetToStrings,
+  resolveMealNutritionForSave,
+  seedPer100FromStored,
+} from "@/lib/healthy-life/nutrition-scale";
+import {
+  EMPTY_MEAL_NUTRITION,
+  MealNutritionFields,
+  type MealNutritionDraft,
+} from "@/components/healthy-life/MealNutritionFields";
 
 type Analysis = {
   name: string;
@@ -25,6 +35,26 @@ function mealTypeLabelKey(id: string): HlMessageKey {
   if (id === "snack") return "mealTypes.snack";
   if (id === "breakfast" || id === "lunch" || id === "dinner") return `mealTypes.${id}`;
   return "meal.title";
+}
+
+function draftFromAnalysis(a: Analysis): MealNutritionDraft {
+  const seeded = seedPer100FromStored(
+    {
+      calories: a.calories ?? null,
+      protein: a.protein ?? null,
+      carbs: a.carbs ?? null,
+      fat: a.fat ?? null,
+    },
+    a.portionGrams,
+  );
+  const per100 = nutrientSetToStrings(seeded.per100);
+  return {
+    portionGrams: formatNumberValue(seeded.portionGrams),
+    caloriesPer100: per100.calories,
+    proteinPer100: per100.protein,
+    carbsPer100: per100.carbs,
+    fatPer100: per100.fat,
+  };
 }
 
 export function AddMealModal({
@@ -59,11 +89,7 @@ export function AddMealModal({
   const [mealType, setMealType] = useState("breakfast");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [calories, setCalories] = useState("");
-  const [protein, setProtein] = useState("");
-  const [carbs, setCarbs] = useState("");
-  const [fat, setFat] = useState("");
-  const [portionGrams, setPortionGrams] = useState("");
+  const [nutrition, setNutrition] = useState<MealNutritionDraft>(EMPTY_MEAL_NUTRITION);
   const [aiBaseline, setAiBaseline] = useState<Analysis | null>(null);
 
   function revokePreview() {
@@ -82,11 +108,7 @@ export function AddMealModal({
     setAiBaseline(null);
     setName("");
     setDescription("");
-    setCalories("");
-    setProtein("");
-    setCarbs("");
-    setFat("");
-    setPortionGrams("");
+    setNutrition(EMPTY_MEAL_NUTRITION);
   }
 
   function resetAll() {
@@ -148,11 +170,7 @@ export function AddMealModal({
       setAiBaseline(a);
       setName(a.name || "");
       setDescription(a.description || "");
-      setCalories(formatNumberValue(a.calories || 0));
-      setProtein(formatNumberValue(a.protein));
-      setCarbs(formatNumberValue(a.carbs));
-      setFat(formatNumberValue(a.fat));
-      setPortionGrams(formatNumberValue(a.portionGrams));
+      setNutrition(draftFromAnalysis(a));
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return;
       if (e instanceof Error && e.name === "AbortError") return;
@@ -165,19 +183,33 @@ export function AddMealModal({
     }
   }
 
+  function resolvedNutrition() {
+    return resolveMealNutritionForSave({
+      per100: {
+        calories: parseOptionalNumber(nutrition.caloriesPer100),
+        protein: parseOptionalNumber(nutrition.proteinPer100),
+        carbs: parseOptionalNumber(nutrition.carbsPer100),
+        fat: parseOptionalNumber(nutrition.fatPer100),
+      },
+      portionGrams: parseOptionalNumber(nutrition.portionGrams),
+    });
+  }
+
   function isCorrected() {
-    if (!aiBaseline) return Boolean(name || calories);
+    if (!aiBaseline) return Boolean(name || nutrition.caloriesPer100);
+    const { nutrients } = resolvedNutrition();
     return (
       name !== (aiBaseline.name || "") ||
-      Number(String(calories).replace(",", ".")) !== Number(formatNumberValue(aiBaseline.calories || 0)) ||
-      (protein || "") !== formatNumberValue(aiBaseline.protein) ||
-      (carbs || "") !== formatNumberValue(aiBaseline.carbs) ||
-      (fat || "") !== formatNumberValue(aiBaseline.fat)
+      (nutrients.calories ?? 0) !== Number(formatNumberValue(aiBaseline.calories || 0)) ||
+      formatNumberValue(nutrients.protein) !== formatNumberValue(aiBaseline.protein) ||
+      formatNumberValue(nutrients.carbs) !== formatNumberValue(aiBaseline.carbs) ||
+      formatNumberValue(nutrients.fat) !== formatNumberValue(aiBaseline.fat)
     );
   }
 
   async function save() {
-    if (!name.trim() || !calories) {
+    const { nutrients, portionGrams } = resolvedNutrition();
+    if (!name.trim() || nutrients.calories == null) {
       setError(t("addMeal.needNameCalories"));
       return;
     }
@@ -192,11 +224,11 @@ export function AddMealModal({
           mealType,
           name: name.trim(),
           description: description.trim() || null,
-          calories: parseOptionalNumber(calories) ?? 0,
-          protein: parseOptionalNumber(protein),
-          carbs: parseOptionalNumber(carbs),
-          fat: parseOptionalNumber(fat),
-          portionGrams: parseOptionalNumber(portionGrams),
+          calories: nutrients.calories ?? 0,
+          protein: nutrients.protein,
+          carbs: nutrients.carbs,
+          fat: nutrients.fat,
+          portionGrams,
           photoPath,
           aiDetectedName: aiBaseline?.name ?? null,
           aiCalories: aiBaseline?.calories ?? null,
@@ -321,53 +353,7 @@ export function AddMealModal({
           />
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label={t("meal.calories")}>
-            <input
-              className={inputClass}
-              inputMode="decimal"
-              value={calories}
-              onChange={(e) => setCalories(sanitizeDecimalInput(e.target.value))}
-              placeholder="450"
-            />
-          </Field>
-          <Field label={t("meal.portion")}>
-            <input
-              className={inputClass}
-              inputMode="decimal"
-              value={portionGrams}
-              onChange={(e) => setPortionGrams(sanitizeDecimalInput(e.target.value))}
-              placeholder="300"
-            />
-          </Field>
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <Field label={t("meal.proteins")}>
-            <input
-              className={inputClass}
-              inputMode="decimal"
-              value={protein}
-              onChange={(e) => setProtein(sanitizeDecimalInput(e.target.value))}
-            />
-          </Field>
-          <Field label={t("meal.carbs")}>
-            <input
-              className={inputClass}
-              inputMode="decimal"
-              value={carbs}
-              onChange={(e) => setCarbs(sanitizeDecimalInput(e.target.value))}
-            />
-          </Field>
-          <Field label={t("meal.fats")}>
-            <input
-              className={inputClass}
-              inputMode="decimal"
-              value={fat}
-              onChange={(e) => setFat(sanitizeDecimalInput(e.target.value))}
-            />
-          </Field>
-        </div>
+        <MealNutritionFields value={nutrition} onChange={setNutrition} disabled={analyzing} />
 
         {aiBaseline?.confidence != null ? (
           <p className="text-xs text-[var(--muted)]">

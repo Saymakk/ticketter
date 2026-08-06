@@ -4,13 +4,23 @@ import { useEffect, useState } from "react";
 import { MEAL_TYPES } from "@/lib/healthy-life/dates";
 import { formatKcal } from "@/lib/healthy-life/format";
 import { isWithinEditWindow } from "@/lib/healthy-life/edit-window";
-import { sanitizeDecimalInput, parseOptionalNumber, formatNumberValue } from "@/lib/healthy-life/number-input";
+import { formatNumberValue, parseOptionalNumber } from "@/lib/healthy-life/number-input";
+import {
+  nutrientSetToStrings,
+  resolveMealNutritionForSave,
+  seedPer100FromStored,
+} from "@/lib/healthy-life/nutrition-scale";
 import { useHlRouting } from "@/lib/healthy-life/routing";
 import { useT } from "@/lib/healthy-life/i18n";
 import type { HlMessageKey } from "@/lib/healthy-life/i18n";
 import { Button, Field, Modal, inputClass } from "@/components/healthy-life/ui";
 import { OpenablePhoto } from "@/components/healthy-life/PhotoLightbox";
 import { useHlToast } from "@/components/healthy-life/HlToast";
+import {
+  EMPTY_MEAL_NUTRITION,
+  MealNutritionFields,
+  type MealNutritionDraft,
+} from "@/components/healthy-life/MealNutritionFields";
 
 export type MealDetail = {
   id: string;
@@ -33,6 +43,28 @@ function mealTypeLabelKey(id: string, forButton = false): HlMessageKey {
   return "meal.title";
 }
 
+function draftFromMeal(meal: MealDetail): MealNutritionDraft {
+  const seeded = seedPer100FromStored(
+    {
+      calories: meal.calories,
+      protein: meal.protein,
+      carbs: meal.carbs,
+      fat: meal.fat,
+    },
+    meal.portionGrams,
+    // Legacy meals without weight: treat stored totals as values for 100 g/ml.
+    { defaultPortionIfMissing: 100 },
+  );
+  const per100 = nutrientSetToStrings(seeded.per100);
+  return {
+    portionGrams: formatNumberValue(seeded.portionGrams),
+    caloriesPer100: per100.calories,
+    proteinPer100: per100.protein,
+    carbsPer100: per100.carbs,
+    fatPer100: per100.fat,
+  };
+}
+
 export function MealDetailModal({
   meal,
   readOnly,
@@ -52,11 +84,7 @@ export function MealDetailModal({
   const editable = Boolean(meal && !readOnly && isWithinEditWindow(meal.createdAt));
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [calories, setCalories] = useState("");
-  const [protein, setProtein] = useState("");
-  const [carbs, setCarbs] = useState("");
-  const [fat, setFat] = useState("");
-  const [portionGrams, setPortionGrams] = useState("");
+  const [nutrition, setNutrition] = useState<MealNutritionDraft>(EMPTY_MEAL_NUTRITION);
   const [mealType, setMealType] = useState("snack");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,11 +93,7 @@ export function MealDetailModal({
     if (!meal) return;
     setName(meal.name);
     setDescription(meal.description || "");
-    setCalories(formatNumberValue(meal.calories));
-    setProtein(formatNumberValue(meal.protein));
-    setCarbs(formatNumberValue(meal.carbs));
-    setFat(formatNumberValue(meal.fat));
-    setPortionGrams(formatNumberValue(meal.portionGrams));
+    setNutrition(draftFromMeal(meal));
     setMealType(meal.mealType);
     setError(null);
   }, [meal?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- reset only when opening another meal
@@ -78,6 +102,19 @@ export function MealDetailModal({
 
   async function save() {
     if (!editable) return;
+    const { nutrients, portionGrams } = resolveMealNutritionForSave({
+      per100: {
+        calories: parseOptionalNumber(nutrition.caloriesPer100),
+        protein: parseOptionalNumber(nutrition.proteinPer100),
+        carbs: parseOptionalNumber(nutrition.carbsPer100),
+        fat: parseOptionalNumber(nutrition.fatPer100),
+      },
+      portionGrams: parseOptionalNumber(nutrition.portionGrams),
+    });
+    if (nutrients.calories == null) {
+      setError(t("addMeal.needNameCalories"));
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -88,11 +125,11 @@ export function MealDetailModal({
           id: meal!.id,
           name: name.trim(),
           description: description.trim() || null,
-          calories: parseOptionalNumber(calories) ?? 0,
-          protein: parseOptionalNumber(protein),
-          carbs: parseOptionalNumber(carbs),
-          fat: parseOptionalNumber(fat),
-          portionGrams: parseOptionalNumber(portionGrams),
+          calories: nutrients.calories ?? 0,
+          protein: nutrients.protein,
+          carbs: nutrients.carbs,
+          fat: nutrients.fat,
+          portionGrams,
           mealType,
         }),
       });
@@ -161,7 +198,7 @@ export function MealDetailModal({
             {meal.fat != null ? <span>{t("day.fat")} {formatNumberValue(meal.fat)}g</span> : null}
             {meal.portionGrams != null ? (
               <span>
-                {t("meal.portion")} {formatNumberValue(meal.portionGrams)}g
+                {t("meal.portion")} {formatNumberValue(meal.portionGrams)}
               </span>
             ) : null}
           </div>
@@ -199,50 +236,7 @@ export function MealDetailModal({
               onChange={(e) => setDescription(e.target.value)}
             />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label={t("meal.calories")}>
-              <input
-                className={inputClass}
-                inputMode="decimal"
-                value={calories}
-                onChange={(e) => setCalories(sanitizeDecimalInput(e.target.value))}
-              />
-            </Field>
-            <Field label={t("meal.portion")}>
-              <input
-                className={inputClass}
-                inputMode="decimal"
-                value={portionGrams}
-                onChange={(e) => setPortionGrams(sanitizeDecimalInput(e.target.value))}
-              />
-            </Field>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <Field label={t("meal.proteins")}>
-              <input
-                className={inputClass}
-                inputMode="decimal"
-                value={protein}
-                onChange={(e) => setProtein(sanitizeDecimalInput(e.target.value))}
-              />
-            </Field>
-            <Field label={t("meal.carbs")}>
-              <input
-                className={inputClass}
-                inputMode="decimal"
-                value={carbs}
-                onChange={(e) => setCarbs(sanitizeDecimalInput(e.target.value))}
-              />
-            </Field>
-            <Field label={t("meal.fats")}>
-              <input
-                className={inputClass}
-                inputMode="decimal"
-                value={fat}
-                onChange={(e) => setFat(sanitizeDecimalInput(e.target.value))}
-              />
-            </Field>
-          </div>
+          <MealNutritionFields value={nutrition} onChange={setNutrition} />
           {error ? <p className="text-sm text-[#8a3b2f]">{error}</p> : null}
           <div className="flex gap-2">
             <Button type="button" className="flex-1" disabled={saving} onClick={() => save()}>
