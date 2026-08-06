@@ -1,11 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatKcal, progressPercent } from "@/lib/healthy-life/format";
 import { formatNumberValue } from "@/lib/healthy-life/number-input";
 import { formatWorkoutQuantity, workoutTypeLabel } from "@/lib/healthy-life/workouts";
 import { isWithinEditWindow } from "@/lib/healthy-life/edit-window";
 import type { ScheduleCompliance } from "@/lib/healthy-life/medications";
+import {
+  intakeBalance,
+  readMealSortMode,
+  sortMeals,
+  writeMealSortMode,
+  type MealSortMode,
+} from "@/lib/healthy-life/meal-sort";
 import { useT } from "@/lib/healthy-life/i18n";
 import type { HlMessageKey } from "@/lib/healthy-life/i18n";
 import { Card } from "@/components/healthy-life/ui";
@@ -43,36 +50,90 @@ function mealTypeKey(id: string): HlMessageKey {
 
 type DayTab = "meals" | "meds";
 
+const SORT_OPTIONS: Array<{ id: MealSortMode; label: HlMessageKey }> = [
+  { id: "time_asc", label: "day.sortTimeAsc" },
+  { id: "time_desc", label: "day.sortTimeDesc" },
+  { id: "kcal_desc", label: "day.sortKcalDesc" },
+  { id: "kcal_asc", label: "day.sortKcalAsc" },
+];
+
 export function DayPanel({
   data,
   readOnly,
   onMealClick,
   onIntakeClick,
   onTakeScheduled,
+  onMealSchedule,
 }: {
   data: DayPanelData;
   readOnly?: boolean;
   onMealClick: (meal: MealDetail) => void;
   onIntakeClick: (intake: MedicationIntake) => void;
   onTakeScheduled?: (row: ScheduleCompliance) => void;
+  onMealSchedule?: () => void;
 }) {
   const t = useT();
   const [tab, setTab] = useState<DayTab>("meals");
-  const pct = progressPercent(data.totalCalories, data.profile.dailyCalorieGoal);
+  const [sortMode, setSortMode] = useState<MealSortMode>("time_asc");
+  const [sortReady, setSortReady] = useState(false);
+
+  useEffect(() => {
+    setSortMode(readMealSortMode());
+    setSortReady(true);
+  }, []);
+
+  function changeSort(mode: MealSortMode) {
+    setSortMode(mode);
+    writeMealSortMode(mode);
+  }
+
+  const sortedMeals = useMemo(
+    () => sortMeals(data.meals, sortMode),
+    [data.meals, sortMode],
+  );
+
+  const goal = data.profile.dailyCalorieGoal;
+  const pct = progressPercent(data.totalCalories, goal);
+  const balance = intakeBalance(data.totalCalories, goal);
+  const remaining = Math.round(goal - data.totalCalories);
+
+  const balanceLabel =
+    balance.status === "over"
+      ? t("day.overBy", { n: balance.delta })
+      : balance.status === "under"
+        ? t("day.underBy", { n: balance.delta })
+        : t("day.onTrack");
+
+  const balanceClass =
+    balance.status === "over"
+      ? "text-[#8a3b2f]"
+      : balance.status === "under"
+        ? "text-[#6b5a2e]"
+        : "text-[var(--accent-ink)]";
+
+  const barClass =
+    balance.status === "over"
+      ? "bg-[#c45c4a]"
+      : balance.status === "under"
+        ? "bg-[#c4a35a]"
+        : "bg-[var(--accent)]";
 
   return (
     <div className="space-y-4">
       <Card className="overflow-hidden bg-gradient-to-br from-[#e7f3ea] via-[var(--surface)] to-[#f3efe4]">
         <div className="flex items-end justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-sm text-[var(--muted)]">{t("day.eaten")}</p>
             <p className="font-display text-4xl text-[var(--ink)]">
               {Math.round(data.totalCalories)}
               <span className="ml-1 text-lg text-[var(--muted)]">{t("day.kcal")}</span>
             </p>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              {t("day.goal")} {data.profile.dailyCalorieGoal} · {t("day.remaining")}{" "}
-              {Math.round(Math.max(0, data.remainingCalories))}
+            <p className={`mt-1 text-sm font-semibold ${balanceClass}`}>{balanceLabel}</p>
+            <p className="mt-0.5 text-sm text-[var(--muted)]">
+              {t("day.goal")} {goal}
+              {remaining >= 0
+                ? ` · ${t("day.remaining")} ${remaining}`
+                : ` · +${Math.abs(remaining)}`}
             </p>
           </div>
           <div className="text-right">
@@ -84,8 +145,8 @@ export function DayPanel({
         </div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--accent-soft)]">
           <div
-            className="h-full rounded-full bg-[var(--accent)] transition-all duration-700"
-            style={{ width: `${pct}%` }}
+            className={`h-full rounded-full transition-all duration-700 ${barClass}`}
+            style={{ width: `${Math.min(100, pct)}%` }}
           />
         </div>
       </Card>
@@ -145,6 +206,41 @@ export function DayPanel({
 
         {tab === "meals" ? (
           <div className="space-y-3" role="tabpanel">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {data.meals.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-[var(--muted)]">{t("day.sortBy")}</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SORT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => changeSort(opt.id)}
+                        className={`rounded-xl px-2.5 py-1.5 text-xs font-semibold transition ${
+                          sortReady && sortMode === opt.id
+                            ? "bg-[var(--accent)] text-white"
+                            : "bg-[var(--accent-soft)] text-[var(--accent-ink)]"
+                        }`}
+                      >
+                        {t(opt.label)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <span />
+              )}
+              {!readOnly && onMealSchedule ? (
+                <button
+                  type="button"
+                  onClick={onMealSchedule}
+                  className="rounded-xl bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-ink)]"
+                >
+                  {t("mealSchedule.open")}
+                </button>
+              ) : null}
+            </div>
+
             {data.meals.length === 0 ? (
               <Card>
                 <p className="text-[var(--muted)]">
@@ -152,7 +248,7 @@ export function DayPanel({
                 </p>
               </Card>
             ) : (
-              data.meals.map((meal) => {
+              sortedMeals.map((meal) => {
                 const canEdit = !readOnly && isWithinEditWindow(meal.createdAt);
                 return (
                   <button

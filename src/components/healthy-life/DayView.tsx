@@ -23,6 +23,7 @@ import {
   type MedicationIntake,
   type MedicationPlan,
 } from "@/components/healthy-life/MedicationModals";
+import { MealPlansModal } from "@/components/healthy-life/MealPlansModal";
 import {
   FoodActionIcon,
   IconActionButton,
@@ -49,6 +50,7 @@ export function DayView() {
   const [addMealOpen, setAddMealOpen] = useState(false);
   const [addMedOpen, setAddMedOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
+  const [mealPlansOpen, setMealPlansOpen] = useState(false);
   const [medPrefill, setMedPrefill] = useState<{
     planId?: string;
     scheduledTime?: string;
@@ -294,6 +296,7 @@ export function DayView() {
             onMealClick={setSelectedMeal}
             onIntakeClick={setSelectedIntake}
             onTakeScheduled={openTake}
+            onMealSchedule={() => setMealPlansOpen(true)}
           />
         </div>
       )}
@@ -326,6 +329,11 @@ export function DayView() {
       <MedicationPlansModal
         open={plansOpen}
         onClose={() => setPlansOpen(false)}
+        onChanged={refreshAfterMutation}
+      />
+      <MealPlansModal
+        open={mealPlansOpen}
+        onClose={() => setMealPlansOpen(false)}
         onChanged={refreshAfterMutation}
       />
     </Shell>

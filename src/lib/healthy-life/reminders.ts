@@ -65,23 +65,25 @@ function pushCopy(locale: string) {
   const ru = locale === "ru" || locale === "kk" || locale === "ky" || locale === "uz";
   if (ru) {
     return {
-      medTitle: "Напоминание о лекарстве",
+      medTitle: "Лекарство",
       medBody: (name: string, dosage: string, time: string) =>
         `${name}${dosage} — ${time}`,
-      weightTitle: "Напоминание о весе",
+      weightTitle: "Вес",
       weightBody: "Пора записать сегодняшний вес",
-      mealTitle: "Напоминание о еде",
+      mealTitle: "Еда",
+      mealBody: (name: string, time: string) => `${name} — ${time}`,
       mealBodyEmpty: "Не забудьте записать приёмы пищи сегодня",
       mealBodyNext: "Пора записать следующий приём пищи",
     };
   }
   return {
-    medTitle: "Medication reminder",
+    medTitle: "Medication",
     medBody: (name: string, dosage: string, time: string) =>
       `${name}${dosage} — ${time}`,
-    weightTitle: "Weight reminder",
+    weightTitle: "Weight",
     weightBody: "Time to log today's weight",
-    mealTitle: "Meal reminder",
+    mealTitle: "Food",
+    mealBody: (name: string, time: string) => `${name} — ${time}`,
     mealBodyEmpty: "Don't forget to log your meals today",
     mealBodyNext: "Time for your next meal log",
   };
@@ -115,6 +117,7 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
     },
     include: {
       medicationPlans: { where: { active: true } },
+      mealPlans: { where: { active: true } },
       pushSubscriptions: { select: { id: true } },
     },
   });
@@ -160,6 +163,40 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
         result.medication += 1;
       }
 
+      for (const plan of profile.mealPlans) {
+        if (!isPlanScheduledOnDate(plan, zoned.dateKey)) continue;
+        const times = parsePlanTimes(plan.timesJson);
+        if (!times.includes(zoned.timeKey)) continue;
+
+        // Skip if this meal type was already logged today.
+        const alreadyLogged = await prisma.meal.findFirst({
+          where: {
+            profileId: profile.id,
+            date: zoned.dateKey,
+            mealType: plan.mealType,
+          },
+          select: { id: true },
+        });
+        if (alreadyLogged) continue;
+
+        const dedupeKey = `mealplan|${plan.id}|${zoned.dateKey}|${zoned.timeKey}`;
+        const claimed = await claimReminderSlot({
+          profileId: profile.id,
+          kind: "meal",
+          dedupeKey,
+        });
+        if (!claimed) continue;
+
+        await sendPushToProfile(profile.id, {
+          title: copy.mealTitle,
+          body: copy.mealBody(plan.name, zoned.timeKey),
+          url: "/",
+          tag: `mealplan-${plan.id}-${zoned.timeKey}`,
+          kind: "meal",
+        });
+        result.meal += 1;
+      }
+
       const weightTime = profile.weightReminderTime
         ? normalizeTime(profile.weightReminderTime)
         : "";
@@ -190,6 +227,7 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
         }
       }
 
+      // Legacy free-form meal times on profile (kept for older prefs).
       const mealTimes = parseMealReminderTimes(profile.mealReminderTimesJson);
       if (mealTimes.includes(zoned.timeKey)) {
         const mealCount = await prisma.meal.count({
@@ -205,7 +243,7 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
           await sendPushToProfile(profile.id, {
             title: copy.mealTitle,
             body: mealCount === 0 ? copy.mealBodyEmpty : copy.mealBodyNext,
-            url: "/add",
+            url: "/",
             tag: `meal-${zoned.dateKey}-${zoned.timeKey}`,
             kind: "meal",
           });
