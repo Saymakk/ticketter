@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatKcal, progressPercent } from "@/lib/healthy-life/format";
+import { formatNumberValue } from "@/lib/healthy-life/number-input";
 import { formatWorkoutQuantity, workoutTypeLabel } from "@/lib/healthy-life/workouts";
 import { isWithinEditWindow } from "@/lib/healthy-life/edit-window";
 import type { ScheduleCompliance } from "@/lib/healthy-life/medications";
@@ -197,17 +198,17 @@ export function DayPanel({
                           ) : null}
                           {meal.protein != null ? (
                             <span>
-                              {t("day.protein")} {Math.round(meal.protein)}g
+                              {t("day.protein")} {formatNumberValue(meal.protein)}g
                             </span>
                           ) : null}
                           {meal.carbs != null ? (
                             <span>
-                              {t("day.carbs")} {Math.round(meal.carbs)}g
+                              {t("day.carbs")} {formatNumberValue(meal.carbs)}g
                             </span>
                           ) : null}
                           {meal.fat != null ? (
                             <span>
-                              {t("day.fat")} {Math.round(meal.fat)}g
+                              {t("day.fat")} {formatNumberValue(meal.fat)}g
                             </span>
                           ) : null}
                         </div>

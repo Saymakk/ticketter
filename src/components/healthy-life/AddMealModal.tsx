@@ -8,7 +8,7 @@ import type { HlMessageKey } from "@/lib/healthy-life/i18n";
 import { Button, Field, Modal, inputClass } from "@/components/healthy-life/ui";
 import { OpenablePhoto } from "@/components/healthy-life/PhotoLightbox";
 import { useHlToast } from "@/components/healthy-life/HlToast";
-import { sanitizeDecimalInput, parseOptionalNumber } from "@/lib/healthy-life/number-input";
+import { sanitizeDecimalInput, parseOptionalNumber, formatNumberValue } from "@/lib/healthy-life/number-input";
 
 type Analysis = {
   name: string;
@@ -148,11 +148,11 @@ export function AddMealModal({
       setAiBaseline(a);
       setName(a.name || "");
       setDescription(a.description || "");
-      setCalories(String(Math.round(a.calories || 0)));
-      setProtein(a.protein != null ? String(Math.round(a.protein)) : "");
-      setCarbs(a.carbs != null ? String(Math.round(a.carbs)) : "");
-      setFat(a.fat != null ? String(Math.round(a.fat)) : "");
-      setPortionGrams(a.portionGrams != null ? String(Math.round(a.portionGrams)) : "");
+      setCalories(formatNumberValue(a.calories || 0));
+      setProtein(formatNumberValue(a.protein));
+      setCarbs(formatNumberValue(a.carbs));
+      setFat(formatNumberValue(a.fat));
+      setPortionGrams(formatNumberValue(a.portionGrams));
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return;
       if (e instanceof Error && e.name === "AbortError") return;
@@ -169,10 +169,10 @@ export function AddMealModal({
     if (!aiBaseline) return Boolean(name || calories);
     return (
       name !== (aiBaseline.name || "") ||
-      Number(calories) !== Math.round(aiBaseline.calories || 0) ||
-      (protein || "") !== (aiBaseline.protein != null ? String(Math.round(aiBaseline.protein)) : "") ||
-      (carbs || "") !== (aiBaseline.carbs != null ? String(Math.round(aiBaseline.carbs)) : "") ||
-      (fat || "") !== (aiBaseline.fat != null ? String(Math.round(aiBaseline.fat)) : "")
+      Number(String(calories).replace(",", ".")) !== Number(formatNumberValue(aiBaseline.calories || 0)) ||
+      (protein || "") !== formatNumberValue(aiBaseline.protein) ||
+      (carbs || "") !== formatNumberValue(aiBaseline.carbs) ||
+      (fat || "") !== formatNumberValue(aiBaseline.fat)
     );
   }
 
@@ -192,7 +192,7 @@ export function AddMealModal({
           mealType,
           name: name.trim(),
           description: description.trim() || null,
-          calories: Number(calories) || 0,
+          calories: parseOptionalNumber(calories) ?? 0,
           protein: parseOptionalNumber(protein),
           carbs: parseOptionalNumber(carbs),
           fat: parseOptionalNumber(fat),

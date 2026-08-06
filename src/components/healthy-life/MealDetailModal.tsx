@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { MEAL_TYPES } from "@/lib/healthy-life/dates";
 import { formatKcal } from "@/lib/healthy-life/format";
 import { isWithinEditWindow } from "@/lib/healthy-life/edit-window";
-import { sanitizeDecimalInput, parseOptionalNumber } from "@/lib/healthy-life/number-input";
+import { sanitizeDecimalInput, parseOptionalNumber, formatNumberValue } from "@/lib/healthy-life/number-input";
 import { useHlRouting } from "@/lib/healthy-life/routing";
 import { useT } from "@/lib/healthy-life/i18n";
 import type { HlMessageKey } from "@/lib/healthy-life/i18n";
@@ -65,11 +65,11 @@ export function MealDetailModal({
     if (!meal) return;
     setName(meal.name);
     setDescription(meal.description || "");
-    setCalories(String(Math.round(meal.calories)));
-    setProtein(meal.protein != null ? String(Math.round(meal.protein)) : "");
-    setCarbs(meal.carbs != null ? String(Math.round(meal.carbs)) : "");
-    setFat(meal.fat != null ? String(Math.round(meal.fat)) : "");
-    setPortionGrams(meal.portionGrams != null ? String(Math.round(meal.portionGrams)) : "");
+    setCalories(formatNumberValue(meal.calories));
+    setProtein(formatNumberValue(meal.protein));
+    setCarbs(formatNumberValue(meal.carbs));
+    setFat(formatNumberValue(meal.fat));
+    setPortionGrams(formatNumberValue(meal.portionGrams));
     setMealType(meal.mealType);
     setError(null);
   }, [meal?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- reset only when opening another meal
@@ -88,7 +88,7 @@ export function MealDetailModal({
           id: meal!.id,
           name: name.trim(),
           description: description.trim() || null,
-          calories: Number(calories) || 0,
+          calories: parseOptionalNumber(calories) ?? 0,
           protein: parseOptionalNumber(protein),
           carbs: parseOptionalNumber(carbs),
           fat: parseOptionalNumber(fat),
@@ -156,12 +156,12 @@ export function MealDetailModal({
           <p className="font-display text-3xl">{formatKcal(meal.calories)}</p>
           {meal.description ? <p className="text-sm text-[var(--muted)]">{meal.description}</p> : null}
           <div className="flex flex-wrap gap-3 text-sm text-[var(--muted)]">
-            {meal.protein != null ? <span>{t("day.protein")} {Math.round(meal.protein)}g</span> : null}
-            {meal.carbs != null ? <span>{t("day.carbs")} {Math.round(meal.carbs)}g</span> : null}
-            {meal.fat != null ? <span>{t("day.fat")} {Math.round(meal.fat)}g</span> : null}
+            {meal.protein != null ? <span>{t("day.protein")} {formatNumberValue(meal.protein)}g</span> : null}
+            {meal.carbs != null ? <span>{t("day.carbs")} {formatNumberValue(meal.carbs)}g</span> : null}
+            {meal.fat != null ? <span>{t("day.fat")} {formatNumberValue(meal.fat)}g</span> : null}
             {meal.portionGrams != null ? (
               <span>
-                {t("meal.portion")} {Math.round(meal.portionGrams)}g
+                {t("meal.portion")} {formatNumberValue(meal.portionGrams)}g
               </span>
             ) : null}
           </div>

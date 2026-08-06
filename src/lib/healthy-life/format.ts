@@ -1,9 +1,11 @@
+import { formatNumberValue } from "@/lib/healthy-life/number-input";
+
 export function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
 
 export function formatKcal(value: number) {
-  return `${Math.round(value)} ккал`;
+  return `${formatNumberValue(value)} ккал`;
 }
 
 export function formatKg(value: number) {

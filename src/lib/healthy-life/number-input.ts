@@ -1,4 +1,4 @@
-/** Digits-only meal macro / portion fields, with leading-zero cleanup. */
+/** Digits-only fields, with leading-zero cleanup. */
 export function sanitizeDigitsInput(raw: string): string {
   const digits = raw.replace(/\D/g, "");
   if (digits.length <= 1) return digits;
@@ -26,4 +26,10 @@ export function parseOptionalNumber(raw: string): number | null {
   if (!trimmed) return null;
   const n = Number(trimmed);
   return Number.isFinite(n) ? n : null;
+}
+
+/** Format a stored float for inputs/labels without forcing integers (keeps up to 3 decimals). */
+export function formatNumberValue(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "";
+  return String(parseFloat(n.toFixed(3)));
 }
