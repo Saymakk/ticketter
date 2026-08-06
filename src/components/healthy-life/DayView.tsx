@@ -261,12 +261,18 @@ export function DayView() {
 
       {data && (
         <div className="space-y-4 animate-rise">
-          <div className="flex items-center justify-between gap-2 rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface)] px-2 py-2">
+          <div className="flex items-center justify-between gap-1.5 rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface)] px-1.5 py-2 sm:gap-2 sm:px-2">
             <IconActionButton
               label={t("day.addFood")}
               tone="primary"
               icon={<FoodActionIcon />}
               onClick={() => setAddMealOpen(true)}
+            />
+            <IconActionButton
+              label={t("mealSchedule.open")}
+              tone="secondary"
+              icon={<ScheduleActionIcon />}
+              onClick={() => setMealPlansOpen(true)}
             />
             <IconActionLink
               label={t("day.workout")}
@@ -296,7 +302,6 @@ export function DayView() {
             onMealClick={setSelectedMeal}
             onIntakeClick={setSelectedIntake}
             onTakeScheduled={openTake}
-            onMealSchedule={() => setMealPlansOpen(true)}
           />
         </div>
       )}

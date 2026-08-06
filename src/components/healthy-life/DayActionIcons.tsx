@@ -179,3 +179,23 @@ export function ScheduleActionIcon() {
     </svg>
   );
 }
+
+export function SortActionIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M7 6h12M7 12h8M7 18h4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M4 5.5v5M4 8l-1.5-1.5M4 8l1.5-1.5M4 13.5v5M4 16l-1.5 1.5M4 16l1.5 1.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

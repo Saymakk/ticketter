@@ -15,12 +15,13 @@ import {
 } from "@/lib/healthy-life/meal-sort";
 import { useT } from "@/lib/healthy-life/i18n";
 import type { HlMessageKey } from "@/lib/healthy-life/i18n";
-import { Card } from "@/components/healthy-life/ui";
+import { Card, Modal } from "@/components/healthy-life/ui";
 import type { MealDetail } from "@/components/healthy-life/MealDetailModal";
 import {
   ComplianceList,
   type MedicationIntake,
 } from "@/components/healthy-life/MedicationModals";
+import { SortActionIcon } from "@/components/healthy-life/DayActionIcons";
 
 export type DayWorkout = {
   id: string;
@@ -63,19 +64,18 @@ export function DayPanel({
   onMealClick,
   onIntakeClick,
   onTakeScheduled,
-  onMealSchedule,
 }: {
   data: DayPanelData;
   readOnly?: boolean;
   onMealClick: (meal: MealDetail) => void;
   onIntakeClick: (intake: MedicationIntake) => void;
   onTakeScheduled?: (row: ScheduleCompliance) => void;
-  onMealSchedule?: () => void;
 }) {
   const t = useT();
   const [tab, setTab] = useState<DayTab>("meals");
   const [sortMode, setSortMode] = useState<MealSortMode>("time_asc");
   const [sortReady, setSortReady] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
 
   useEffect(() => {
     setSortMode(readMealSortMode());
@@ -85,6 +85,7 @@ export function DayPanel({
   function changeSort(mode: MealSortMode) {
     setSortMode(mode);
     writeMealSortMode(mode);
+    setSortOpen(false);
   }
 
   const sortedMeals = useMemo(
@@ -171,76 +172,75 @@ export function DayPanel({
       ) : null}
 
       <div className="space-y-3">
-        <div
-          className="grid grid-cols-2 gap-1 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-1"
-          role="tablist"
-          aria-label={`${t("day.mealsTitle")} / ${t("day.medsTitle")}`}
-        >
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            role="tab"
-            aria-selected={tab === "meals"}
-            onClick={() => setTab("meals")}
-            className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-              tab === "meals"
-                ? "bg-[var(--accent)] text-white shadow-sm"
-                : "text-[var(--muted)] hover:text-[var(--ink)]"
-            }`}
+            aria-label={t("day.sortBy")}
+            title={t("day.sortBy")}
+            onClick={() => setSortOpen(true)}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] transition active:scale-95"
           >
-            {t("day.mealsTitle")}
+            <SortActionIcon />
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "meds"}
-            onClick={() => setTab("meds")}
-            className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-              tab === "meds"
-                ? "bg-[var(--med-accent)] text-white shadow-sm"
-                : "text-[var(--muted)] hover:text-[var(--med-accent-ink)]"
-            }`}
+          <div
+            className="grid min-w-0 flex-1 grid-cols-2 gap-1 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-1"
+            role="tablist"
+            aria-label={`${t("day.mealsTitle")} / ${t("day.medsTitle")}`}
           >
-            {t("day.medsTitle")}
-          </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "meals"}
+              onClick={() => setTab("meals")}
+              className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                tab === "meals"
+                  ? "bg-[var(--accent)] text-white shadow-sm"
+                  : "text-[var(--muted)] hover:text-[var(--ink)]"
+              }`}
+            >
+              {t("day.mealsTitle")}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "meds"}
+              onClick={() => setTab("meds")}
+              className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                tab === "meds"
+                  ? "bg-[var(--med-accent)] text-white shadow-sm"
+                  : "text-[var(--muted)] hover:text-[var(--med-accent-ink)]"
+              }`}
+            >
+              {t("day.medsTitle")}
+            </button>
+          </div>
         </div>
+
+        <Modal open={sortOpen} onClose={() => setSortOpen(false)} title={t("day.sortBy")}>
+          <div className="space-y-2">
+            {SORT_OPTIONS.map((opt) => {
+              const active = sortReady && sortMode === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => changeSort(opt.id)}
+                  className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
+                    active
+                      ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                      : "border-[var(--line)] bg-[var(--surface)] text-[var(--ink)]"
+                  }`}
+                >
+                  <span>{t(opt.label)}</span>
+                  {active ? <span aria-hidden>✓</span> : null}
+                </button>
+              );
+            })}
+          </div>
+        </Modal>
 
         {tab === "meals" ? (
           <div className="space-y-3" role="tabpanel">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              {data.meals.length > 0 ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-medium text-[var(--muted)]">{t("day.sortBy")}</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {SORT_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => changeSort(opt.id)}
-                        className={`rounded-xl px-2.5 py-1.5 text-xs font-semibold transition ${
-                          sortReady && sortMode === opt.id
-                            ? "bg-[var(--accent)] text-white"
-                            : "bg-[var(--accent-soft)] text-[var(--accent-ink)]"
-                        }`}
-                      >
-                        {t(opt.label)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <span />
-              )}
-              {!readOnly && onMealSchedule ? (
-                <button
-                  type="button"
-                  onClick={onMealSchedule}
-                  className="rounded-xl bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-ink)]"
-                >
-                  {t("mealSchedule.open")}
-                </button>
-              ) : null}
-            </div>
-
             {data.meals.length === 0 ? (
               <Card>
                 <p className="text-[var(--muted)]">
