@@ -7,6 +7,7 @@ import {
   serializePlanTimes,
   serializeWeekdays,
 } from "@/lib/healthy-life/medications";
+import { saveAiCorrection } from "@/lib/healthy-life/ai-corrections";
 
 function parseAnchorDate(raw: unknown): string | null {
   if (raw == null || raw === "") return null;
@@ -91,6 +92,18 @@ export async function POST(request: Request) {
         active: body.active !== false,
       },
     });
+
+    const aiDetectedName =
+      typeof body.aiDetectedName === "string" ? body.aiDetectedName.trim() : "";
+    if (aiDetectedName && aiDetectedName.toLowerCase() !== name.toLowerCase()) {
+      await saveAiCorrection({
+        profileId: profile.id,
+        kind: "medication_analysis",
+        ai: { name: aiDetectedName },
+        user: { name },
+        sourceId: plan.id,
+      });
+    }
 
     return NextResponse.json(plan, { status: 201 });
   } catch (error) {

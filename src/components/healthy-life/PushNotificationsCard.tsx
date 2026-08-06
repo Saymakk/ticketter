@@ -5,8 +5,7 @@ import { useHlRouting } from "@/lib/healthy-life/routing";
 import { useHlI18n, useT } from "@/lib/healthy-life/i18n";
 import type { HlMessageKey } from "@/lib/healthy-life/i18n";
 import { useHlToast } from "@/components/healthy-life/HlToast";
-import { Button, Card, Field, inputClass } from "@/components/healthy-life/ui";
-import { normalizeTime } from "@/lib/healthy-life/medications";
+import { Button, Card } from "@/components/healthy-life/ui";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -60,8 +59,6 @@ type Status = {
   thisDevice: boolean;
   subscriptionCount: number;
   timezone: string;
-  weightReminderTime: string | null;
-  mealReminderTimes: string[];
   loadError?: string | null;
   publicKey?: string | null;
 };
@@ -73,8 +70,6 @@ export function PushNotificationsCard() {
   const toast = useHlToast();
   const [status, setStatus] = useState<Status | null>(null);
   const [busy, setBusy] = useState(false);
-  const [weightTime, setWeightTime] = useState("");
-  const [mealTimes, setMealTimes] = useState("");
   const [supported, setSupported] = useState(true);
   const [mounted, setMounted] = useState(false);
 
@@ -92,8 +87,6 @@ export function PushNotificationsCard() {
         thisDevice: false,
         subscriptionCount: 0,
         timezone: detectTimezone(),
-        weightReminderTime: null,
-        mealReminderTimes: [],
         loadError: t("unauthorized"),
       });
       return;
@@ -106,8 +99,6 @@ export function PushNotificationsCard() {
         thisDevice: false,
         subscriptionCount: 0,
         timezone: detectTimezone(),
-        weightReminderTime: null,
-        mealReminderTimes: [],
         loadError: t("push.loadError"),
       });
       return;
@@ -121,8 +112,6 @@ export function PushNotificationsCard() {
         thisDevice: false,
         subscriptionCount: 0,
         timezone: detectTimezone(),
-        weightReminderTime: null,
-        mealReminderTimes: [],
         loadError: null,
         publicKey: null,
       });
@@ -143,8 +132,6 @@ export function PushNotificationsCard() {
     let thisDevice = false;
     let subscriptionCount = 0;
     let timezone = detectTimezone();
-    let weightReminderTime: string | null = null;
-    let mealReminderTimes: string[] = [];
 
     try {
       const res = await hlFetch("/api/push/vapid", {
@@ -158,12 +145,6 @@ export function PushNotificationsCard() {
         thisDevice = Boolean(json.thisDevice);
         subscriptionCount = Number(json.subscriptionCount || 0);
         timezone = json.timezone || timezone;
-        weightReminderTime = json.weightReminderTime ?? null;
-        try {
-          mealReminderTimes = JSON.parse(json.mealReminderTimesJson || "[]");
-        } catch {
-          mealReminderTimes = [];
-        }
       }
     } catch {
       /* status POST is optional */
@@ -175,12 +156,8 @@ export function PushNotificationsCard() {
       thisDevice,
       subscriptionCount,
       timezone,
-      weightReminderTime,
-      mealReminderTimes,
       publicKey: vapid.publicKey ?? null,
     });
-    setWeightTime(weightReminderTime ?? "");
-    setMealTimes(mealReminderTimes.join(", "));
   }, [hlFetch, t]);
 
   useEffect(() => {
@@ -277,36 +254,6 @@ export function PushNotificationsCard() {
     }
   }
 
-  async function saveReminderPrefs() {
-    setBusy(true);
-    try {
-      const meals = mealTimes
-        .split(/[,;\s]+/)
-        .map((s) => normalizeTime(s.trim()))
-        .filter(Boolean);
-      const weight = weightTime.trim() ? normalizeTime(weightTime.trim()) : null;
-      if (weightTime.trim() && !weight) throw new Error(t("push.invalidTime"));
-
-      const res = await hlFetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          timezone: detectTimezone(),
-          weightReminderTime: weight || null,
-          mealReminderTimes: meals,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || t("error"));
-      toast.success(t("push.prefsSaved"));
-      await refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("error"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   const on = Boolean(status?.thisDevice || (status?.subscriptionCount && status.subscriptionCount > 0));
 
   // Avoid SSR/client text mismatch (React #418) — render only after mount.
@@ -358,31 +305,7 @@ export function PushNotificationsCard() {
             </Button>
           )}
 
-          <div className="border-t border-[var(--line)] pt-3 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-              {t("push.extraTitle")}
-            </p>
-            <Field label={t("push.weightTime")}>
-              <input
-                className={inputClass}
-                type="time"
-                value={weightTime}
-                onChange={(e) => setWeightTime(e.target.value)}
-              />
-            </Field>
-            <Field label={t("push.mealTimes")}>
-              <input
-                className={inputClass}
-                value={mealTimes}
-                onChange={(e) => setMealTimes(e.target.value)}
-                placeholder={t("push.mealTimesPh")}
-              />
-            </Field>
-            <p className="text-xs text-[var(--muted)]">{t("push.medsAuto")}</p>
-            <Button type="button" variant="secondary" className="w-full" disabled={busy} onClick={saveReminderPrefs}>
-              {busy ? t("saving") : t("push.savePrefs")}
-            </Button>
-          </div>
+          <p className="text-xs text-[var(--muted)]">{t("push.medsAuto")}</p>
         </>
       )}
     </Card>

@@ -4,6 +4,7 @@ import {
   describeAiFailure,
   mockMedicationAnalysis,
 } from "@/lib/healthy-life/ai";
+import { loadCorrectionHints } from "@/lib/healthy-life/ai-corrections";
 import { saveAiRecord } from "@/lib/healthy-life/ai-records";
 import { getOrCreateProfile } from "@/lib/healthy-life/prisma";
 import { savePhoto } from "@/lib/healthy-life/uploads";
@@ -30,13 +31,19 @@ export async function POST(request: Request) {
 
     const saved = await savePhoto(file, "medications");
     const base64 = saved.buffer.toString("base64");
+    const correctionHints = await loadCorrectionHints(profile.id, "medication_analysis");
 
     let analysis;
     let usedFallback = false;
     let fallbackReason: string | null = null;
 
     try {
-      analysis = await analyzeMedicationImage(base64, saved.mimeType, aiLanguage);
+      analysis = await analyzeMedicationImage(
+        base64,
+        saved.mimeType,
+        aiLanguage,
+        correctionHints,
+      );
     } catch (err) {
       console.error("Medication AI analyze failed:", err);
       fallbackReason = describeAiFailure(err);

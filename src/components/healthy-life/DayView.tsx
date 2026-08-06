@@ -54,6 +54,7 @@ export function DayView() {
     scheduledTime?: string;
     name?: string;
     dosage?: string | null;
+    photoPath?: string | null;
   } | null>(null);
 
   const applyPayload = useCallback(
@@ -170,6 +171,7 @@ export function DayView() {
       scheduledTime: row.scheduledTime,
       name: row.name,
       dosage: row.dosage,
+      photoPath: row.photoPath,
     });
     setAddMedOpen(true);
   }

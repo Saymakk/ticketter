@@ -137,9 +137,9 @@ export function DayPanel({
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-xs text-[var(--muted)]">{t(mealTypeKey(meal.mealType))}</p>
-                        <h3 className="truncate font-semibold">{meal.name}</h3>
+                        <h3 className="break-words font-semibold">{meal.name}</h3>
                       </div>
                       <p className="shrink-0 font-semibold">{formatKcal(meal.calories)}</p>
                     </div>
@@ -203,7 +203,7 @@ export function DayPanel({
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="truncate font-semibold text-[var(--med-accent-ink)]">{intake.name}</p>
+                      <p className="min-w-0 break-words font-semibold text-[var(--med-accent-ink)]">{intake.name}</p>
                       <span className="shrink-0 text-xs text-[var(--med-accent)]">{intake.takenTime}</span>
                     </div>
                     <p className="text-xs text-[var(--muted)]">

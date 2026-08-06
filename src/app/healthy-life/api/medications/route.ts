@@ -8,8 +8,10 @@ import {
   isPlanScheduledOnDate,
   nowTimeKey,
   parsePlanTimes,
+  resolveMedicationPhoto,
 } from "@/lib/healthy-life/medications";
 import { getZonedNow } from "@/lib/healthy-life/reminders";
+import { saveAiCorrection } from "@/lib/healthy-life/ai-corrections";
 
 export async function GET(request: Request) {
   try {
@@ -19,16 +21,22 @@ export async function GET(request: Request) {
     const zoned = getZonedNow(profile.timezone || "UTC");
     const day = date || zoned.dateKey;
 
-    const [intakes, plans] = await Promise.all([
+    const [intakesRaw, allPlans] = await Promise.all([
       prisma.medicationIntake.findMany({
         where: { profileId: profile.id, date: day },
         orderBy: [{ takenTime: "asc" }, { createdAt: "asc" }],
       }),
       prisma.medicationPlan.findMany({
-        where: { profileId: profile.id, active: true },
-        orderBy: { name: "asc" },
+        where: { profileId: profile.id },
+        orderBy: [{ active: "desc" }, { name: "asc" }],
       }),
     ]);
+
+    const plans = allPlans.filter((p) => p.active);
+    const intakes = intakesRaw.map((i) => ({
+      ...i,
+      photoPath: resolveMedicationPhoto(i, allPlans),
+    }));
 
     const compliance = buildDayCompliance({
       plans,
@@ -55,6 +63,7 @@ export async function POST(request: Request) {
 
     let scheduledTime: string | null = body.scheduledTime ? String(body.scheduledTime) : null;
     let planId: string | null = body.planId ? String(body.planId) : null;
+    let photoPath: string | null = body.photoPath ?? null;
 
     const intakeDate = body.date || todayKey();
 
@@ -74,6 +83,9 @@ export async function POST(request: Request) {
       if (scheduledTime && !parsePlanTimes(plan.timesJson).includes(scheduledTime)) {
         scheduledTime = null;
       }
+      if (!photoPath && plan.photoPath) {
+        photoPath = plan.photoPath;
+      }
     }
 
     const intake = await prisma.medicationIntake.create({
@@ -84,11 +96,23 @@ export async function POST(request: Request) {
         name,
         dosage: body.dosage?.trim() || null,
         reason: body.reason?.trim() || null,
-        photoPath: body.photoPath ?? null,
+        photoPath,
         scheduledTime,
         takenTime: body.takenTime || nowTimeKey(),
       },
     });
+
+    const aiDetectedName =
+      typeof body.aiDetectedName === "string" ? body.aiDetectedName.trim() : "";
+    if (aiDetectedName && aiDetectedName.toLowerCase() !== name.toLowerCase()) {
+      await saveAiCorrection({
+        profileId: profile.id,
+        kind: "medication_analysis",
+        ai: { name: aiDetectedName },
+        user: { name },
+        sourceId: intake.id,
+      });
+    }
 
     return NextResponse.json(intake, { status: 201 });
   } catch (error) {
@@ -127,6 +151,20 @@ export async function PATCH(request: Request) {
         scheduledTime: body.scheduledTime !== undefined ? body.scheduledTime || null : undefined,
       },
     });
+
+    if (
+      body.name != null &&
+      existing.photoPath &&
+      String(body.name).trim().toLowerCase() !== existing.name.toLowerCase()
+    ) {
+      await saveAiCorrection({
+        profileId: profile.id,
+        kind: "medication_analysis",
+        ai: { name: existing.name },
+        user: { name: intake.name },
+        sourceId: intake.id,
+      });
+    }
 
     return NextResponse.json(intake);
   } catch (error) {

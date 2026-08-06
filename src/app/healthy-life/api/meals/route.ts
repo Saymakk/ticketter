@@ -3,6 +3,7 @@ import { getOrCreateProfile, prisma } from "@/lib/healthy-life/prisma";
 import { todayKey } from "@/lib/healthy-life/dates";
 import { jsonError } from "@/lib/healthy-life/api-error";
 import { isWithinEditWindow } from "@/lib/healthy-life/edit-window";
+import { saveAiCorrection } from "@/lib/healthy-life/ai-corrections";
 
 export async function GET(request: Request) {
   try {
@@ -83,6 +84,26 @@ export async function POST(request: Request) {
       });
     }
 
+    if (Boolean(body.userCorrected) && body.aiDetectedName) {
+      await saveAiCorrection({
+        profileId: profile.id,
+        kind: "food_analysis",
+        ai: {
+          name: body.aiDetectedName,
+          calories: body.aiCalories != null ? Number(body.aiCalories) : null,
+        },
+        user: {
+          name: meal.name,
+          calories: meal.calories,
+          protein: meal.protein,
+          carbs: meal.carbs,
+          fat: meal.fat,
+          portionGrams: meal.portionGrams,
+        },
+        sourceId: meal.id,
+      });
+    }
+
     return NextResponse.json(meal, { status: 201 });
   } catch (error) {
     return jsonError(error);
@@ -128,6 +149,26 @@ export async function PATCH(request: Request) {
         userCorrected: true,
       },
     });
+
+    if (existing.aiDetectedName || existing.aiCalories != null) {
+      await saveAiCorrection({
+        profileId: profile.id,
+        kind: "food_analysis",
+        ai: {
+          name: existing.aiDetectedName ?? existing.name,
+          calories: existing.aiCalories,
+        },
+        user: {
+          name: meal.name,
+          calories: meal.calories,
+          protein: meal.protein,
+          carbs: meal.carbs,
+          fat: meal.fat,
+          portionGrams: meal.portionGrams,
+        },
+        sourceId: meal.id,
+      });
+    }
 
     return NextResponse.json(meal);
   } catch (error) {

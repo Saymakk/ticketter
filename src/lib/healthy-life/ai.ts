@@ -48,8 +48,16 @@ function extractJson(text: string) {
   return JSON.parse(raw.slice(start, end + 1));
 }
 
-export async function analyzeFoodImage(base64: string, mimeType: string): Promise<FoodAnalysis> {
+export async function analyzeFoodImage(
+  base64: string,
+  mimeType: string,
+  correctionHints: string[] = [],
+): Promise<FoodAnalysis> {
   const client = getClient();
+  const memory =
+    correctionHints.length > 0
+      ? `\nUSER CORRECTION MEMORY (prefer these when the photo looks similar):\n${correctionHints.join("\n")}\n`
+      : "";
   const response = await client.chat.completions.create({
     model: getModel(),
     temperature: 0.2,
@@ -58,6 +66,7 @@ export async function analyzeFoodImage(base64: string, mimeType: string): Promis
         role: "system",
         content: `Ты нутрициолог. По фото еды оцени состав и калорийность.
 Не задавай вопросов пользователю и не проси уточнений — только оценка по фото.
+${memory}
 Ответь ТОЛЬКО валидным JSON без markdown:
 {
   "name": "краткое название блюда на русском",
@@ -241,8 +250,13 @@ export async function analyzeMedicationImage(
   base64: string,
   mimeType: string,
   language = "Russian",
+  correctionHints: string[] = [],
 ): Promise<MedicationAnalysis> {
   const client = getClient();
+  const memory =
+    correctionHints.length > 0
+      ? `\nUSER CORRECTION MEMORY (prefer these names when the pack looks similar):\n${correctionHints.join("\n")}\n`
+      : "";
   const response = await client.chat.completions.create({
     model: getModel(),
     temperature: 0.1,
@@ -251,7 +265,7 @@ export async function analyzeMedicationImage(
         role: "system",
         content: `You identify medications from photos (packaging, blister, bottle, label).
 Do not give medical advice. Do not ask questions.
-
+${memory}
 LANGUAGE: write "name" in ${language}.
 
 Reply ONLY with valid JSON (no markdown):

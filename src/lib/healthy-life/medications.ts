@@ -142,11 +142,22 @@ export type ScheduleCompliance = {
   planId: string;
   name: string;
   dosage: string | null;
+  photoPath: string | null;
   scheduledTime: string;
   status: "taken_on_time" | "taken_late" | "missed" | "pending";
   intakeId: string | null;
   takenTime: string | null;
 };
+
+/** Prefer intake photo; fall back to linked plan photo. */
+export function resolveMedicationPhoto(
+  intake: { photoPath?: string | null; planId?: string | null },
+  plans: Array<{ id: string; photoPath?: string | null }>,
+): string | null {
+  if (intake.photoPath) return intake.photoPath;
+  if (!intake.planId) return null;
+  return plans.find((p) => p.id === intake.planId)?.photoPath ?? null;
+}
 
 /**
  * For one day: each plan slot → taken on time / late / missed / still pending (today future).
@@ -158,6 +169,7 @@ export function buildDayCompliance(params: {
       id: string;
       name: string;
       dosage: string | null;
+      photoPath?: string | null;
       timesJson: string;
       active: boolean;
     } & PlanScheduleFields
@@ -177,6 +189,7 @@ export function buildDayCompliance(params: {
   const rows: ScheduleCompliance[] = [];
 
   for (const plan of activePlans) {
+    const planPhoto = plan.photoPath ?? null;
     for (const slot of parsePlanTimes(plan.timesJson)) {
       const match = params.intakes.find(
         (i) =>
@@ -191,6 +204,7 @@ export function buildDayCompliance(params: {
           planId: plan.id,
           name: plan.name,
           dosage: plan.dosage,
+          photoPath: planPhoto,
           scheduledTime: slot,
           status: onTime === false ? "taken_late" : "taken_on_time",
           intakeId: match.id,
@@ -205,6 +219,7 @@ export function buildDayCompliance(params: {
         planId: plan.id,
         name: plan.name,
         dosage: plan.dosage,
+        photoPath: planPhoto,
         scheduledTime: slot,
         status: stillAhead ? "pending" : "missed",
         intakeId: null,

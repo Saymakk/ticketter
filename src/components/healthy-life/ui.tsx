@@ -148,7 +148,7 @@ export function Modal({
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-transparent px-4 pt-4 pb-3">
           <h2
             className={cn(
-              "font-display text-2xl leading-tight",
+              "min-w-0 flex-1 break-words font-display text-2xl leading-tight",
               tone === "med" ? "text-[var(--med-accent-ink)]" : "text-[var(--ink)]",
             )}
           >
@@ -157,7 +157,7 @@ export function Modal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl px-2 py-1 text-sm text-[var(--muted)]"
+            className="shrink-0 rounded-xl px-2 py-1 text-sm text-[var(--muted)]"
           >
             ✕
           </button>

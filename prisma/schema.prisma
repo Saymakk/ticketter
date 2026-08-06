@@ -39,6 +39,7 @@ model Profile {
   medicationPlans  MedicationPlan[]
   medicationIntakes MedicationIntake[]
   aiRecords        AiRecord[]
+  aiCorrections    AiCorrection[]
   pushSubscriptions PushSubscription[]
   pushRemindersSent PushReminderSent[]
 }
@@ -159,6 +160,26 @@ model AiRecord {
 
   @@index([profileId, kind, createdAt])
   @@index([profileId, createdAt])
+}
+
+/**
+ * User corrections of AI photo analysis — fed back into future analyses for this profile.
+ */
+model AiCorrection {
+  id           String   @id @default(cuid())
+  profileId    String
+  profile      Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  /** food_analysis | medication_analysis */
+  kind         String
+  /** What the model suggested (JSON) */
+  aiJson       String   @db.Text
+  /** What the user saved instead (JSON) */
+  userJson     String   @db.Text
+  /** Optional link to source meal / plan / intake */
+  sourceId     String?
+  createdAt    DateTime @default(now())
+
+  @@index([profileId, kind, createdAt])
 }
 
 model Workout {

@@ -246,7 +246,13 @@ export function AddMedicationModal({
   open: boolean;
   date: string;
   plans: MedicationPlan[];
-  prefill?: { planId?: string; scheduledTime?: string; name?: string; dosage?: string | null } | null;
+  prefill?: {
+    planId?: string;
+    scheduledTime?: string;
+    name?: string;
+    dosage?: string | null;
+    photoPath?: string | null;
+  } | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -263,6 +269,7 @@ export function AddMedicationModal({
   const [scheduledTime, setScheduledTime] = useState<string>("");
   const [photoPath, setPhotoPath] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [aiDetectedName, setAiDetectedName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [recognizing, setRecognizing] = useState(false);
   const [recognizeHint, setRecognizeHint] = useState<string | null>(null);
@@ -271,18 +278,23 @@ export function AddMedicationModal({
 
   useEffect(() => {
     if (!open) return;
+    const fromPlan =
+      prefill?.planId
+        ? plans.find((p) => p.id === prefill.planId)?.photoPath
+        : null;
     setName(prefill?.name || "");
     setDosage(prefill?.dosage || "");
     setReason("");
     setTakenTime(nowTimeKey());
     setPlanId(prefill?.planId || "");
     setScheduledTime(prefill?.scheduledTime || "");
-    setPhotoPath(null);
+    setPhotoPath(prefill?.photoPath || fromPlan || null);
     setPreview(null);
+    setAiDetectedName(null);
     setError(null);
     setRecognizeHint(null);
     setRecognizing(false);
-  }, [open, prefill]);
+  }, [open, prefill, plans]);
 
   const plansForDay = plans.filter((p) => isPlanScheduledOnDate(p, date));
   const selectedPlan = plansForDay.find((p) => p.id === planId) ?? plans.find((p) => p.id === planId);
@@ -307,6 +319,7 @@ export function AddMedicationModal({
 
       const analysis = data.analysis as { name?: string } | undefined;
       const aiName = analysis?.name?.trim() || "";
+      setAiDetectedName(aiName || null);
 
       // Keep schedule name if user already picked a plan; otherwise fill from photo.
       if (aiName && !planId) {
@@ -348,6 +361,7 @@ export function AddMedicationModal({
           planId: planId || null,
           scheduledTime: scheduledTime || null,
           takenTime,
+          aiDetectedName: aiDetectedName || null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -415,6 +429,9 @@ export function AddMedicationModal({
                   setDosage(plan.dosage || "");
                   const slots = parsePlanTimes(plan.timesJson);
                   setScheduledTime(slots[0] || "");
+                  if (!preview) {
+                    setPhotoPath(plan.photoPath || null);
+                  }
                 } else {
                   setScheduledTime("");
                 }
@@ -514,6 +531,7 @@ export function MedicationPlansModal({
   const fileRef = useRef<HTMLInputElement>(null);
   const [photoPath, setPhotoPath] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [aiDetectedName, setAiDetectedName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [recognizing, setRecognizing] = useState(false);
   const [recognizeHint, setRecognizeHint] = useState<string | null>(null);
@@ -544,6 +562,7 @@ export function MedicationPlansModal({
     setAnchorDate(todayKey());
     setPhotoPath(null);
     setPreview(null);
+    setAiDetectedName(null);
     setRecognizeHint(null);
     setError(null);
   }
@@ -573,6 +592,7 @@ export function MedicationPlansModal({
 
       const analysis = data.analysis as { name?: string } | undefined;
       const aiName = analysis?.name?.trim() || "";
+      setAiDetectedName(aiName || null);
       if (aiName) {
         setName(aiName);
         setRecognizeHint(t("med.recognized"));
@@ -613,6 +633,7 @@ export function MedicationPlansModal({
           dosage: dosage.trim() || null,
           reason: reason.trim() || null,
           photoPath,
+          aiDetectedName: aiDetectedName || null,
           times,
           recurrence,
           weekdays: recurrence === "weekly" ? weekdays : [],
@@ -819,17 +840,17 @@ export function MedicationPlansModal({
                   />
                 ) : null}
                 <div className="min-w-0">
-                <p className="font-semibold text-[var(--med-accent-ink)]">{plan.name}</p>
-                <p className="text-xs text-[var(--muted)]">
+                <p className="break-words font-semibold text-[var(--med-accent-ink)]">{plan.name}</p>
+                <p className="break-words text-xs text-[var(--muted)]">
                   {formatPlanRecurrence(plan, t)}
                   {" · "}
                   {parsePlanTimes(plan.timesJson).join(" · ")}
                   {plan.dosage ? ` · ${plan.dosage}` : ""}
                 </p>
-                {plan.reason ? <p className="mt-1 text-xs text-[var(--muted)]">{plan.reason}</p> : null}
+                {plan.reason ? <p className="mt-1 break-words text-xs text-[var(--muted)]">{plan.reason}</p> : null}
                 </div>
               </div>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 shrink-0">
                 <button type="button" className="text-xs text-[var(--med-accent)]" onClick={() => toggleActive(plan)}>
                   {plan.active ? t("med.disable") : t("med.enable")}
                 </button>
@@ -867,8 +888,8 @@ export function ComplianceList({
           key={`${row.planId}-${row.scheduledTime}`}
           className="flex items-center justify-between gap-2 rounded-xl bg-white/70 px-3 py-2 text-sm"
         >
-          <div>
-            <p className="font-medium text-[var(--med-accent-ink)]">
+          <div className="min-w-0 flex-1">
+            <p className="break-words font-medium text-[var(--med-accent-ink)]">
               {row.scheduledTime} · {row.name}
             </p>
             <p className="text-xs text-[var(--muted)]">
@@ -880,7 +901,7 @@ export function ComplianceList({
             <button
               type="button"
               onClick={() => onTake(row)}
-              className="rounded-xl bg-[var(--med-accent)] px-3 py-1.5 text-xs font-semibold text-white"
+              className="shrink-0 rounded-xl bg-[var(--med-accent)] px-3 py-1.5 text-xs font-semibold text-white"
             >
               {t("med.took")}
             </button>

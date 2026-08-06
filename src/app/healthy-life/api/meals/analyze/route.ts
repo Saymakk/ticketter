@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { analyzeFoodImage, describeAiFailure, mockFoodAnalysis } from "@/lib/healthy-life/ai";
+import { loadCorrectionHints } from "@/lib/healthy-life/ai-corrections";
 import { saveAiRecord } from "@/lib/healthy-life/ai-records";
 import { getOrCreateProfile } from "@/lib/healthy-life/prisma";
 import { saveMealPhoto } from "@/lib/healthy-life/uploads";
@@ -27,13 +28,14 @@ export async function POST(request: Request) {
 
     const saved = await saveMealPhoto(file);
     const base64 = saved.buffer.toString("base64");
+    const correctionHints = await loadCorrectionHints(profile.id, "food_analysis");
 
     let analysis;
     let usedFallback = false;
     let fallbackReason: string | null = null;
 
     try {
-      analysis = await analyzeFoodImage(base64, saved.mimeType);
+      analysis = await analyzeFoodImage(base64, saved.mimeType, correctionHints);
     } catch (err) {
       console.error("AI analyze failed:", err);
       fallbackReason = describeAiFailure(err);
@@ -41,7 +43,6 @@ export async function POST(request: Request) {
       usedFallback = true;
     }
 
-    // Persist every AI food analysis for this user immediately (even before meal save).
     const aiRecord = await saveAiRecord({
       profileId: profile.id,
       kind: "food_analysis",
