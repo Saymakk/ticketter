@@ -42,6 +42,7 @@
                   "subtitle":  "Phone or email and password from your administrator.",
                   "loginLabel":  "Phone or email",
                   "loginPlaceholder":  "+7 701 123 45 67 or name@company.com",
+                  "phoneHint":  "Phone format (KZ/RU): +7, 8 or 7 plus 10 digits. Examples: +7 701 123 45 67, 87011234567, 7011234567. Spaces and dashes are allowed.",
                   "password":  "Password",
                   "passwordPlaceholder":  "At least 8 characters",
                   "submit":  "Sign in",

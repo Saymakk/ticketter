@@ -30,8 +30,18 @@ export const ru = defineMessages({
   auth: {
     loginTitle: "Вход",
     registerTitle: "Создать аккаунт",
-    subtitle: "Электронная почта и пароль",
+    subtitle: "Электронная почта или телефон и пароль",
     email: "Электронная почта",
+    phone: "Телефон",
+    methodEmail: "Почта",
+    methodPhone: "Телефон",
+    phonePlaceholder: "+7 700 123 45 67",
+    phoneHint:
+      "Номера KZ/RU: +7, 8 или 7 и 10 цифр. Примеры: +7 700 123 45 67, 87001234567, 7001234567. Пробелы и дефисы можно.",
+    phoneInvalid:
+      "Введите телефон в формате +7XXXXXXXXXX, 8XXXXXXXXXX, 7XXXXXXXXXX или 10 цифр.",
+    emailInvalid: "Введите email, например name@mail.com",
+    identifierRequired: "Введите почту или телефон.",
     password: "Пароль",
     confirmPassword: "Подтвердите пароль",
     passwordHint: "не менее 6 символов",
@@ -53,7 +63,8 @@ export const ru = defineMessages({
     signedIn: "Вы вошли",
     passwordsMismatch: "Пароли не совпадают.",
     passwordTooShort: "Пароль должен содержать не менее 6 символов.",
-    invalidCredentials: "Неверная почта или пароль.",
+    invalidCredentials: "Неверная почта, телефон или пароль.",
+    alreadyRegistered: "Этот адрес или телефон уже зарегистрирован. Войдите.",
     emailNotConfirmed: "Подтвердите почту или отключите подтверждение в Supabase.",
     alreadyRegistered: "Этот адрес уже зарегистрирован. Войдите.",
     confirmEmailNeeded:

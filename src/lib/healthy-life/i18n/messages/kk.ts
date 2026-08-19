@@ -23,8 +23,18 @@ export const kk = defineMessages({
   auth: {
     loginTitle: "Кіру",
     registerTitle: "Тіркелгі жасау",
-    subtitle: "Электрондық пошта және құпия сөз",
+    subtitle: "Электрондық пошта немесе телефон және құпия сөз",
     email: "Электрондық пошта",
+    phone: "Телефон",
+    methodEmail: "Пошта",
+    methodPhone: "Телефон",
+    phonePlaceholder: "+7 700 123 45 67",
+    phoneHint:
+      "KZ/RU нөмірлер: +7, 8 немесе 7 және 10 цифр. Мысалы: +7 700 123 45 67, 87001234567, 7001234567. Бос орын мен сызықшаны қоюға болады.",
+    phoneInvalid:
+      "Телефонды +7XXXXXXXXXX, 8XXXXXXXXXX, 7XXXXXXXXXX немесе 10 цифр форматында енгізіңіз.",
+    emailInvalid: "Email енгізіңіз, мысалы name@mail.com",
+    identifierRequired: "Пошта немесе телефон енгізіңіз.",
     password: "Құпия сөз",
     confirmPassword: "Құпия сөзді растаңыз",
     passwordHint: "кемінде 6 таңба",
@@ -46,9 +56,9 @@ export const kk = defineMessages({
     signedIn: "Кірдіңіз",
     passwordsMismatch: "Құпия сөздер сәйкес келмейді.",
     passwordTooShort: "Құпия сөзде кемінде 6 таңба болуы керек.",
-    invalidCredentials: "Пошта немесе құпия сөз дұрыс емес.",
+    invalidCredentials: "Пошта, телефон немесе құпия сөз дұрыс емес.",
     emailNotConfirmed: "Поштаны растаңыз немесе Supabase-те растауды өшіріңіз.",
-    alreadyRegistered: "Бұл пошта тіркелген. Кіріңіз.",
+    alreadyRegistered: "Бұл пошта немесе телефон тіркелген. Кіріңіз.",
     confirmEmailNeeded:
       "Тіркелгі жасалды. Поштаны растаңыз, содан кейін кіріңіз — немесе Supabase-те растауды өшіріңіз.",
     authFailed: "Кіру сәтсіз аяқталды. Қайта көріңіз.",

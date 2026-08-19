@@ -97,16 +97,25 @@ const AI_LANGUAGE: Record<string, string> = {
 const translations: Record<string, Record<string, string>> = {
   ru: {
     welcome: "Добро пожаловать в Healthy Life! 🌿",
-    not_linked: "Ваш Telegram не привязан к аккаунту. Выберите способ входа:",
+    not_linked: "Ваш Telegram не привязан к аккаунту. Войдите или зарегистрируйтесь:",
     login_email: "📧 Войти по почте", login_phone: "📱 Войти по телефону",
+    register: "✨ Зарегистрироваться",
+    register_how: "Как создать аккаунт?",
+    register_email: "📧 Почтой", register_phone: "📱 По телефону",
     enter_email: "Введите ваш email:", enter_password: "Введите пароль:",
-    enter_phone: "Отправьте контакт кнопкой ниже или введите номер телефона:",
+    enter_password_new: "Придумайте пароль (минимум 6 символов):",
+    enter_password_confirm: "Повторите пароль:",
+    password_too_short: "Пароль слишком короткий. Минимум 6 символов.",
+    passwords_mismatch: "Пароли не совпадают. Введите пароль заново.",
+    email_invalid: "Не похоже на email. Пример: name@mail.com",
+    already_registered: "Этот аккаунт уже есть. Войдите.",
+    enter_phone: "Отправьте контакт или введите номер.\nФормат KZ/RU: +7, 8 или 7 и 10 цифр.\nПримеры: +7 700 123 45 67, 87001234567",
     share_contact: "📱 Отправить контакт",
     login_success: "✅ Вход выполнен! Добро пожаловать, {name}!",
     login_failed: "❌ Неверный email или пароль.",
     register_offer: "Аккаунт не найден. Хотите зарегистрироваться?",
     register_yes: "Да, зарегистрироваться", register_no: "Нет",
-    register_success: "✅ Регистрация успешна!", register_failed: "❌ Ошибка: {error}",
+    register_success: "✅ Регистрация успешна! Аккаунт привязан к Telegram.", register_failed: "❌ Ошибка: {error}",
     main_menu: "Выберите действие:",
     meal_type_prompt: "Выберите тип приёма пищи:",
     breakfast: "🌅 Завтрак", lunch: "☀️ Обед", dinner: "🌙 Ужин", snack: "🍎 Перекус",
@@ -248,14 +257,23 @@ const translations: Record<string, Record<string, string>> = {
   },
   en: {
     welcome: "Welcome to Healthy Life! 🌿",
-    not_linked: "Your Telegram is not linked. Choose login method:",
+    not_linked: "Your Telegram is not linked. Sign in or create an account:",
     login_email: "📧 Email login", login_phone: "📱 Phone login",
+    register: "✨ Sign up",
+    register_how: "How do you want to create an account?",
+    register_email: "📧 With email", register_phone: "📱 With phone",
     enter_email: "Enter your email:", enter_password: "Enter password:",
-    enter_phone: "Send contact or type your phone:", share_contact: "📱 Share contact",
+    enter_password_new: "Create a password (at least 6 characters):",
+    enter_password_confirm: "Repeat the password:",
+    password_too_short: "Password is too short. Minimum 6 characters.",
+    passwords_mismatch: "Passwords do not match. Enter a new password.",
+    email_invalid: "That does not look like an email. Example: name@mail.com",
+    already_registered: "This account already exists. Please sign in.",
+    enter_phone: "Send contact or type your phone.\nKZ/RU format: +7, 8 or 7 plus 10 digits.\nExamples: +7 700 123 45 67, 87001234567", share_contact: "📱 Share contact",
     login_success: "✅ Welcome, {name}!", login_failed: "❌ Wrong email/password.",
     register_offer: "Account not found. Register?",
     register_yes: "Yes, register", register_no: "No",
-    register_success: "✅ Registered!", register_failed: "❌ Error: {error}",
+    register_success: "✅ Registered! Your Telegram is linked.", register_failed: "❌ Error: {error}",
     main_menu: "Choose an action:",
     meal_type_prompt: "Meal type:",
     breakfast: "🌅 Breakfast", lunch: "☀️ Lunch", dinner: "🌙 Dinner", snack: "🍎 Snack",
@@ -393,14 +411,23 @@ const translations: Record<string, Record<string, string>> = {
   },
   kk: {
     welcome: "Healthy Life-қа қош келдіңіз! 🌿",
-    not_linked: "Telegram байланыспаған. Кіру әдісін таңдаңыз:",
+    not_linked: "Telegram байланыспаған. Кіріңіз немесе тіркеліңіз:",
     login_email: "📧 Email", login_phone: "📱 Телефон",
+    register: "✨ Тіркелу",
+    register_how: "Қалай тіркелесіз?",
+    register_email: "📧 Поштамен", register_phone: "📱 Телефонмен",
     enter_email: "Email:", enter_password: "Құпия сөз:",
-    enter_phone: "Контакт жіберіңіз немесе нөмір жазыңыз:", share_contact: "📱 Контакт жіберу",
+    enter_password_new: "Құпия сөз ойлап табыңыз (кемінде 6 таңба):",
+    enter_password_confirm: "Құпия сөзді қайталаңыз:",
+    password_too_short: "Құпия сөз тым қысқа. Кемінде 6 таңба.",
+    passwords_mismatch: "Құпия сөздер сәйкес емес. Қайта енгізіңіз.",
+    email_invalid: "Бұл email емес. Мысалы: name@mail.com",
+    already_registered: "Бұл аккаунт бар. Кіріңіз.",
+    enter_phone: "Контакт жіберіңіз немесе нөмір жазыңыз.\nKZ/RU формат: +7, 8 немесе 7 және 10 цифр.\nМысалы: +7 700 123 45 67, 87001234567", share_contact: "📱 Контакт жіберу",
     login_success: "✅ Қош келдіңіз, {name}!", login_failed: "❌ Қате email/құпия сөз.",
     register_offer: "Аккаунт жоқ. Тіркелу?",
     register_yes: "Иә", register_no: "Жоқ",
-    register_success: "✅ Тіркелу сәтті!", register_failed: "❌ Қате: {error}",
+    register_success: "✅ Тіркелу сәтті! Telegram байланыстырылды.", register_failed: "❌ Қате: {error}",
     main_menu: "Әрекетті таңдаңыз:",
     meal_type_prompt: "Тамақ түрі:",
     breakfast: "🌅 Таңғы ас", lunch: "☀️ Түскі ас", dinner: "🌙 Кешкі ас", snack: "🍎 Тіскебасар",
@@ -703,6 +730,10 @@ async function goBack(ctx: Context) {
   const chatId = ctx.chat!.id;
   const st = getState(chatId);
   const to = st?.data?.backTo || "main";
+  if (to === "auth") {
+    await showAuthGate(ctx, st?.locale || "ru");
+    return;
+  }
   if (to === "meal_hub") return showMealHub(ctx);
   if (to === "med_hub") return showMedHub(ctx);
   if (to === "today") return showToday(ctx);
@@ -750,6 +781,54 @@ async function getProfileByChatId(chatId: number) {
   return prisma.profile.findUnique({ where: { telegramChatId: String(chatId) } });
 }
 
+function isValidEmail(raw: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw.trim());
+}
+
+function authMenuKb(locale: string, canRegister: boolean): Keyboard {
+  const rows = [
+    [botT(locale, "login_email")],
+    [botT(locale, "login_phone")],
+  ];
+  if (canRegister) rows.push([botT(locale, "register")]);
+  return kb(rows);
+}
+
+async function showAuthGate(ctx: Context, locale: string, extra = "") {
+  const chatId = ctx.chat!.id;
+  const existing = await getProfileByChatId(chatId);
+  setState(chatId, { step: "awaiting_auth", locale, data: {} });
+  const text = extra
+    ? `${extra}\n\n${botT(locale, "not_linked")}`
+    : `${botT(locale, "welcome")}\n\n${botT(locale, "not_linked")}`;
+  await replyKb(ctx, text, authMenuKb(locale, !existing));
+}
+
+async function startRegisterFlow(ctx: Context, locale: string) {
+  const existing = await getProfileByChatId(ctx.chat!.id);
+  if (existing) {
+    await showAuthGate(ctx, existing.preferredLocale || locale, botT(locale, "already_registered"));
+    return;
+  }
+  setState(ctx.chat!.id, { step: "auth:reg_method", locale, data: { backTo: "auth" } });
+  await replyKb(ctx, botT(locale, "register_how"), kb([
+    [botT(locale, "register_email")],
+    [botT(locale, "register_phone")],
+    [botT(locale, "kb_back")],
+  ]));
+}
+
+async function promptRegisterPhone(ctx: Context, locale: string) {
+  const phoneKb = new Keyboard()
+    .requestContact(botT(locale, "share_contact"))
+    .text(botT(locale, "kb_cancel"))
+    .resized()
+    .persistent();
+  await sweepChat(ctx);
+  const msg = await ctx.reply(botT(locale, "enter_phone"), { reply_markup: phoneKb });
+  rememberMsg(ctx.chat!.id, msg.message_id);
+}
+
 async function requireAuth(ctx: Context): Promise<{ profileId: string; locale: string; timezone: string } | null> {
   const chatId = ctx.chat?.id;
   if (!chatId) return null;
@@ -757,11 +836,7 @@ async function requireAuth(ctx: Context): Promise<{ profileId: string; locale: s
   if (!profile || profile.botLoggedOut) {
     const st = getState(chatId);
     const locale = st?.locale || profile?.preferredLocale || "ru";
-    setState(chatId, { step: "awaiting_auth", locale, data: {} });
-    await replyKb(ctx, botT(locale, "not_linked"), kb([
-      [botT(locale, "login_email")],
-      [botT(locale, "login_phone")],
-    ]));
+    await showAuthGate(ctx, locale);
     return null;
   }
   return { profileId: profile.id, locale: profile.preferredLocale, timezone: profile.timezone };
@@ -833,18 +908,60 @@ async function trySignUp(email: string, password: string) {
   return { user: data?.user, error };
 }
 
-async function linkProfile(userId: string, chatId: number, phone?: string) {
+async function linkProfile(userId: string, chatId: number, phone?: string, name?: string) {
   let profile = await prisma.profile.findUnique({ where: { userId } });
-  const updateData: any = { telegramChatId: String(chatId), botLoggedOut: false };
+  const updateData: Record<string, unknown> = { telegramChatId: String(chatId), botLoggedOut: false };
   if (phone) updateData.phone = phone;
   if (profile) {
     profile = await prisma.profile.update({ where: { id: profile.id }, data: updateData });
   } else {
     profile = await prisma.profile.create({
-      data: { userId, timezone: "Asia/Almaty", ...updateData },
+      data: {
+        userId,
+        timezone: "Asia/Almaty",
+        ...(name ? { name } : {}),
+        ...updateData,
+      },
     });
   }
   return profile;
+}
+
+async function completeRegistration(ctx: Context, st: UserState) {
+  const locale = st.locale || "ru";
+  const email = String(st.data?.email || "").trim().toLowerCase();
+  const password = String(st.data?.password || "");
+  const phone = st.data?.phone ? String(st.data.phone) : undefined;
+  if (!email || !password) {
+    await showAuthGate(ctx, locale, botT(locale, "register_failed", { error: "missing data" }));
+    return;
+  }
+  const { user, error } = await trySignUp(email, password);
+  if (error || !user) {
+    const msg = error?.message || "unknown";
+    if (/already|registered|exists/i.test(msg)) {
+      await showAuthGate(ctx, locale, botT(locale, "already_registered"));
+      return;
+    }
+    await showAuthGate(ctx, locale, botT(locale, "register_failed", { error: msg }));
+    return;
+  }
+  const displayName = ctx.from?.first_name?.trim() || undefined;
+  try {
+    const profile = await linkProfile(user.id, ctx.chat!.id, phone, displayName);
+    if (locale !== profile.preferredLocale) {
+      await prisma.profile.update({ where: { id: profile.id }, data: { preferredLocale: locale } });
+    }
+  } catch (e: any) {
+    if (e?.code === "P2002") {
+      await showAuthGate(ctx, locale, botT(locale, "already_registered"));
+      return;
+    }
+    await showAuthGate(ctx, locale, botT(locale, "register_failed", { error: e?.message || "db" }));
+    return;
+  }
+  clearState(ctx.chat!.id);
+  await replyMain(ctx, botT(locale, "register_success"), locale);
 }
 
 // ─── Feature flows ────────────────────────────────────────────────────────────
@@ -1633,10 +1750,16 @@ bot.command("help", async (ctx) => {
 });
 
 bot.command("cancel", async (ctx) => {
-  clearState(ctx.chat.id);
-  const profile = await getProfileByChatId(ctx.chat.id);
-  const l = profile?.preferredLocale || "ru";
-  await replyMain(ctx, botT(l, "cancelled"), l);
+  const chatId = ctx.chat.id;
+  const st = getState(chatId);
+  const locale = st?.locale || "ru";
+  clearState(chatId);
+  const profile = await getProfileByChatId(chatId);
+  if (!profile || profile.botLoggedOut) {
+    await showAuthGate(ctx, profile?.preferredLocale || locale);
+    return;
+  }
+  await replyMain(ctx, botT(profile.preferredLocale, "cancelled"), profile.preferredLocale);
 });
 
 bot.command("meal", showMealHub);
@@ -1648,6 +1771,16 @@ bot.command("history", showHistory);
 bot.command("advice", showAdvice);
 bot.command("schedules", showSchedules);
 bot.command("settings", showSettings);
+bot.command("register", async (ctx) => {
+  const profile = await getProfileByChatId(ctx.chat.id);
+  if (profile && !profile.botLoggedOut) {
+    await replyMain(ctx, botT(profile.preferredLocale, "login_success", { name: profile.name }), profile.preferredLocale);
+    return;
+  }
+  const st = getState(ctx.chat.id);
+  const locale = st?.locale || profile?.preferredLocale || "ru";
+  await startRegisterFlow(ctx, locale);
+});
 
 // ─── Callback queries ─────────────────────────────────────────────────────────
 
@@ -1660,53 +1793,39 @@ bot.on("callback_query:data", async (ctx) => {
     // Language on first start
     if (data.startsWith("start_lang:")) {
       const locale = data.split(":")[1];
-      setState(chatId, { step: "awaiting_auth", locale, data: {} });
-      await ctx.reply(botT(locale, "welcome") + "\n\n" + botT(locale, "not_linked"), {
-        reply_markup: new InlineKeyboard()
-          .text(botT(locale, "login_email"), "auth:email")
-          .text(botT(locale, "login_phone"), "auth:phone"),
-      });
+      await showAuthGate(ctx, locale);
       return;
     }
 
     if (data === "auth:email") {
       const st = getState(chatId);
       const locale = st?.locale || "ru";
-      setState(chatId, { step: "auth:email", locale, data: {} });
+      setState(chatId, { step: "auth:email", locale, data: { backTo: "auth" } });
       await replyCancel(ctx, botT(locale, "enter_email"), locale);
       return;
     }
     if (data === "auth:phone") {
       const st = getState(chatId);
       const locale = st?.locale || "ru";
-      setState(chatId, { step: "auth:phone", locale, data: {} });
-      const kb = new Keyboard().requestContact(botT(locale, "share_contact")).resized().oneTime();
-      await ctx.reply(botT(locale, "enter_phone"), { reply_markup: kb });
+      setState(chatId, { step: "auth:phone", locale, data: { backTo: "auth" } });
+      await promptRegisterPhone(ctx, locale);
+      return;
+    }
+    if (data === "auth:register" || data === "auth:register_start") {
+      const st = getState(chatId);
+      await startRegisterFlow(ctx, st?.locale || "ru");
       return;
     }
     if (data === "auth:register_yes") {
       const st = getState(chatId);
-      if (!st?.data?.email || !st?.data?.password) return;
-      const locale = st.locale || "ru";
-      const { user, error } = await trySignUp(st.data.email, st.data.password);
-      if (error || !user) {
-        await ctx.reply(botT(locale, "register_failed", { error: error?.message || "unknown" }));
-        clearState(chatId);
-        return;
-      }
-      const profile = await linkProfile(user.id, chatId, st.data.phone);
-      if (locale !== profile.preferredLocale) {
-        await prisma.profile.update({ where: { id: profile.id }, data: { preferredLocale: locale } });
-      }
-      clearState(chatId);
-      await replyMain(ctx, botT(locale, "register_success"), locale);
+      if (!st) return;
+      await completeRegistration(ctx, st);
       return;
     }
     if (data === "auth:register_no") {
       const st = getState(chatId);
       const locale = st?.locale || "ru";
-      clearState(chatId);
-      await replyMain(ctx, botT(locale, "cancelled"), locale);
+      await showAuthGate(ctx, locale);
       return;
     }
 
@@ -2187,12 +2306,18 @@ bot.on("message:contact", async (ctx) => {
   const st = getState(chatId);
   const phone = ctx.message.contact.phone_number;
 
-  if (st?.step === "auth:phone") {
+  if (st?.step === "auth:phone" || st?.step === "auth:reg_phone") {
     try {
       const normalized = normalizePhone(phone);
       st.data!.phone = normalized;
-      st.step = "auth:phone_password";
-      await replyCancel(ctx, botT(st.locale || "ru", "enter_password"), st.locale || "ru");
+      if (st.step === "auth:reg_phone") {
+        st.data!.email = phoneToEmail(normalized);
+        st.step = "auth:reg_password";
+        await replyCancel(ctx, botT(st.locale || "ru", "enter_password_new"), st.locale || "ru");
+      } else {
+        st.step = "auth:phone_password";
+        await replyCancel(ctx, botT(st.locale || "ru", "enter_password"), st.locale || "ru");
+      }
     } catch { await ctx.reply(botT(st.locale || "ru", "phone_invalid")); }
     return;
   }
@@ -2222,10 +2347,16 @@ for (const locale of Object.keys(translations)) {
   if (t.kb_history) KB_ACTIONS[t.kb_history] = showHistory;
   if (t.kb_advice) KB_ACTIONS[t.kb_advice] = showAdvice;
   if (t.kb_cancel) KB_ACTIONS[t.kb_cancel] = async (ctx) => {
-    clearState(ctx.chat!.id);
-    const profile = await getProfileByChatId(ctx.chat!.id);
-    const l = profile?.preferredLocale || "ru";
-    await replyMain(ctx, botT(l, "cancelled"), l);
+    const chatId = ctx.chat!.id;
+    const st = getState(chatId);
+    const locale = st?.locale || "ru";
+    clearState(chatId);
+    const profile = await getProfileByChatId(chatId);
+    if (!profile || profile.botLoggedOut) {
+      await showAuthGate(ctx, profile?.preferredLocale || locale);
+      return;
+    }
+    await replyMain(ctx, botT(profile.preferredLocale, "cancelled"), profile.preferredLocale);
   };
   if (t.kb_back) KB_ACTIONS[t.kb_back] = goBack;
   if (t.hub_meal_log) KB_ACTIONS[t.hub_meal_log] = startMealFlow;
@@ -2271,25 +2402,41 @@ async function handleScreen(ctx: Context, text: string, st: UserState): Promise<
     const code = Object.entries(LOCALES_META).find(([, n]) => n === text)?.[0];
     if (!code) return false;
     setState(chatId, { step: "awaiting_auth", locale: code, data: {} });
-    await replyKb(ctx, botT(code, "welcome") + "\n\n" + botT(code, "not_linked"), kb([
-      [botT(code, "login_email")],
-      [botT(code, "login_phone")],
-    ]));
+    await showAuthGate(ctx, code);
     return true;
   }
 
   if (st.step === "awaiting_auth") {
     if (text === botT(l, "login_email")) {
-      setState(chatId, { step: "auth:email", locale: l, data: {} });
+      setState(chatId, { step: "auth:email", locale: l, data: { backTo: "auth" } });
       await replyCancel(ctx, botT(l, "enter_email"), l);
       return true;
     }
     if (text === botT(l, "login_phone")) {
-      setState(chatId, { step: "auth:phone", locale: l, data: {} });
+      setState(chatId, { step: "auth:phone", locale: l, data: { backTo: "auth" } });
       const phoneKb = new Keyboard().requestContact(botT(l, "share_contact")).text(botT(l, "kb_cancel")).resized().persistent();
       await sweepChat(ctx);
       const msg = await ctx.reply(botT(l, "enter_phone"), { reply_markup: phoneKb });
       rememberMsg(chatId, msg.message_id);
+      return true;
+    }
+    if (text === botT(l, "register")) {
+      await startRegisterFlow(ctx, l);
+      return true;
+    }
+  }
+
+  if (st.step === "auth:reg_method") {
+    if (text === botT(l, "register_email")) {
+      st.step = "auth:reg_email";
+      st.data = { ...(st.data || {}), backTo: "auth" };
+      await replyCancel(ctx, botT(l, "enter_email"), l);
+      return true;
+    }
+    if (text === botT(l, "register_phone")) {
+      st.step = "auth:reg_phone";
+      st.data = { ...(st.data || {}), backTo: "auth" };
+      await promptRegisterPhone(ctx, l);
       return true;
     }
   }
@@ -2604,29 +2751,17 @@ async function handleScreen(ctx: Context, text: string, st: UserState): Promise<
     }
   }
 
-  if (st.step === "auth:email_password" || st.step === "auth:phone_password") {
+  if (st.step === "auth:email_password" || st.step === "auth:phone_password" || st.step === "auth:reg_password" || st.step === "auth:reg_password2") {
     if (text === botT(l, "register_yes") || text === botT(l, "register_no")) return false;
   }
 
   if (st.step === "auth:register") {
     if (text === botT(l, "register_yes")) {
-      if (!st.data?.email || !st.data?.password) return true;
-      const { user, error } = await trySignUp(st.data.email, st.data.password);
-      if (error || !user) {
-        await replyMain(ctx, botT(l, "register_failed", { error: error?.message || "unknown" }), l);
-        return true;
-      }
-      const profile = await linkProfile(user.id, chatId, st.data.phone);
-      if (l !== profile.preferredLocale) {
-        await prisma.profile.update({ where: { id: profile.id }, data: { preferredLocale: l } });
-      }
-      clearState(chatId);
-      await replyMain(ctx, botT(l, "register_success"), l);
+      await completeRegistration(ctx, st);
       return true;
     }
     if (text === botT(l, "register_no")) {
-      clearState(chatId);
-      await replyMain(ctx, botT(l, "cancelled"), l);
+      await showAuthGate(ctx, l);
       return true;
     }
   }
@@ -2651,7 +2786,11 @@ bot.on("message:text", async (ctx) => {
   try {
     // ── Auth flows ──
     if (st.step === "auth:email") {
-      st.data!.email = text;
+      if (!isValidEmail(text)) {
+        await ctx.reply(botT(st.locale || "ru", "email_invalid"));
+        return;
+      }
+      st.data!.email = text.trim().toLowerCase();
       st.step = "auth:email_password";
       await replyCancel(ctx, botT(st.locale || "ru", "enter_password"), st.locale || "ru");
       return;
@@ -2709,6 +2848,51 @@ bot.on("message:text", async (ctx) => {
           [botT(locale, "register_no")],
         ]));
       }
+      return;
+    }
+    if (st.step === "auth:reg_email") {
+      if (!isValidEmail(text)) {
+        await ctx.reply(botT(st.locale || "ru", "email_invalid"));
+        return;
+      }
+      st.data!.email = text.trim().toLowerCase();
+      st.step = "auth:reg_password";
+      await replyCancel(ctx, botT(st.locale || "ru", "enter_password_new"), st.locale || "ru");
+      return;
+    }
+    if (st.step === "auth:reg_phone") {
+      try {
+        const normalized = normalizePhone(text);
+        st.data!.phone = normalized;
+        st.data!.email = phoneToEmail(normalized);
+        st.step = "auth:reg_password";
+        await replyCancel(ctx, botT(st.locale || "ru", "enter_password_new"), st.locale || "ru");
+      } catch {
+        await ctx.reply(botT(st.locale || "ru", "phone_invalid"));
+      }
+      return;
+    }
+    if (st.step === "auth:reg_password") {
+      if (text.length < 6) {
+        await ctx.reply(botT(st.locale || "ru", "password_too_short"));
+        return;
+      }
+      st.data!.password = text;
+      st.step = "auth:reg_password2";
+      await replyCancel(ctx, botT(st.locale || "ru", "enter_password_confirm"), st.locale || "ru");
+      return;
+    }
+    if (st.step === "auth:reg_password2") {
+      if (text !== st.data!.password) {
+        st.step = "auth:reg_password";
+        await replyCancel(
+          ctx,
+          botT(st.locale || "ru", "passwords_mismatch") + "\n" + botT(st.locale || "ru", "enter_password_new"),
+          st.locale || "ru",
+        );
+        return;
+      }
+      await completeRegistration(ctx, st);
       return;
     }
 
@@ -3288,6 +3472,7 @@ bot.catch((err) => { console.error("Bot error:", err); });
 async function main() {
   await bot.api.setMyCommands([
     { command: "start", description: "Главное меню" },
+    { command: "register", description: "Регистрация" },
     { command: "meal", description: "Еда и расписание питания" },
     { command: "med", description: "Лекарства и расписание" },
     { command: "weight", description: "Записать вес" },

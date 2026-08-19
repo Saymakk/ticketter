@@ -12,8 +12,11 @@ import { useHlRouting } from "@/lib/healthy-life/routing";
 import { useT } from "@/lib/healthy-life/i18n";
 import { AuthNotice, type AuthNoticeTone } from "@/components/healthy-life/AuthNotice";
 import { Button, Card, Field, PageHeader, Shell, inputClass } from "@/components/healthy-life/ui";
+import { looksLikeEmail, normalizeEmail } from "@/lib/auth/login";
+import { looksLikePhone, normalizePhone, phoneAuthEmailCandidates, phoneToEmail } from "@/lib/auth/phone";
 
 type AuthMode = "login" | "register";
+type AuthMethod = "email" | "phone";
 
 function delay(ms: number) {
   return new Promise<void>((resolve) => {
@@ -28,7 +31,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const params = useSearchParams();
   const next = params.get("next") || "/";
 
-  const [email, setEmail] = useState("");
+  const [method, setMethod] = useState<AuthMethod>("email");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -64,6 +68,35 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     return message;
   }
 
+  function resolveIdentifier():
+    | { ok: true; emails: string[]; authEmail: string; phone?: string }
+    | { ok: false; message: string } {
+    const raw = identifier.trim();
+    if (!raw) return { ok: false, message: t("auth.identifierRequired") };
+
+    if (looksLikeEmail(raw)) {
+      const email = normalizeEmail(raw);
+      return { ok: true, emails: [email], authEmail: email };
+    }
+
+    const asPhone = method === "phone" || looksLikePhone(raw);
+    if (asPhone) {
+      try {
+        const phone = normalizePhone(raw);
+        return {
+          ok: true,
+          emails: phoneAuthEmailCandidates(raw),
+          authEmail: phoneToEmail(phone),
+          phone,
+        };
+      } catch {
+        return { ok: false, message: t("auth.phoneInvalid") };
+      }
+    }
+
+    return { ok: false, message: t("auth.emailInvalid") };
+  }
+
   async function finishSignedIn(successMessage: string) {
     setNotice({ message: successMessage, tone: "success" });
     await delay(1100);
@@ -79,7 +112,12 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     setLoading(true);
     setNotice(null);
 
-    const trimmedEmail = email.trim().toLowerCase();
+    const resolved = resolveIdentifier();
+    if (!resolved.ok) {
+      setLoading(false);
+      setNotice({ message: resolved.message, tone: "error" });
+      return;
+    }
 
     if (password.length < 6) {
       setLoading(false);
@@ -98,8 +136,9 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         }
 
         const { data, error } = await supabase.auth.signUp({
-          email: trimmedEmail,
+          email: resolved.authEmail,
           password,
+          options: resolved.phone ? { data: { phone: resolved.phone } } : undefined,
         });
 
         if (error) {
@@ -107,10 +146,9 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           return;
         }
 
-        // Prefer the session from signUp; otherwise sign in immediately (auto-login).
         if (!data.session) {
           const { error: signInError } = await supabase.auth.signInWithPassword({
-            email: trimmedEmail,
+            email: resolved.authEmail,
             password,
           });
 
@@ -128,13 +166,17 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         return;
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: trimmedEmail,
-        password,
-      });
+      let signedIn = false;
+      for (const email of resolved.emails) {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (!error) {
+          signedIn = true;
+          break;
+        }
+      }
 
-      if (error) {
-        setNotice({ message: authErrorMessage(error.message), tone: "error" });
+      if (!signedIn) {
+        setNotice({ message: t("auth.invalidCredentials"), tone: "error" });
         return;
       }
 
@@ -150,6 +192,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   }
 
   const nextQuery = next !== "/" ? `?next=${encodeURIComponent(next)}` : "";
+  const phoneMode = method === "phone";
 
   return (
     <Shell className="relative z-10 pb-10">
@@ -169,20 +212,49 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
       <Card className="relative z-10">
         <form className="space-y-3" onSubmit={onSubmit} noValidate>
-          <Field label={t("auth.email")}>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              className={`rounded-2xl px-3 py-2.5 text-sm font-semibold touch-manipulation ${
+                !phoneMode
+                  ? "bg-[var(--accent)] text-white"
+                  : "bg-[var(--accent-soft)] text-[var(--accent-ink)]"
+              }`}
+              onClick={() => setMethod("email")}
+            >
+              {t("auth.methodEmail")}
+            </button>
+            <button
+              type="button"
+              className={`rounded-2xl px-3 py-2.5 text-sm font-semibold touch-manipulation ${
+                phoneMode
+                  ? "bg-[var(--accent)] text-white"
+                  : "bg-[var(--accent-soft)] text-[var(--accent-ink)]"
+              }`}
+              onClick={() => setMethod("phone")}
+            >
+              {t("auth.methodPhone")}
+            </button>
+          </div>
+
+          <Field label={phoneMode ? t("auth.phone") : t("auth.email")}>
             <input
               className={inputClass}
-              type="email"
-              inputMode="email"
-              autoComplete="email"
+              type={phoneMode ? "tel" : "email"}
+              inputMode={phoneMode ? "tel" : "email"}
+              autoComplete={phoneMode ? "tel" : "email"}
               autoCapitalize="none"
               autoCorrect="off"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@email.com"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder={phoneMode ? t("auth.phonePlaceholder") : "you@email.com"}
             />
           </Field>
+          {phoneMode ? (
+            <p className="text-xs leading-relaxed text-[var(--muted)]">{t("auth.phoneHint")}</p>
+          ) : null}
+
           <div className="block space-y-1.5">
             <span className="text-xs font-medium tracking-wide text-[var(--muted)] uppercase">
               {t("auth.password")}

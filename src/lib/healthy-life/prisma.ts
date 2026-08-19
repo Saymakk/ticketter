@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { createClient } from "@/lib/healthy-life/supabase/server";
+import { normalizePhone } from "@/lib/auth/phone";
 
 const globalForPrisma = globalThis as unknown as { healthyLifePrisma: PrismaClient | undefined };
 
@@ -24,6 +25,22 @@ export async function requireUser() {
   return user;
 }
 
+function phoneFromAuthUser(user: {
+  email?: string | null;
+  user_metadata?: Record<string, unknown>;
+}): string | null {
+  const meta = user.user_metadata?.phone;
+  const fromMeta = typeof meta === "string" ? meta : "";
+  const fromEmail = user.email?.match(/^phone_(\d{10,15})@ticketter\.local$/i)?.[1] ?? "";
+  const raw = fromMeta || fromEmail;
+  if (!raw) return null;
+  try {
+    return normalizePhone(raw);
+  } catch {
+    return null;
+  }
+}
+
 export async function getOrCreateProfile() {
   const user = await requireUser();
 
@@ -32,16 +49,45 @@ export async function getOrCreateProfile() {
     (user.user_metadata?.name as string | undefined) ||
     user.email?.split("@")[0] ||
     "Пользователь";
+  const phone = phoneFromAuthUser(user);
+
+  const existing = await prisma.profile.findUnique({ where: { userId: user.id } });
+  if (existing) {
+    if (phone && !existing.phone) {
+      try {
+        return await prisma.profile.update({
+          where: { id: existing.id },
+          data: { phone },
+        });
+      } catch {
+        return existing;
+      }
+    }
+    return existing;
+  }
 
   // upsert avoids P2002 races when Progress/Workouts/Weight hit the API in parallel
   // right after the first login (before a Profile row exists).
-  return prisma.profile.upsert({
-    where: { userId: user.id },
-    update: {},
-    create: {
-      userId: user.id,
-      name,
-      dailyCalorieGoal: 2000,
-    },
-  });
+  try {
+    return await prisma.profile.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: {
+        userId: user.id,
+        name,
+        phone,
+        dailyCalorieGoal: 2000,
+      },
+    });
+  } catch {
+    return prisma.profile.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: {
+        userId: user.id,
+        name,
+        dailyCalorieGoal: 2000,
+      },
+    });
+  }
 }

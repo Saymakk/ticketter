@@ -28,8 +28,18 @@ export const en = {
   auth: {
     loginTitle: "Sign in",
     registerTitle: "Create account",
-    subtitle: "Email and password",
+    subtitle: "Email or phone and password",
     email: "Email",
+    phone: "Phone",
+    methodEmail: "Email",
+    methodPhone: "Phone",
+    phonePlaceholder: "+7 700 123 45 67",
+    phoneHint:
+      "KZ/RU numbers: +7, 8 or 7, then 10 digits. Examples: +7 700 123 45 67, 87001234567, 7001234567. Spaces and dashes are allowed.",
+    phoneInvalid:
+      "Enter a valid phone: +7XXXXXXXXXX, 8XXXXXXXXXX, 7XXXXXXXXXX, or 10 digits.",
+    emailInvalid: "Enter a valid email, e.g. name@mail.com",
+    identifierRequired: "Enter email or phone.",
     password: "Password",
     confirmPassword: "Confirm password",
     passwordHint: "at least 6 characters",
@@ -51,9 +61,9 @@ export const en = {
     signedIn: "Signed in",
     passwordsMismatch: "Passwords do not match.",
     passwordTooShort: "Password must be at least 6 characters.",
-    invalidCredentials: "Invalid email or password.",
+    invalidCredentials: "Invalid email, phone, or password.",
+    alreadyRegistered: "This email or phone is already registered. Sign in.",
     emailNotConfirmed: "Confirm your email, or disable Confirm email in Supabase.",
-    alreadyRegistered: "This email is already registered. Sign in.",
     confirmEmailNeeded:
       "Account created. Confirm your email, then sign in — or disable Confirm email in Supabase.",
     authFailed: "Could not sign in. Try again.",

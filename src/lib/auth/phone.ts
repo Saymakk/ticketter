@@ -27,6 +27,13 @@ export function normalizePhone(input: string): string {
   throw new Error("Неверный формат телефона");
 }
 
+/** True if the input looks like a KZ/RU phone rather than an email. */
+export function looksLikePhone(input: string): boolean {
+  if (input.includes("@")) return false;
+  const digits = input.replace(/\D/g, "");
+  return digits.length >= 10 && digits.length <= 15;
+}
+
 export function phoneToEmail(phoneInput: string): string {
   const p = normalizePhone(phoneInput);
   return `phone_${p}@ticketter.local`;
