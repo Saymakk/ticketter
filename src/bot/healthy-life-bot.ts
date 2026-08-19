@@ -63,11 +63,15 @@ const translations: Record<string, Record<string, string>> = {
   ru: {
     welcome: "Добро пожаловать в Healthy Life! 🌿",
     not_linked: "Ваш Telegram не привязан к аккаунту. Войдите или зарегистрируйтесь:",
+    login: "🔐 Войти",
     login_email: "📧 Войти по почте", login_phone: "📱 Войти по телефону",
-    register: "✨ Зарегистрироваться",
-    register_how: "Как создать аккаунт?",
-    register_email: "📧 Почтой", register_phone: "📱 По телефону",
-    enter_email: "Введите email или номер телефона.\n\nТелефон любой страны, с кодом:\n• +1 202 555 0123\n• +44 20 7946 0958\n• +7 700 123 45 67\nПробелы, скобки и дефисы можно не убирать.",
+    login_how: "Как войти?",
+    register: "✨ Регистрация",
+    register_how: "Как зарегистрироваться?",
+    auth_email: "📧 Почта", auth_phone: "📱 Телефон",
+    register_email: "📧 Почта", register_phone: "📱 Телефон",
+    enter_email: "Введите email.\n\nПример: name@mail.com",
+    enter_phone_contact: "Нажмите «Отправить контакт» — так мы получим ваш номер из Telegram.",
     enter_password: "Введите пароль:",
     enter_password_new: "Придумайте пароль (минимум 4 символа):",
     enter_password_confirm: "Повторите пароль:",
@@ -78,7 +82,7 @@ const translations: Record<string, Record<string, string>> = {
     passwords_mismatch: "Пароли не совпадают. Введите пароль заново.",
     email_invalid: "Не похоже на email. Пример: name@mail.com",
     already_registered: "Этот аккаунт уже есть. Войдите.",
-    enter_phone: "Отправьте контакт или введите номер.\n\nЛюбая страна, с кодом:\n• +1 202 555 0123\n• +44 20 7946 0958\n• +7 700 123 45 67\nПробелы, скобки и дефисы можно не убирать.",
+    enter_phone: "Нажмите «Отправить контакт» — так мы получим ваш номер из Telegram.",
     share_contact: "📱 Отправить контакт",
     login_success: "✅ Вход выполнен! Добро пожаловать, {name}!",
     link_phone_offer: "Привяжите номер — сможете входить и по телефону. Настройки → «Привязать телефон» или кнопка ниже.",
@@ -125,6 +129,7 @@ const translations: Record<string, Record<string, string>> = {
     profile_target_prompt: "Целевой вес кг (или /skip):", profile_height_prompt: "Рост см (или /skip):",
     profile_saved: "✅ Профиль обновлён!",
     phone_saved: "✅ Телефон: {phone}", email_info: "📧 {email}",
+    email_phone_account: "Вход по телефону (почта не указана)",
     timezone_prompt: "Введите часовой пояс (например Asia/Almaty):", timezone_saved: "✅ Часовой пояс: {tz}",
     error: "❌ Ошибка. Попробуйте ещё раз.",
     help: "📖 Команды:\n/meal — Еда и расписание питания\n/med — Лекарства и расписание\n/weight — Вес\n/workout — Тренировка\n/today — Сводка\n/history — История\n/advice — Советы\n/schedules — Расписания\n/settings — Настройки\n/cancel — Отмена",
@@ -231,11 +236,15 @@ const translations: Record<string, Record<string, string>> = {
   en: {
     welcome: "Welcome to Healthy Life! 🌿",
     not_linked: "Your Telegram is not linked. Sign in or create an account:",
+    login: "🔐 Sign in",
     login_email: "📧 Email login", login_phone: "📱 Phone login",
+    login_how: "How do you want to sign in?",
     register: "✨ Sign up",
-    register_how: "How do you want to create an account?",
-    register_email: "📧 With email", register_phone: "📱 With phone",
-    enter_email: "Enter your email or phone number.\n\nAny country, with country code:\n• +1 202 555 0123\n• +44 20 7946 0958\n• +7 700 123 45 67\nSpaces, brackets and dashes are fine.",
+    register_how: "How do you want to sign up?",
+    auth_email: "📧 Email", auth_phone: "📱 Phone",
+    register_email: "📧 Email", register_phone: "📱 Phone",
+    enter_email: "Enter your email.\n\nExample: name@mail.com",
+    enter_phone_contact: "Tap «Share contact» so we get your number from Telegram.",
     enter_password: "Enter password:",
     enter_password_new: "Create a password (at least 4 characters):",
     enter_password_confirm: "Repeat the password:",
@@ -246,7 +255,7 @@ const translations: Record<string, Record<string, string>> = {
     passwords_mismatch: "Passwords do not match. Enter a new password.",
     email_invalid: "That does not look like an email. Example: name@mail.com",
     already_registered: "This account already exists. Please sign in.",
-    enter_phone: "Send a contact or type your phone number.\n\nAny country, with country code:\n• +1 202 555 0123\n• +44 20 7946 0958\n• +7 700 123 45 67\nSpaces, brackets and dashes are fine.",
+    enter_phone: "Tap «Share contact» so we get your number from Telegram.",
     share_contact: "📱 Share contact",
     login_success: "✅ Welcome, {name}!", login_failed: "❌ Wrong login or password.",
     link_phone_offer: "Link your phone to sign in with it later. Settings → Link phone, or use the button below.",
@@ -292,6 +301,7 @@ const translations: Record<string, Record<string, string>> = {
     profile_target_prompt: "Target weight kg (or /skip):", profile_height_prompt: "Height cm (or /skip):",
     profile_saved: "✅ Profile updated!",
     phone_saved: "✅ Phone: {phone}", email_info: "📧 {email}",
+    email_phone_account: "Phone sign-in (no email on file)",
     timezone_prompt: "Enter timezone (e.g. Asia/Almaty):", timezone_saved: "✅ Timezone: {tz}",
     error: "❌ Error. Try again.",
     help: "📖 Commands:\n/meal — Meal\n/med — Medication\n/weight — Weight\n/workout — Workout\n/today — Summary\n/history — History\n/advice — Advice\n/schedules — Schedules\n/settings — Settings\n/cancel — Cancel",
@@ -394,11 +404,15 @@ const translations: Record<string, Record<string, string>> = {
   kk: {
     welcome: "Healthy Life-қа қош келдіңіз! 🌿",
     not_linked: "Telegram байланыспаған. Кіріңіз немесе тіркеліңіз:",
-    login_email: "📧 Email", login_phone: "📱 Телефон",
+    login: "🔐 Кіру",
+    login_email: "📧 Поштамен кіру", login_phone: "📱 Телефонмен кіру",
+    login_how: "Қалай кіресіз?",
     register: "✨ Тіркелу",
     register_how: "Қалай тіркелесіз?",
-    register_email: "📧 Поштамен", register_phone: "📱 Телефонмен",
-    enter_email: "Email немесе телефон енгізіңіз.\n\nКез келген ел, кодпен:\n• +1 202 555 0123\n• +44 20 7946 0958\n• +7 700 123 45 67\nБос орын, жақша, дефис болса да болады.",
+    auth_email: "📧 Email", auth_phone: "📱 Телефон",
+    register_email: "📧 Email", register_phone: "📱 Телефон",
+    enter_email: "Email енгізіңіз.\n\nМысал: name@mail.com",
+    enter_phone_contact: "«Контакт жіберу» батырмасын басыңыз.",
     enter_password: "Құпия сөз:",
     enter_password_new: "Құпия сөз ойлап табыңыз (кемінде 4 таңба):",
     enter_password_confirm: "Құпия сөзді қайталаңыз:",
@@ -409,7 +423,7 @@ const translations: Record<string, Record<string, string>> = {
     passwords_mismatch: "Құпия сөздер сәйкес емес. Қайта енгізіңіз.",
     email_invalid: "Бұл email емес. Мысалы: name@mail.com",
     already_registered: "Бұл аккаунт бар. Кіріңіз.",
-    enter_phone: "Контакт жіберіңіз немесе нөмір жазыңыз.\n\nКез келген ел, кодпен:\n• +1 202 555 0123\n• +44 20 7946 0958\n• +7 700 123 45 67\nБос орын, жақша, дефис болса да болады.",
+    enter_phone: "«Контакт жіберу» батырмасын басыңыз.",
     share_contact: "📱 Контакт жіберу",
     login_success: "✅ Қош келдіңіз, {name}!", login_failed: "❌ Қате логин/құпия сөз.",
     link_phone_offer: "Телефонды байлаңыз — кейін телефонмен кіре аласыз. Баптаулар → «Телефон» немесе төмендегі батырма.",
@@ -455,6 +469,7 @@ const translations: Record<string, Record<string, string>> = {
     profile_target_prompt: "Мақсат салмақ кг (немесе /skip):", profile_height_prompt: "Бой см (немесе /skip):",
     profile_saved: "✅ Профиль жаңартылды!",
     phone_saved: "✅ Телефон: {phone}", email_info: "📧 {email}",
+    email_phone_account: "Телефонмен кіру (email жоқ)",
     timezone_prompt: "Уақыт белдеуі (мыс. Asia/Almaty):", timezone_saved: "✅ Уақыт белдеуі: {tz}",
     error: "❌ Қате. Қайталаңыз.",
     help: "📖 /meal — Тамақ\n/med — Дәрі\n/weight — Салмақ\n/workout — Жаттығу\n/today — Бүгін\n/history — Тарих\n/advice — Кеңес\n/schedules — Кесте\n/settings — Баптаулар\n/cancel — Болдырмау",
@@ -725,6 +740,14 @@ async function goBack(ctx: Context) {
     await showAuthGate(ctx, st?.locale || "ru");
     return;
   }
+  if (to === "auth:login_method") {
+    await showLoginMethod(ctx, st?.locale || "ru");
+    return;
+  }
+  if (to === "auth:reg_method") {
+    await showRegisterMethod(ctx, st?.locale || "ru");
+    return;
+  }
   if (to === "meal_hub") return showMealHub(ctx);
   if (to === "med_hub") return showMedHub(ctx);
   if (to === "today") return showToday(ctx);
@@ -789,9 +812,32 @@ function parseLoginId(raw: string): { email: string; phone?: string } | null {
 
 function authMenuKb(locale: string): Keyboard {
   return kb([
-    [botT(locale, "login_email"), botT(locale, "register_email")],
-    [botT(locale, "login_phone"), botT(locale, "register_phone")],
+    [botT(locale, "login")],
+    [botT(locale, "register")],
   ]);
+}
+
+function authMethodKb(locale: string): Keyboard {
+  return kb([
+    [botT(locale, "auth_email")],
+    [botT(locale, "auth_phone")],
+    [botT(locale, "kb_back")],
+  ]);
+}
+
+async function showLoginMethod(ctx: Context, locale: string) {
+  setState(ctx.chat!.id, { step: "auth:login_method", locale, data: { backTo: "auth" } });
+  await replyKb(ctx, botT(locale, "login_how"), authMethodKb(locale));
+}
+
+async function showRegisterMethod(ctx: Context, locale: string) {
+  const existing = await getProfileByChatId(ctx.chat!.id);
+  if (existing) {
+    await showAuthGate(ctx, existing.preferredLocale || locale, botT(locale, "already_registered"));
+    return;
+  }
+  setState(ctx.chat!.id, { step: "auth:reg_method", locale, data: { backTo: "auth" } });
+  await replyKb(ctx, botT(locale, "register_how"), authMethodKb(locale));
 }
 
 async function showAuthGate(ctx: Context, locale: string, extra = "") {
@@ -813,10 +859,18 @@ async function startRegisterFlow(ctx: Context, locale: string) {
     await showAuthGate(ctx, existing.preferredLocale || locale, botT(locale, "already_registered"));
     return;
   }
-  await showAuthGate(ctx, locale);
+  await showRegisterMethod(ctx, locale);
 }
 
-async function promptContactOrNumber(ctx: Context, locale: string, messageKey = "enter_phone") {
+async function promptEmailOnly(ctx: Context, locale: string) {
+  await sweepChat(ctx);
+  const msg = await ctx.reply(botT(locale, "enter_email"), {
+    reply_markup: new Keyboard().text(botT(locale, "kb_cancel")).resized().persistent(),
+  });
+  rememberMsg(ctx.chat!.id, msg.message_id);
+}
+
+async function promptContactOnly(ctx: Context, locale: string, messageKey = "enter_phone_contact") {
   const phoneKb = new Keyboard()
     .requestContact(botT(locale, "share_contact"))
     .text(botT(locale, "kb_cancel"))
@@ -825,6 +879,10 @@ async function promptContactOrNumber(ctx: Context, locale: string, messageKey = 
   await sweepChat(ctx);
   const msg = await ctx.reply(botT(locale, messageKey), { reply_markup: phoneKb });
   rememberMsg(ctx.chat!.id, msg.message_id);
+}
+
+async function promptContactOrNumber(ctx: Context, locale: string, messageKey = "enter_phone") {
+  await promptContactOnly(ctx, locale, messageKey === "enter_phone" ? "enter_phone_contact" : messageKey);
 }
 
 async function requireAuth(ctx: Context): Promise<{ profileId: string; locale: string; timezone: string } | null> {
@@ -931,21 +989,69 @@ async function linkPhoneToAccount(profileId: string, userId: string, phone: stri
   return normalized;
 }
 
-async function signInWithPhoneOrLinked(phone: string, password: string) {
-  for (const email of phoneAuthEmailCandidates(phone)) {
-    const { user } = await trySignIn(email, password);
-    if (user) return user;
+async function findProfileByPhone(phoneInput: string) {
+  const normalized = normalizePhone(phoneInput);
+  const direct = await prisma.profile.findUnique({ where: { phone: normalized } });
+  if (direct) return direct;
+
+  const digits = normalized.replace(/\D/g, "");
+  const variants = new Set<string>([digits]);
+  if (digits.length >= 10) {
+    variants.add(digits.slice(-10));
+    variants.add(`7${digits.slice(-10)}`);
   }
-  const normalized = normalizePhone(phone);
-  const profile = await prisma.profile.findUnique({ where: { phone: normalized } });
+  for (const variant of variants) {
+    if (variant.length < 8 || variant.length > 15) continue;
+    const profile = await prisma.profile.findUnique({ where: { phone: variant } });
+    if (profile) return profile;
+  }
+  return null;
+}
+
+function formatDisplayEmail(email: string | null | undefined, locale: string): string {
+  if (!email) return "—";
+  if (email.endsWith("@ticketter.local")) return botT(locale, "email_phone_account");
+  return email;
+}
+
+async function showSettingsEmail(ctx: Context, profileId: string, locale: string) {
+  const profile = await prisma.profile.findUnique({ where: { id: profileId } });
+  if (!profile?.userId) {
+    await ctx.reply(botT(locale, "error"));
+    return;
+  }
+  try {
+    const { data: userData, error } = await supabaseAdmin.auth.admin.getUserById(profile.userId);
+    if (error) throw error;
+    const email = formatDisplayEmail(userData?.user?.email, locale);
+    setState(ctx.chat!.id, {
+      step: "settings:email_view",
+      profileId,
+      locale,
+      data: { backTo: "settings" },
+    });
+    await replyKb(ctx, botT(locale, "email_info", { email }), kb([[botT(locale, "kb_back")]]));
+  } catch {
+    await ctx.reply(botT(locale, "error"));
+  }
+}
+
+async function signInWithPhoneOrLinked(phone: string, password: string) {
+  const profile = await findProfileByPhone(phone);
   if (profile?.userId) {
     const { data } = await supabaseAdmin.auth.admin.getUserById(profile.userId);
     const email = data?.user?.email;
-    if (email && !email.endsWith("@ticketter.local")) {
+    if (email) {
       const { user } = await trySignIn(email, password);
       if (user) return user;
     }
   }
+
+  for (const email of phoneAuthEmailCandidates(phone)) {
+    const { user } = await trySignIn(email, password);
+    if (user) return user;
+  }
+
   return null;
 }
 
@@ -1897,14 +2003,14 @@ bot.on("callback_query:data", async (ctx) => {
       const st = getState(chatId);
       const locale = st?.locale || "ru";
       setState(chatId, { step: "auth:email", locale, data: { backTo: "auth" } });
-      await promptContactOrNumber(ctx, locale, "enter_email");
+      await promptEmailOnly(ctx, locale);
       return;
     }
     if (data === "auth:phone") {
       const st = getState(chatId);
       const locale = st?.locale || "ru";
       setState(chatId, { step: "auth:phone", locale, data: { backTo: "auth" } });
-      await promptContactOrNumber(ctx, locale, "enter_phone");
+      await promptContactOnly(ctx, locale);
       return;
     }
     if (data === "auth:register" || data === "auth:register_start") {
@@ -2342,18 +2448,15 @@ bot.on("callback_query:data", async (ctx) => {
     }
     if (data === "settings:email") {
       const profile = await getProfileByChatId(chatId);
-      if (!profile?.userId) return;
-      const { data: userData } = await supabaseAdmin.auth.admin.getUserById(profile.userId);
-      const email = userData?.user?.email || "—";
-      await replyMain(ctx, botT(profile.preferredLocale, "email_info", { email }), profile.preferredLocale);
+      if (!profile) return;
+      await showSettingsEmail(ctx, profile.id, profile.preferredLocale);
       return;
     }
     if (data === "settings:phone") {
       const profile = await getProfileByChatId(chatId);
       if (!profile) return;
-      setState(chatId, { step: "settings:phone", profileId: profile.id, locale: profile.preferredLocale, data: {} });
-      const kb = new Keyboard().requestContact(botT(profile.preferredLocale, "share_contact")).resized().oneTime();
-      await ctx.reply(botT(profile.preferredLocale, "enter_phone"), { reply_markup: kb });
+      setState(chatId, { step: "settings:phone", profileId: profile.id, locale: profile.preferredLocale, data: { backTo: "settings" } });
+      await promptContactOnly(ctx, profile.preferredLocale);
       return;
     }
     if (data === "settings:logout") {
@@ -2404,18 +2507,18 @@ bot.on("message:contact", async (ctx) => {
   const st = getState(chatId);
   const phone = ctx.message.contact.phone_number;
 
-  if (st?.step === "auth:phone" || st?.step === "auth:reg_phone" || st?.step === "auth:email" || st?.step === "auth:reg_email") {
+  if (st?.step === "auth:phone" || st?.step === "auth:reg_phone") {
     try {
       const normalized = normalizePhone(phone);
       st.data!.phone = normalized;
-      st.data!.email = phoneToEmail(normalized);
-      const registering = st.step === "auth:reg_phone" || st.step === "auth:reg_email";
-      st.step = registering ? "auth:reg_password" : st.step === "auth:email" ? "auth:email_password" : "auth:phone_password";
-      await replyCancel(
-        ctx,
-        botT(st.locale || "ru", registering ? "enter_password_new" : "enter_password"),
-        st.locale || "ru",
-      );
+      if (st.step === "auth:reg_phone") {
+        st.data!.email = phoneToEmail(normalized);
+        st.step = "auth:reg_password";
+        await replyCancel(ctx, botT(st.locale || "ru", "enter_password_new"), st.locale || "ru");
+      } else {
+        st.step = "auth:phone_password";
+        await replyCancel(ctx, botT(st.locale || "ru", "enter_password"), st.locale || "ru");
+      }
     } catch { await ctx.reply(botT(st.locale || "ru", "phone_invalid")); }
     return;
   }
@@ -2510,38 +2613,38 @@ async function handleScreen(ctx: Context, text: string, st: UserState): Promise<
   }
 
   if (st.step === "awaiting_auth") {
-    if (text === botT(l, "login_email")) {
-      setState(chatId, { step: "auth:email", locale: l, data: { backTo: "auth" } });
-      await promptContactOrNumber(ctx, l, "enter_email");
-      return true;
-    }
-    if (text === botT(l, "login_phone")) {
-      setState(chatId, { step: "auth:phone", locale: l, data: { backTo: "auth" } });
-      await promptContactOrNumber(ctx, l, "enter_phone");
-      return true;
-    }
-    if (text === botT(l, "register_email")) {
-      const existing = await getProfileByChatId(chatId);
-      if (existing) {
-        await showAuthGate(ctx, existing.preferredLocale || l, botT(l, "already_registered"));
-        return true;
-      }
-      setState(chatId, { step: "auth:reg_email", locale: l, data: { backTo: "auth" } });
-      await promptContactOrNumber(ctx, l, "enter_email");
-      return true;
-    }
-    if (text === botT(l, "register_phone")) {
-      const existing = await getProfileByChatId(chatId);
-      if (existing) {
-        await showAuthGate(ctx, existing.preferredLocale || l, botT(l, "already_registered"));
-        return true;
-      }
-      setState(chatId, { step: "auth:reg_phone", locale: l, data: { backTo: "auth" } });
-      await promptContactOrNumber(ctx, l, "enter_phone");
+    if (text === botT(l, "login")) {
+      await showLoginMethod(ctx, l);
       return true;
     }
     if (text === botT(l, "register")) {
-      await startRegisterFlow(ctx, l);
+      await showRegisterMethod(ctx, l);
+      return true;
+    }
+  }
+
+  if (st.step === "auth:login_method") {
+    if (text === botT(l, "auth_email")) {
+      setState(chatId, { step: "auth:email", locale: l, data: { backTo: "auth:login_method" } });
+      await promptEmailOnly(ctx, l);
+      return true;
+    }
+    if (text === botT(l, "auth_phone")) {
+      setState(chatId, { step: "auth:phone", locale: l, data: { backTo: "auth:login_method" } });
+      await promptContactOnly(ctx, l);
+      return true;
+    }
+  }
+
+  if (st.step === "auth:reg_method") {
+    if (text === botT(l, "auth_email")) {
+      setState(chatId, { step: "auth:reg_email", locale: l, data: { backTo: "auth:reg_method" } });
+      await promptEmailOnly(ctx, l);
+      return true;
+    }
+    if (text === botT(l, "auth_phone")) {
+      setState(chatId, { step: "auth:reg_phone", locale: l, data: { backTo: "auth:reg_method" } });
+      await promptContactOnly(ctx, l);
       return true;
     }
   }
@@ -2549,7 +2652,7 @@ async function handleScreen(ctx: Context, text: string, st: UserState): Promise<
   if (st.step === "post_login:phone") {
     if (text === botT(l, "settings_phone")) {
       setState(chatId, { step: "settings:phone", profileId: st.profileId, locale: l, data: { backTo: "main" } });
-      await promptContactOrNumber(ctx, l, "enter_phone");
+      await promptContactOnly(ctx, l);
       return true;
     }
     if (text === botT(l, "link_phone_skip")) {
@@ -2707,15 +2810,12 @@ async function handleScreen(ctx: Context, text: string, st: UserState): Promise<
       return true;
     }
     if (text === botT(l, "settings_email")) {
-      const profile = await getProfileByChatId(chatId);
-      if (!profile?.userId) return true;
-      const { data: userData } = await supabaseAdmin.auth.admin.getUserById(profile.userId);
-      await replyKb(ctx, botT(l, "email_info", { email: userData?.user?.email || "—" }), kb([[botT(l, "kb_back")]]));
+      await showSettingsEmail(ctx, st.profileId!, l);
       return true;
     }
     if (text === botT(l, "settings_phone")) {
       setState(chatId, { step: "settings:phone", profileId: st.profileId, locale: l, data: { backTo: "settings" } });
-      await promptContactOrNumber(ctx, l, "enter_phone");
+      await promptContactOnly(ctx, l);
       return true;
     }
     if (text === botT(l, "settings_password")) {
@@ -2907,30 +3007,22 @@ bot.on("message:text", async (ctx) => {
   try {
     // ── Auth flows ──
     if (st.step === "auth:email") {
-      const parsed = parseLoginId(text);
-      if (!parsed) {
-        await ctx.reply(`${botT(st.locale || "ru", "email_invalid")}\n\n${botT(st.locale || "ru", "phone_invalid")}`);
+      if (!isValidEmail(text)) {
+        await ctx.reply(botT(st.locale || "ru", "email_invalid"));
         return;
       }
-      st.data!.email = parsed.email;
-      if (parsed.phone) st.data!.phone = parsed.phone;
+      st.data!.email = text.trim().toLowerCase();
+      delete st.data!.phone;
       st.step = "auth:email_password";
       await replyCancel(ctx, botT(st.locale || "ru", "enter_password"), st.locale || "ru");
       return;
     }
     if (st.step === "auth:email_password") {
       const locale = st.locale || "ru";
-      const phone = st.data!.phone ? String(st.data!.phone) : undefined;
       st.data!.password = text;
-      let user = null;
-      if (phone) {
-        user = await signInWithPhoneOrLinked(phone, text);
-      } else {
-        const result = await trySignIn(String(st.data!.email || ""), text);
-        user = result.user;
-      }
-      if (user) {
-        await finishLogin(ctx, chatId, user.id, locale, phone);
+      const result = await trySignIn(String(st.data!.email || ""), text);
+      if (result.user) {
+        await finishLogin(ctx, chatId, result.user.id, locale);
       } else {
         st.step = "auth:register";
         await replyKb(ctx, botT(locale, "login_failed") + "\n\n" + botT(locale, "register_offer"), kb([
@@ -2941,12 +3033,8 @@ bot.on("message:text", async (ctx) => {
       return;
     }
     if (st.step === "auth:phone") {
-      try {
-        const normalized = normalizePhone(text);
-        st.data!.phone = normalized;
-        st.step = "auth:phone_password";
-        await replyCancel(ctx, botT(st.locale || "ru", "enter_password"), st.locale || "ru");
-      } catch { await ctx.reply(botT(st.locale || "ru", "phone_invalid")); }
+      await ctx.reply(botT(st.locale || "ru", "enter_phone_contact"));
+      await promptContactOnly(ctx, st.locale || "ru");
       return;
     }
     if (st.step === "auth:phone_password") {
@@ -2967,27 +3055,19 @@ bot.on("message:text", async (ctx) => {
       return;
     }
     if (st.step === "auth:reg_email") {
-      const parsed = parseLoginId(text);
-      if (!parsed) {
-        await ctx.reply(`${botT(st.locale || "ru", "email_invalid")}\n\n${botT(st.locale || "ru", "phone_invalid")}`);
+      if (!isValidEmail(text)) {
+        await ctx.reply(botT(st.locale || "ru", "email_invalid"));
         return;
       }
-      st.data!.email = parsed.email;
-      if (parsed.phone) st.data!.phone = parsed.phone;
+      st.data!.email = text.trim().toLowerCase();
+      delete st.data!.phone;
       st.step = "auth:reg_password";
       await replyCancel(ctx, botT(st.locale || "ru", "enter_password_new"), st.locale || "ru");
       return;
     }
     if (st.step === "auth:reg_phone") {
-      try {
-        const normalized = normalizePhone(text);
-        st.data!.phone = normalized;
-        st.data!.email = phoneToEmail(normalized);
-        st.step = "auth:reg_password";
-        await replyCancel(ctx, botT(st.locale || "ru", "enter_password_new"), st.locale || "ru");
-      } catch {
-        await ctx.reply(botT(st.locale || "ru", "phone_invalid"));
-      }
+      await ctx.reply(botT(st.locale || "ru", "enter_phone_contact"));
+      await promptContactOnly(ctx, st.locale || "ru");
       return;
     }
     if (st.step === "auth:reg_password") {
@@ -3319,18 +3399,10 @@ bot.on("message:text", async (ctx) => {
       return;
     }
 
-    // ── Settings: phone ──
+    // ── Settings: phone (contact only) ──
     if (st.step === "settings:phone") {
-      try {
-        const profile = await prisma.profile.findUnique({ where: { id: st.profileId } });
-        if (!profile?.userId) return;
-        const normalized = await linkPhoneToAccount(st.profileId!, profile.userId, text);
-        clearState(chatId);
-        await replyMain(ctx, botT(st.locale!, "phone_saved", { phone: normalized }), st.locale!);
-      } catch (e: any) {
-        if (e?.message === "phone_taken") await ctx.reply(botT(st.locale || "ru", "phone_taken"));
-        else await ctx.reply(botT(st.locale || "ru", "phone_invalid"));
-      }
+      await ctx.reply(botT(st.locale || "ru", "enter_phone_contact"));
+      await promptContactOnly(ctx, st.locale || "ru");
       return;
     }
 
