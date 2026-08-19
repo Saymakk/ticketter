@@ -68,6 +68,39 @@ export async function sendPushToProfile(profileId: string, payload: PushPayload)
   return { sent, removed };
 }
 
+/**
+ * Send a Telegram message to a profile if they have a linked telegramChatId.
+ * Fails silently — Telegram notifications are best-effort.
+ */
+export async function sendTelegramToProfile(
+  profileId: string,
+  payload: PushPayload,
+) {
+  const token = process.env.HEALTHY_LIFE_TELEGRAM_BOT_TOKEN;
+  if (!token) return;
+
+  const profile = await prisma.profile.findUnique({
+    where: { id: profileId },
+    select: { telegramChatId: true },
+  });
+  if (!profile?.telegramChatId) return;
+
+  const text = `${payload.title}\n${payload.body}`;
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: profile.telegramChatId,
+        text,
+        parse_mode: "HTML",
+      }),
+    });
+  } catch {
+    // best-effort
+  }
+}
+
 export async function claimReminderSlot(params: {
   profileId: string;
   kind: string;

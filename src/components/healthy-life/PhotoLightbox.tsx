@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useT } from "@/lib/healthy-life/i18n";
 
 const MIN_SCALE = 1;
@@ -66,11 +67,19 @@ export function PhotoLightbox({
         });
       }
     }
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const scrollY = window.scrollY;
+    const prevPos = document.body.style.position;
+    const prevTop = document.body.style.top;
+    const prevWidth = document.body.style.width;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = prev;
+      document.body.style.position = prevPos;
+      document.body.style.top = prevTop;
+      document.body.style.width = prevWidth;
+      window.scrollTo(0, scrollY);
       window.removeEventListener("keydown", onKey);
     };
   }, [open, onClose]);
@@ -138,6 +147,9 @@ export function PhotoLightbox({
 
   if (!open || !src) return null;
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- guard above
+  const portal = typeof document !== "undefined";
+
   function zoomIn() {
     setScale((s) => clampScale(s + STEP));
   }
@@ -179,7 +191,7 @@ export function PhotoLightbox({
 
   const pct = Math.round(scale * 100);
 
-  return (
+  const lightbox = (
     <div
       className="fixed inset-0 z-[80] flex flex-col bg-black/85"
       role="dialog"
@@ -252,6 +264,8 @@ export function PhotoLightbox({
       </div>
     </div>
   );
+
+  return portal ? createPortal(lightbox, document.body) : lightbox;
 }
 
 /** Thumbnail that opens PhotoLightbox on tap. */

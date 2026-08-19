@@ -28,6 +28,10 @@ model Profile {
    * Empty array = off.
    */
   mealReminderTimesJson String          @default("[]")
+  /** Telegram chat id for bot integration */
+  telegramChatId   String?            @unique
+  /** Verified phone number (E.164-like digits only, e.g. 77001234567) */
+  phone            String?            @unique
   /** UI / push locale hint (en, ru, …) */
   preferredLocale  String             @default("en")
   createdAt        DateTime           @default(now())

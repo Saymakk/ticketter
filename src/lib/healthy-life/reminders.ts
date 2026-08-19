@@ -1,6 +1,6 @@
 import { parsePlanTimes, isPlanScheduledOnDate, normalizeTime } from "@/lib/healthy-life/medications";
 import { prisma } from "@/lib/healthy-life/prisma";
-import { claimReminderSlot, sendPushToProfile } from "@/lib/healthy-life/push";
+import { claimReminderSlot, sendPushToProfile, sendTelegramToProfile } from "@/lib/healthy-life/push";
 
 export type ZonedNow = {
   dateKey: string; // YYYY-MM-DD
@@ -113,7 +113,10 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
   const profiles = await prisma.profile.findMany({
     where: {
       pushEnabled: true,
-      pushSubscriptions: { some: {} },
+      OR: [
+        { pushSubscriptions: { some: {} } },
+        { telegramChatId: { not: null } },
+      ],
     },
     include: {
       medicationPlans: { where: { active: true } },
@@ -153,13 +156,17 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
         if (!claimed) continue;
 
         const dosage = plan.dosage ? ` (${plan.dosage})` : "";
-        await sendPushToProfile(profile.id, {
+        const medPayload = {
           title: copy.medTitle,
           body: copy.medBody(plan.name, dosage, zoned.timeKey),
           url: "/",
           tag: `med-${plan.id}-${zoned.timeKey}`,
-          kind: "medication",
-        });
+          kind: "medication" as const,
+        };
+        await Promise.all([
+          sendPushToProfile(profile.id, medPayload),
+          sendTelegramToProfile(profile.id, medPayload),
+        ]);
         result.medication += 1;
       }
 
@@ -187,13 +194,17 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
         });
         if (!claimed) continue;
 
-        await sendPushToProfile(profile.id, {
+        const mealPlanPayload = {
           title: copy.mealTitle,
           body: copy.mealBody(plan.name, zoned.timeKey),
           url: "/",
           tag: `mealplan-${plan.id}-${zoned.timeKey}`,
-          kind: "meal",
-        });
+          kind: "meal" as const,
+        };
+        await Promise.all([
+          sendPushToProfile(profile.id, mealPlanPayload),
+          sendTelegramToProfile(profile.id, mealPlanPayload),
+        ]);
         result.meal += 1;
       }
 
@@ -215,13 +226,17 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
             dedupeKey,
           });
           if (claimed) {
-            await sendPushToProfile(profile.id, {
+            const weightPayload = {
               title: copy.weightTitle,
               body: copy.weightBody,
               url: "/weight",
               tag: `weight-${zoned.dateKey}`,
-              kind: "weight",
-            });
+              kind: "weight" as const,
+            };
+            await Promise.all([
+              sendPushToProfile(profile.id, weightPayload),
+              sendTelegramToProfile(profile.id, weightPayload),
+            ]);
             result.weight += 1;
           }
         }
@@ -240,13 +255,17 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
           dedupeKey,
         });
         if (claimed) {
-          await sendPushToProfile(profile.id, {
+          const legacyMealPayload = {
             title: copy.mealTitle,
             body: mealCount === 0 ? copy.mealBodyEmpty : copy.mealBodyNext,
             url: "/",
             tag: `meal-${zoned.dateKey}-${zoned.timeKey}`,
-            kind: "meal",
-          });
+            kind: "meal" as const,
+          };
+          await Promise.all([
+            sendPushToProfile(profile.id, legacyMealPayload),
+            sendTelegramToProfile(profile.id, legacyMealPayload),
+          ]);
           result.meal += 1;
         }
       }

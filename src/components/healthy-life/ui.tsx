@@ -1,3 +1,6 @@
+"use client";
+
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/healthy-life/format";
 
 export function Shell({
@@ -126,7 +129,7 @@ export function Modal({
   tone?: "default" | "med";
 }) {
   if (!open) return null;
-  return (
+  const content = (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[max(0.5rem,env(safe-area-inset-top))] sm:items-center sm:p-4 sm:pt-4">
       <button
         type="button"
@@ -173,4 +176,6 @@ export function Modal({
       </div>
     </div>
   );
+  if (typeof document === "undefined") return content;
+  return createPortal(content, document.body);
 }
