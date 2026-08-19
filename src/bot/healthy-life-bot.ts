@@ -182,7 +182,7 @@ const translations: Record<string, Record<string, string>> = {
     logout_confirm: "Вы уверены, что хотите выйти?",
     logout_done: "✅ Вы вышли из аккаунта. Напишите /start чтобы войти снова.",
     kb_cancel: "❌ Отмена", kb_back: "◀️ Назад", kb_history: "📅 История", kb_advice: "💡 Советы",
-    recent_editable: "\n\n✏️ Недавние записи (можно изменить):",
+    recent_editable: "✏️ Недавние записи (можно изменить в течение часа):",
     edit_meal: "✏️ {name}", delete_entry: "🗑 Удалить",
     edit_meal_name: "Новое название (или /skip):", edit_meal_cal: "Новые калории (или /skip):",
     edit_meal_macros: "Б/Ж/У через пробел (или /skip):",
@@ -272,7 +272,7 @@ const translations: Record<string, Record<string, string>> = {
     logout_confirm: "Are you sure you want to logout?",
     logout_done: "✅ Logged out. Type /start to login again.",
     kb_cancel: "❌ Cancel", kb_back: "◀️ Back", kb_history: "📅 History", kb_advice: "💡 Advice",
-    recent_editable: "\n\n✏️ Recent entries (editable):",
+    recent_editable: "✏️ Recent entries (editable within an hour):",
     edit_meal: "✏️ {name}", delete_entry: "🗑 Delete",
     edit_meal_name: "New name (or /skip):", edit_meal_cal: "New calories (or /skip):",
     edit_meal_macros: "P/F/C space-separated (or /skip):",
@@ -362,7 +362,7 @@ const translations: Record<string, Record<string, string>> = {
     logout_confirm: "Шығуға сенімдісіз бе?",
     logout_done: "✅ Шықтыңыз. Қайта кіру үшін /start жазыңыз.",
     kb_cancel: "❌ Болдырмау", kb_back: "◀️ Артқа", kb_history: "📅 Тарих", kb_advice: "💡 Кеңес",
-    recent_editable: "\n\n✏️ Соңғы жазбалар (өзгертуге болады):",
+    recent_editable: "✏️ Соңғы жазбалар (бір сағат ішінде өзгертуге болады):",
     edit_meal: "✏️ {name}", delete_entry: "🗑 Жою",
     edit_meal_name: "Жаңа атау (немесе /skip):", edit_meal_cal: "Жаңа калория (немесе /skip):",
     edit_meal_macros: "А/М/К бос орын арқылы (немесе /skip):",
@@ -477,6 +477,36 @@ async function uploadPhotoToStorage(buffer: Buffer, folder: "meals" | "medicatio
   if (error) throw new Error(`Upload failed: ${error.message}`);
   const { data } = supabaseAdmin.storage.from(PHOTOS_BUCKET).getPublicUrl(objectPath);
   return data.publicUrl;
+}
+
+/** Short, user-facing reason for a failed AI call — full stack goes to the log. */
+function aiErrorDetail(e: any): string {
+  const msg = e?.error?.message || e?.message || String(e);
+  return `⚠️ ${String(msg).slice(0, 300)}`;
+}
+
+/** Vision call shared by all photo flows. No max_tokens: reasoning models reject it. */
+async function visionJson(base64: string, systemPrompt: string, userText: string): Promise<any> {
+  const response = await openai.chat.completions.create({
+    model: OPENAI_MODEL,
+    messages: [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: userText },
+          { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}`, detail: "low" } },
+        ],
+      },
+    ],
+  });
+  const raw = response.choices[0]?.message?.content || "";
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const body = fenced ? fenced[1] : raw;
+  const start = body.indexOf("{");
+  const end = body.lastIndexOf("}");
+  if (start === -1 || end === -1) throw new Error(`AI returned no JSON: ${raw.slice(0, 200)}`);
+  return JSON.parse(body.slice(start, end + 1));
 }
 
 async function downloadTelegramPhoto(ctx: Context): Promise<{ buffer: Buffer; base64: string }> {
@@ -690,6 +720,52 @@ async function sendRangeSummary(ctx: Context, profileId: string, locale: string,
   await replyMain(ctx, text, locale);
 }
 
+const EDIT_WINDOW_MS = 60 * 60 * 1000;
+
+/** Entries logged within the last hour, with edit/delete buttons. Null when nothing is editable. */
+async function buildRecentPanel(
+  profileId: string,
+  locale: string,
+  timezone: string,
+): Promise<{ text: string; kb: InlineKeyboard } | null> {
+  const since = new Date(Date.now() - EDIT_WINDOW_MS);
+  // Yesterday's date is included so late-evening entries stay editable past midnight
+  const today = todayStr(timezone);
+  const yesterday = new Date(`${today}T00:00:00Z`);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  const dates = [yesterday.toISOString().slice(0, 10), today];
+
+  const [meals, intakes, workouts] = await Promise.all([
+    prisma.meal.findMany({ where: { profileId, date: { in: dates }, createdAt: { gte: since } }, orderBy: { createdAt: "asc" } }),
+    prisma.medicationIntake.findMany({ where: { profileId, date: { in: dates }, createdAt: { gte: since } }, orderBy: { createdAt: "asc" } }),
+    prisma.workout.findMany({ where: { profileId, date: { in: dates }, createdAt: { gte: since } }, orderBy: { createdAt: "asc" } }),
+  ]);
+
+  if (meals.length === 0 && intakes.length === 0 && workouts.length === 0) return null;
+
+  const kb = new InlineKeyboard();
+  for (const m of meals) {
+    kb.text(`🍽 ${m.name} · ${Math.round(m.calories)}`, `edit:meal:${m.id}`)
+      .text(botT(locale, "delete_entry"), `del:meal:${m.id}`).row();
+  }
+  for (const i of intakes) {
+    kb.text(`💊 ${i.name} · ${i.takenTime}`, `edit:med:${i.id}`)
+      .text(botT(locale, "delete_entry"), `del:med:${i.id}`).row();
+  }
+  for (const w of workouts) {
+    kb.text(`🏋️ ${botT(locale, w.type)} · ${w.quantity}`, `edit:workout:${w.id}`)
+      .text(botT(locale, "delete_entry"), `del:workout:${w.id}`).row();
+  }
+
+  return { text: botT(locale, "recent_editable"), kb };
+}
+
+async function sendRecentPanel(ctx: Context, profileId: string, locale: string) {
+  const profile = await prisma.profile.findUnique({ where: { id: profileId } });
+  const panel = await buildRecentPanel(profileId, locale, profile?.timezone || "UTC");
+  if (panel) await ctx.reply(panel.text, { reply_markup: panel.kb });
+}
+
 async function sendDaySummary(ctx: Context, profileId: string, locale: string, timezone: string, date: string) {
   const profile = await prisma.profile.findUnique({ where: { id: profileId } });
   const meals = await prisma.meal.findMany({ where: { profileId, date }, orderBy: { createdAt: "asc" } });
@@ -730,27 +806,10 @@ async function sendDaySummary(ctx: Context, profileId: string, locale: string, t
 
   text += weight ? botT(locale, "today_weight", { weight: weight.weightKg }) : botT(locale, "today_no_weight");
 
-  // Collect recent entries (< 1 hour) for edit buttons
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  const recentMeals = meals.filter(m => m.createdAt >= oneHourAgo);
-  const recentIntakes = intakes.filter(i => i.createdAt >= oneHourAgo);
-  const recentWorkouts = workouts.filter(w => w.createdAt >= oneHourAgo);
-
-  const hasRecent = recentMeals.length > 0 || recentIntakes.length > 0 || recentWorkouts.length > 0;
-
-  if (hasRecent) {
-    text += botT(locale, "recent_editable");
-    const kb = new InlineKeyboard();
-    for (const m of recentMeals) {
-      kb.text(`🍽 ${m.name}`, `edit:meal:${m.id}`).text(botT(locale, "delete_entry"), `del:meal:${m.id}`).row();
-    }
-    for (const i of recentIntakes) {
-      kb.text(`💊 ${i.name}`, `edit:med:${i.id}`).text(botT(locale, "delete_entry"), `del:med:${i.id}`).row();
-    }
-    for (const w of recentWorkouts) {
-      kb.text(`🏋️ ${botT(locale, w.type)}`, `edit:workout:${w.id}`).text(botT(locale, "delete_entry"), `del:workout:${w.id}`).row();
-    }
-    await ctx.reply(text, { reply_markup: kb });
+  const panel = await buildRecentPanel(profileId, locale, timezone);
+  if (panel) {
+    await replyMain(ctx, text, locale);
+    await ctx.reply(panel.text, { reply_markup: panel.kb });
   } else {
     await replyMain(ctx, text, locale);
   }
@@ -1129,13 +1188,23 @@ bot.on("callback_query:data", async (ctx) => {
     if (data.startsWith("del:")) {
       const [, type, id] = data.split(":");
       const profile = await getProfileByChatId(chatId);
-      const l = profile?.preferredLocale || "ru";
+      if (!profile) return;
+      const l = profile.preferredLocale;
       try {
         if (type === "meal") await prisma.meal.delete({ where: { id } });
         else if (type === "med") await prisma.medicationIntake.delete({ where: { id } });
         else if (type === "workout") await prisma.workout.delete({ where: { id } });
-        await ctx.editMessageText(botT(l, "entry_deleted"));
-      } catch { await ctx.reply(botT(l, "error")); }
+        // Re-render the panel so the remaining entries stay editable
+        const panel = await buildRecentPanel(profile.id, l, profile.timezone);
+        if (panel) {
+          await ctx.editMessageText(`${botT(l, "entry_deleted")}\n${panel.text}`, { reply_markup: panel.kb });
+        } else {
+          await ctx.editMessageText(botT(l, "entry_deleted"));
+        }
+      } catch (e) {
+        console.error("Delete entry error:", e);
+        await ctx.reply(botT(l, "error"));
+      }
       return;
     }
 
@@ -1518,8 +1587,10 @@ bot.on("message:text", async (ctx) => {
       if (Object.keys(upd).length > 0) {
         await prisma.meal.update({ where: { id: st.data!.entryId }, data: upd });
       }
+      const pid = st.profileId!, loc = st.locale!;
       clearState(chatId);
-      await replyMain(ctx, botT(st.locale!, "entry_updated"), st.locale!);
+      await replyMain(ctx, botT(loc, "entry_updated"), loc);
+      await sendRecentPanel(ctx, pid, loc);
       return;
     }
 
@@ -1544,8 +1615,10 @@ bot.on("message:text", async (ctx) => {
       if (Object.keys(upd).length > 0) {
         await prisma.medicationIntake.update({ where: { id: st.data!.entryId }, data: upd });
       }
+      const pid = st.profileId!, loc = st.locale!;
       clearState(chatId);
-      await replyMain(ctx, botT(st.locale!, "entry_updated"), st.locale!);
+      await replyMain(ctx, botT(loc, "entry_updated"), loc);
+      await sendRecentPanel(ctx, pid, loc);
       return;
     }
 
@@ -1559,8 +1632,10 @@ bot.on("message:text", async (ctx) => {
       if (Object.keys(upd).length > 0) {
         await prisma.workout.update({ where: { id: st.data!.entryId }, data: upd });
       }
+      const pid = st.profileId!, loc = st.locale!;
       clearState(chatId);
-      await replyMain(ctx, botT(st.locale!, "entry_updated"), st.locale!);
+      await replyMain(ctx, botT(loc, "entry_updated"), loc);
+      await sendRecentPanel(ctx, pid, loc);
       return;
     }
 
@@ -1729,21 +1804,11 @@ bot.on("message:photo", async (ctx) => {
       const { buffer, base64 } = await downloadTelegramPhoto(ctx);
       try { await uploadPhotoToStorage(buffer, "medications"); } catch {}
       const aiLang = AI_LANGUAGE[st.locale!] || AI_LANGUAGE.en;
-      const response = await openai.chat.completions.create({
-        model: OPENAI_MODEL, temperature: 0.2,
-        messages: [
-          { role: "system", content: `You are a pharmacist assistant. Identify the medication in the photo of its packaging. Return ONLY valid JSON: {"name": string, "dosage": string}. Name and dosage should be in ${aiLang}.` },
-          { role: "user", content: [
-            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}` } },
-            { type: "text", text: "What medication is this?" },
-          ] },
-        ],
-        max_tokens: 200,
-      });
-      const raw = response.choices[0]?.message?.content || "";
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON");
-      const result = JSON.parse(jsonMatch[0]);
+      const result = await visionJson(
+        base64,
+        `You are a pharmacist assistant. Identify the medication from the photo of its packaging. Answer ONLY with valid JSON, no markdown: {"name": string, "dosage": string}. Write name and dosage in ${aiLang}. If unreadable, return name="—" and dosage="".`,
+        "What medication is this? Read the name and dosage from the pack.",
+      );
       st.data!.name = result.name;
       st.data!.dosage = result.dosage || "";
       st.step = "med:time";
@@ -1751,7 +1816,7 @@ bot.on("message:photo", async (ctx) => {
       await replyCancel(ctx, botT(st.locale!, "med_time_prompt"), st.locale!);
     } catch (e: any) {
       console.error("Med photo error:", e);
-      await replyCancel(ctx, botT(st.locale!, "error") + "\n" + botT(st.locale!, "med_name_prompt"), st.locale!);
+      await replyCancel(ctx, `${botT(st.locale!, "error")}\n${aiErrorDetail(e)}\n\n${botT(st.locale!, "med_name_prompt")}`, st.locale!);
     }
     return;
   }
@@ -1765,21 +1830,11 @@ bot.on("message:photo", async (ctx) => {
       try { photoPath = await uploadPhotoToStorage(buffer, "meals"); } catch {}
       st.data!.photoPath = photoPath;
       const aiLang = AI_LANGUAGE[st.locale!] || AI_LANGUAGE.en;
-      const response = await openai.chat.completions.create({
-        model: OPENAI_MODEL, temperature: 0.2,
-        messages: [
-          { role: "system", content: `You read nutrition labels. Extract values PER 100g. Return ONLY valid JSON: {"calories": number, "protein": number, "fat": number, "carbs": number, "name": string}. Name in ${aiLang}.` },
-          { role: "user", content: [
-            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}` } },
-            { type: "text", text: "Read this nutrition label." },
-          ] },
-        ],
-        max_tokens: 300,
-      });
-      const raw = response.choices[0]?.message?.content || "";
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON");
-      const result = JSON.parse(jsonMatch[0]);
+      const result = await visionJson(
+        base64,
+        `You read nutrition labels on food packaging. Extract the values PER 100 g (or per 100 ml). Answer ONLY with valid JSON, no markdown: {"name": string, "calories": number, "protein": number, "fat": number, "carbs": number}. Write name in ${aiLang}. If a value is missing, use 0.`,
+        "Read the nutrition facts from this label.",
+      );
       st.data!.labelPer100 = result;
       st.data!.name = result.name || "—";
       st.step = "meal:label_weight";
@@ -1789,8 +1844,8 @@ bot.on("message:photo", async (ctx) => {
       }), st.locale!);
     } catch (e: any) {
       console.error("Label photo error:", e);
-      st.step = "meal:text_name";
-      await replyCancel(ctx, botT(st.locale!, "error") + "\n" + botT(st.locale!, "meal_input_prompt"), st.locale!);
+      // Stay in label flow: asking for a food photo here confused users
+      await replyCancel(ctx, `${botT(st.locale!, "error")}\n${aiErrorDetail(e)}\n\n${botT(st.locale!, "meal_label_prompt")}`, st.locale!);
     }
     return;
   }
@@ -1813,23 +1868,11 @@ bot.on("message:photo", async (ctx) => {
     st.data!.photoPath = photoPath;
 
     const aiLang = AI_LANGUAGE[st.locale!] || AI_LANGUAGE.en;
-    const response = await openai.chat.completions.create({
-      model: OPENAI_MODEL,
-      temperature: 0.2,
-      messages: [
-        { role: "system", content: `You are a nutrition analyst. Analyze the food in the image. Return ONLY valid JSON: {"name": string, "calories": number, "protein": number, "fat": number, "carbs": number}. Name should be in ${aiLang}. Estimate reasonable values.` },
-        { role: "user", content: [
-          { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}` } },
-          { type: "text", text: "What food is this? Estimate nutrition." },
-        ] },
-      ],
-      max_tokens: 300,
-    });
-
-    const raw = response.choices[0]?.message?.content || "";
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON in AI response");
-    const result = JSON.parse(jsonMatch[0]);
+    const result = await visionJson(
+      base64,
+      `You are a nutrition analyst. Estimate the nutrition of the food in the photo for the whole portion. Answer ONLY with valid JSON, no markdown: {"name": string, "calories": number, "protein": number, "fat": number, "carbs": number}. Write name in ${aiLang}. Never ask questions; always estimate. If no food is visible, return name="—" and calories=0.`,
+      "What food is this? Estimate the nutrition of the portion.",
+    );
 
     st.data!.aiResult = result;
     st.step = "meal:photo_confirm";
@@ -1847,7 +1890,7 @@ bot.on("message:photo", async (ctx) => {
   } catch (e: any) {
     console.error("Photo analysis error:", e);
     st.step = "meal:text_name";
-    await replyCancel(ctx, botT(st.locale!, "error") + "\n" + botT(st.locale!, "meal_input_prompt"), st.locale!);
+    await replyCancel(ctx, `${botT(st.locale!, "error")}\n${aiErrorDetail(e)}\n\n${botT(st.locale!, "meal_input_prompt")}`, st.locale!);
   }
 });
 
