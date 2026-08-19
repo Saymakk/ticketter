@@ -42,7 +42,7 @@ export const ru = defineMessages({
     identifierRequired: "Введите почту или номер телефона.",
     password: "Пароль",
     confirmPassword: "Подтвердите пароль",
-    passwordHint: "не менее 6 символов",
+    passwordHint: "не менее 4 символов",
     showPassword: "Показать пароль",
     hidePassword: "Скрыть пароль",
     rememberMe: "Запомнить меня",
@@ -60,7 +60,7 @@ export const ru = defineMessages({
     welcomeBack: "С возвращением!",
     signedIn: "Вы вошли",
     passwordsMismatch: "Пароли не совпадают.",
-    passwordTooShort: "Пароль должен содержать не менее 6 символов.",
+    passwordTooShort: "Пароль должен содержать не менее 4 символов.",
     invalidCredentials: "Неверная почта, телефон или пароль.",
     emailNotConfirmed: "Подтвердите почту или отключите подтверждение в Supabase.",
     alreadyRegistered: "Этот адрес или телефон уже зарегистрирован. Войдите.",
@@ -266,6 +266,7 @@ export const ru = defineMessages({
     workoutSaved: "Тренировка сохранена",
     weightSaved: "Вес сохранён",
     profileSaved: "Профиль сохранён",
+    passwordChanged: "Пароль изменён",
   },
 
   mealSchedule: {
@@ -291,6 +292,15 @@ export const ru = defineMessages({
     signOut: "Выйти",
     edit: "Редактировать профиль",
     cancelEdit: "Отмена",
+    changePassword: "Пароль",
+    changePasswordHint: "Не менее 4 символов. Понадобится текущий пароль.",
+    changePasswordAction: "Сменить",
+    currentPassword: "Текущий пароль",
+    newPassword: "Новый пароль",
+    confirmNewPassword: "Подтвердите новый пароль",
+    savePassword: "Сохранить пароль",
+    changingPassword: "Сохранение…",
+    wrongPassword: "Неверный текущий пароль.",
   },
 
   push: {

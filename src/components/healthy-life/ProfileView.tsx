@@ -16,6 +16,7 @@ import { useHlI18n, useT } from "@/lib/healthy-life/i18n";
 import type { HlLocale } from "@/lib/healthy-life/i18n";
 import { Button, Card, Field, PageHeader, Shell, inputClass } from "@/components/healthy-life/ui";
 import { PushNotificationsCard } from "@/components/healthy-life/PushNotificationsCard";
+import { ChangePasswordCard } from "@/components/healthy-life/ChangePasswordCard";
 
 type Profile = {
   id: string;
@@ -266,6 +267,8 @@ export function ProfileView() {
           {t("profile.signOut")}
         </Button>
       </Card>
+
+      <ChangePasswordCard />
 
       <PushNotificationsCard />
     </Shell>

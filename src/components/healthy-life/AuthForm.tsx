@@ -5,6 +5,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { resetAuthClient } from "@/lib/healthy-life/supabase/client";
 import { looksLikeEmail, resolveAuthEmail, resolveAuthEmailCandidates } from "@/lib/auth/login";
+import { MIN_PASSWORD_LENGTH } from "@/lib/auth/password";
 import { tryNormalizePhone, phoneToEmail } from "@/lib/auth/phone";
 import {
   readRememberMePreference,
@@ -88,7 +89,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       return;
     }
 
-    if (password.length < 6) {
+    if (password.length < MIN_PASSWORD_LENGTH) {
       setLoading(false);
       setNotice({ message: t("auth.passwordTooShort"), tone: "error" });
       return;
@@ -235,7 +236,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                 type={showPassword ? "text" : "password"}
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
                 required
-                minLength={6}
+                minLength={MIN_PASSWORD_LENGTH}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t("auth.passwordHint")}
@@ -262,7 +263,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                   type={showConfirmPassword ? "text" : "password"}
                   autoComplete="new-password"
                   required
-                  minLength={6}
+                  minLength={MIN_PASSWORD_LENGTH}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />

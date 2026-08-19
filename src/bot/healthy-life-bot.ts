@@ -27,6 +27,7 @@ import { PrismaClient } from "@prisma/client";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
 import { normalizePhone, phoneToEmail, phoneAuthEmailCandidates } from "../lib/auth/phone";
+import { isValidPassword } from "../lib/auth/password";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -68,9 +69,12 @@ const translations: Record<string, Record<string, string>> = {
     register_email: "📧 Почтой", register_phone: "📱 По телефону",
     enter_email: "Введите email или номер телефона.\n\nТелефон любой страны, с кодом:\n• +1 202 555 0123\n• +44 20 7946 0958\n• +7 700 123 45 67\nПробелы, скобки и дефисы можно не убирать.",
     enter_password: "Введите пароль:",
-    enter_password_new: "Придумайте пароль (минимум 6 символов):",
+    enter_password_new: "Придумайте пароль (минимум 4 символа):",
     enter_password_confirm: "Повторите пароль:",
-    password_too_short: "Пароль слишком короткий. Минимум 6 символов.",
+    enter_password_current: "Введите текущий пароль:",
+    password_too_short: "Пароль слишком короткий. Минимум 4 символа.",
+    password_wrong: "❌ Неверный пароль.",
+    password_changed: "✅ Пароль изменён.",
     passwords_mismatch: "Пароли не совпадают. Введите пароль заново.",
     email_invalid: "Не похоже на email. Пример: name@mail.com",
     already_registered: "Этот аккаунт уже есть. Войдите.",
@@ -114,6 +118,7 @@ const translations: Record<string, Record<string, string>> = {
     settings_title: "⚙️ Настройки",
     settings_language: "🌐 Язык", settings_phone: "📱 Привязать телефон",
     settings_email: "📧 Моя почта", settings_profile: "👤 Профиль", settings_timezone: "🕐 Часовой пояс",
+    settings_password: "🔑 Сменить пароль",
     language_prompt: "Выберите язык:", language_saved: "✅ Язык: {lang}",
     profile_info: "👤 {name}\n🔥 Цель: {goal} ккал\n⚖️ Целевой вес: {target}\n📏 Рост: {height}",
     profile_name_prompt: "Новое имя (или /skip):", profile_goal_prompt: "Цель ккал (или /skip):",
@@ -232,9 +237,12 @@ const translations: Record<string, Record<string, string>> = {
     register_email: "📧 With email", register_phone: "📱 With phone",
     enter_email: "Enter your email or phone number.\n\nAny country, with country code:\n• +1 202 555 0123\n• +44 20 7946 0958\n• +7 700 123 45 67\nSpaces, brackets and dashes are fine.",
     enter_password: "Enter password:",
-    enter_password_new: "Create a password (at least 6 characters):",
+    enter_password_new: "Create a password (at least 4 characters):",
     enter_password_confirm: "Repeat the password:",
-    password_too_short: "Password is too short. Minimum 6 characters.",
+    enter_password_current: "Enter your current password:",
+    password_too_short: "Password is too short. Minimum 4 characters.",
+    password_wrong: "❌ Wrong password.",
+    password_changed: "✅ Password updated.",
     passwords_mismatch: "Passwords do not match. Enter a new password.",
     email_invalid: "That does not look like an email. Example: name@mail.com",
     already_registered: "This account already exists. Please sign in.",
@@ -277,6 +285,7 @@ const translations: Record<string, Record<string, string>> = {
     settings_title: "⚙️ Settings",
     settings_language: "🌐 Language", settings_phone: "📱 Link phone",
     settings_email: "📧 My email", settings_profile: "👤 Profile", settings_timezone: "🕐 Timezone",
+    settings_password: "🔑 Change password",
     language_prompt: "Choose language:", language_saved: "✅ Language: {lang}",
     profile_info: "👤 {name}\n🔥 Goal: {goal} kcal\n⚖️ Target: {target}\n📏 Height: {height}",
     profile_name_prompt: "New name (or /skip):", profile_goal_prompt: "Calorie goal (or /skip):",
@@ -391,9 +400,12 @@ const translations: Record<string, Record<string, string>> = {
     register_email: "📧 Поштамен", register_phone: "📱 Телефонмен",
     enter_email: "Email немесе телефон енгізіңіз.\n\nКез келген ел, кодпен:\n• +1 202 555 0123\n• +44 20 7946 0958\n• +7 700 123 45 67\nБос орын, жақша, дефис болса да болады.",
     enter_password: "Құпия сөз:",
-    enter_password_new: "Құпия сөз ойлап табыңыз (кемінде 6 таңба):",
+    enter_password_new: "Құпия сөз ойлап табыңыз (кемінде 4 таңба):",
     enter_password_confirm: "Құпия сөзді қайталаңыз:",
-    password_too_short: "Құпия сөз тым қысқа. Кемінде 6 таңба.",
+    enter_password_current: "Ағымдағы құпия сөз:",
+    password_too_short: "Құпия сөз тым қысқа. Кемінде 4 таңба.",
+    password_wrong: "❌ Қате құпия сөз.",
+    password_changed: "✅ Құпия сөз өзгертілді.",
     passwords_mismatch: "Құпия сөздер сәйкес емес. Қайта енгізіңіз.",
     email_invalid: "Бұл email емес. Мысалы: name@mail.com",
     already_registered: "Бұл аккаунт бар. Кіріңіз.",
@@ -436,6 +448,7 @@ const translations: Record<string, Record<string, string>> = {
     settings_title: "⚙️ Баптаулар",
     settings_language: "🌐 Тіл", settings_phone: "📱 Телефон", settings_email: "📧 Email",
     settings_profile: "👤 Профиль", settings_timezone: "🕐 Уақыт белдеуі",
+    settings_password: "🔑 Құпия сөзді өзгерту",
     language_prompt: "Тілді таңдаңыз:", language_saved: "✅ Тіл: {lang}",
     profile_info: "👤 {name}\n🔥 Мақсат: {goal} ккал\n⚖️ Мақсат салмақ: {target}\n📏 Бой: {height}",
     profile_name_prompt: "Жаңа ат (немесе /skip):", profile_goal_prompt: "Ккал мақсаты (немесе /skip):",
@@ -934,6 +947,29 @@ async function signInWithPhoneOrLinked(phone: string, password: string) {
     }
   }
   return null;
+}
+
+async function verifyProfilePassword(profileId: string, password: string): Promise<boolean> {
+  const profile = await prisma.profile.findUnique({ where: { id: profileId } });
+  if (!profile?.userId) return false;
+  const { data } = await supabaseAdmin.auth.admin.getUserById(profile.userId);
+  const email = data?.user?.email;
+  if (email) {
+    const { user } = await trySignIn(email, password);
+    if (user?.id === profile.userId) return true;
+  }
+  if (profile.phone) {
+    const user = await signInWithPhoneOrLinked(profile.phone, password);
+    if (user?.id === profile.userId) return true;
+  }
+  return false;
+}
+
+async function changeProfilePassword(profileId: string, newPassword: string) {
+  const profile = await prisma.profile.findUnique({ where: { id: profileId } });
+  if (!profile?.userId) throw new Error("no profile");
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(profile.userId, { password: newPassword });
+  if (error) throw error;
 }
 
 async function finishLogin(ctx: Context, chatId: number, userId: string, locale: string, phone?: string) {
@@ -1774,6 +1810,7 @@ async function showSettings(ctx: Context) {
     [botT(l, "settings_email")],
   ];
   if (!profile?.phone) rows.push([botT(l, "settings_phone")]);
+  rows.push([botT(l, "settings_password")]);
   rows.push([botT(l, "settings_logout")]);
   rows.push([botT(l, "kb_back")]);
   setState(ctx.chat!.id, { step: "settings:menu", profileId: auth.profileId, locale: l, data: { backTo: "main" } });
@@ -2681,6 +2718,11 @@ async function handleScreen(ctx: Context, text: string, st: UserState): Promise<
       await promptContactOrNumber(ctx, l, "enter_phone");
       return true;
     }
+    if (text === botT(l, "settings_password")) {
+      setState(chatId, { step: "settings:password_current", profileId: st.profileId, locale: l, data: { backTo: "settings" } });
+      await replyCancel(ctx, botT(l, "enter_password_current"), l);
+      return true;
+    }
     if (text === botT(l, "settings_timezone")) {
       setState(chatId, { step: "settings:timezone", profileId: st.profileId, locale: l, data: { backTo: "settings" } });
       await replyCancel(ctx, botT(l, "timezone_prompt"), l);
@@ -2949,7 +2991,7 @@ bot.on("message:text", async (ctx) => {
       return;
     }
     if (st.step === "auth:reg_password") {
-      if (text.length < 6) {
+      if (!isValidPassword(text)) {
         await ctx.reply(botT(st.locale || "ru", "password_too_short"));
         return;
       }
@@ -3288,6 +3330,47 @@ bot.on("message:text", async (ctx) => {
       } catch (e: any) {
         if (e?.message === "phone_taken") await ctx.reply(botT(st.locale || "ru", "phone_taken"));
         else await ctx.reply(botT(st.locale || "ru", "phone_invalid"));
+      }
+      return;
+    }
+
+    // ── Settings: password ──
+    if (st.step === "settings:password_current") {
+      const ok = await verifyProfilePassword(st.profileId!, text);
+      if (!ok) {
+        await ctx.reply(botT(st.locale || "ru", "password_wrong"));
+        return;
+      }
+      st.step = "settings:password_new";
+      await replyCancel(ctx, botT(st.locale!, "enter_password_new"), st.locale!);
+      return;
+    }
+    if (st.step === "settings:password_new") {
+      if (!isValidPassword(text)) {
+        await ctx.reply(botT(st.locale || "ru", "password_too_short"));
+        return;
+      }
+      st.data!.newPassword = text;
+      st.step = "settings:password_confirm";
+      await replyCancel(ctx, botT(st.locale!, "enter_password_confirm"), st.locale!);
+      return;
+    }
+    if (st.step === "settings:password_confirm") {
+      if (text !== st.data!.newPassword) {
+        st.step = "settings:password_new";
+        await replyCancel(
+          ctx,
+          `${botT(st.locale!, "passwords_mismatch")}\n${botT(st.locale!, "enter_password_new")}`,
+          st.locale!,
+        );
+        return;
+      }
+      try {
+        await changeProfilePassword(st.profileId!, text);
+        clearState(chatId);
+        await replyMain(ctx, botT(st.locale!, "password_changed"), st.locale!);
+      } catch {
+        await ctx.reply(botT(st.locale || "ru", "error"));
       }
       return;
     }

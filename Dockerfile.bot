@@ -7,6 +7,7 @@ RUN npm ci && npx prisma generate
 
 COPY src/bot ./src/bot
 COPY src/lib/auth/phone.ts ./src/lib/auth/phone.ts
+COPY src/lib/auth/password.ts ./src/lib/auth/password.ts
 
 ENV NODE_ENV=production
 CMD ["npx", "tsx", "src/bot/healthy-life-bot.ts"]

@@ -40,7 +40,7 @@ export const en = {
     identifierRequired: "Enter an email or a phone number.",
     password: "Password",
     confirmPassword: "Confirm password",
-    passwordHint: "at least 6 characters",
+    passwordHint: "at least 4 characters",
     showPassword: "Show password",
     hidePassword: "Hide password",
     rememberMe: "Remember me",
@@ -58,7 +58,7 @@ export const en = {
     welcomeBack: "Welcome back!",
     signedIn: "Signed in",
     passwordsMismatch: "Passwords do not match.",
-    passwordTooShort: "Password must be at least 6 characters.",
+    passwordTooShort: "Password must be at least 4 characters.",
     invalidCredentials: "Invalid email, phone or password.",
     emailNotConfirmed: "Confirm your email, or disable Confirm email in Supabase.",
     alreadyRegistered: "This email or phone is already registered. Sign in.",
@@ -264,6 +264,7 @@ export const en = {
     workoutSaved: "Workout saved",
     weightSaved: "Weight saved",
     profileSaved: "Profile saved",
+    passwordChanged: "Password updated",
   },
 
   mealSchedule: {
@@ -289,6 +290,15 @@ export const en = {
     signOut: "Sign out",
     edit: "Edit profile",
     cancelEdit: "Cancel",
+    changePassword: "Password",
+    changePasswordHint: "At least 4 characters. You'll need your current password.",
+    changePasswordAction: "Change",
+    currentPassword: "Current password",
+    newPassword: "New password",
+    confirmNewPassword: "Confirm new password",
+    savePassword: "Update password",
+    changingPassword: "Updating…",
+    wrongPassword: "Current password is incorrect.",
   },
 
   push: {
