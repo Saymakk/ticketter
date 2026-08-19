@@ -148,14 +148,20 @@ const translations: Record<string, Record<string, string>> = {
     kb_meal: "🍽 Еда", kb_med: "💊 Лекарство", kb_weight: "⚖️ Вес",
     kb_workout: "🏋️ Тренировка", kb_today: "📊 Сегодня", kb_settings: "⚙️ Настройки",
     // History
-    history_prompt: "📅 История за какой день?\nВведите дату (ДД.ММ.ГГГГ) или /skip для сегодня:",
     history_title: "📅 История за {date}",
-    history_no_data: "Нет записей за этот день.",
+    history_range_title: "📅 История {from} — {to}",
+    history_no_data: "Нет записей за этот период.",
+    history_pick_start: "📅 Выберите начало периода:",
+    history_pick_end: "📅 Теперь выберите конец периода (или тот же день):",
+    cal_prev: "◀️", cal_next: "▶️",
     // Advice
-    advice_prompt: "Выберите период:",
+    advice_prompt: "Выберите тип совета:",
     advice_day: "📊 День", advice_week: "📊 Неделя", advice_month: "📊 Месяц",
-    advice_none: "Советов пока нет. Они генерируются автоматически после 00:00.",
+    advice_none: "Советов за этот период пока нет.",
     advice_title: "💡 Совет ({period})",
+    advice_newer: "▶️ Новее", advice_older: "◀️ Старше",
+    // Profile
+    profile_edit: "✏️ Редактировать",
     // Schedules
     schedules_title: "📋 Расписания",
     meal_schedules: "🍽 Расписания еды:", med_schedules: "💊 Расписания лекарств:",
@@ -216,13 +222,18 @@ const translations: Record<string, Record<string, string>> = {
     open_app: "🌐 Open", choose_language: "Choose language / Выберите язык:",
     kb_meal: "🍽 Meal", kb_med: "💊 Medication", kb_weight: "⚖️ Weight",
     kb_workout: "🏋️ Workout", kb_today: "📊 Today", kb_settings: "⚙️ Settings",
-    history_prompt: "📅 Which date?\nEnter date (DD.MM.YYYY) or /skip for today:",
     history_title: "📅 History for {date}",
-    history_no_data: "No records for this day.",
-    advice_prompt: "Choose period:",
+    history_range_title: "📅 History {from} — {to}",
+    history_no_data: "No records for this period.",
+    history_pick_start: "📅 Pick start date:",
+    history_pick_end: "📅 Now pick end date (or same day):",
+    cal_prev: "◀️", cal_next: "▶️",
+    advice_prompt: "Choose advice type:",
     advice_day: "📊 Day", advice_week: "📊 Week", advice_month: "📊 Month",
-    advice_none: "No advice yet. Generated automatically after 00:00.",
+    advice_none: "No advice for this period yet.",
     advice_title: "💡 Advice ({period})",
+    advice_newer: "▶️ Newer", advice_older: "◀️ Older",
+    profile_edit: "✏️ Edit",
     schedules_title: "📋 Schedules",
     meal_schedules: "🍽 Meal schedules:", med_schedules: "💊 Medication schedules:",
     no_meal_schedules: "No meal schedules.", no_med_schedules: "No medication schedules.",
@@ -282,13 +293,18 @@ const translations: Record<string, Record<string, string>> = {
     open_app: "🌐 Ашу", choose_language: "Тілді таңдаңыз / Choose language:",
     kb_meal: "🍽 Тамақ", kb_med: "💊 Дәрі", kb_weight: "⚖️ Салмақ",
     kb_workout: "🏋️ Жаттығу", kb_today: "📊 Бүгін", kb_settings: "⚙️ Баптаулар",
-    history_prompt: "📅 Қай күн?\nКүн (КК.АА.ЖЖЖЖ) немесе /skip:",
     history_title: "📅 {date} тарихы",
-    history_no_data: "Бұл күнге жазба жоқ.",
-    advice_prompt: "Кезеңді таңдаңыз:",
+    history_range_title: "📅 Тарих {from} — {to}",
+    history_no_data: "Бұл кезеңге жазба жоқ.",
+    history_pick_start: "📅 Басталу күнін таңдаңыз:",
+    history_pick_end: "📅 Аяқталу күнін таңдаңыз (немесе сол күн):",
+    cal_prev: "◀️", cal_next: "▶️",
+    advice_prompt: "Кеңес түрін таңдаңыз:",
     advice_day: "📊 Күн", advice_week: "📊 Апта", advice_month: "📊 Ай",
-    advice_none: "Кеңес жоқ. 00:00-ден кейін автоматты жасалады.",
+    advice_none: "Бұл кезеңге кеңес жоқ.",
     advice_title: "💡 Кеңес ({period})",
+    advice_newer: "▶️ Жаңа", advice_older: "◀️ Ескі",
+    profile_edit: "✏️ Өзгерту",
     schedules_title: "📋 Кестелер",
     meal_schedules: "🍽 Тамақ кестесі:", med_schedules: "💊 Дәрі кестесі:",
     no_meal_schedules: "Тамақ кестесі жоқ.", no_med_schedules: "Дәрі кестесі жоқ.",
@@ -495,6 +511,109 @@ async function showToday(ctx: Context) {
   await sendDaySummary(ctx, auth.profileId, auth.locale, auth.timezone, today);
 }
 
+// ─── Inline calendar ──────────────────────────────────────────────────────────
+
+const WEEKDAYS_RU = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const WEEKDAYS_EN = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+const WEEKDAYS_KK = ["Дс", "Сс", "Ср", "Бс", "Жм", "Сн", "Жс"];
+const MONTHS_RU = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+const MONTHS_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS_KK = ["Қаңтар", "Ақпан", "Наурыз", "Сәуір", "Мамыр", "Маусым", "Шілде", "Тамыз", "Қыркүйек", "Қазан", "Қараша", "Желтоқсан"];
+
+function getMonths(locale: string) { return locale === "ru" ? MONTHS_RU : locale === "kk" ? MONTHS_KK : MONTHS_EN; }
+function getWeekdays(locale: string) { return locale === "ru" ? WEEKDAYS_RU : locale === "kk" ? WEEKDAYS_KK : WEEKDAYS_EN; }
+
+function buildCalendarKeyboard(year: number, month: number, locale: string, prefix: string): InlineKeyboard {
+  const kb = new InlineKeyboard();
+  const months = getMonths(locale);
+  const wd = getWeekdays(locale);
+
+  // Header: < Month Year >
+  kb.text(botT(locale, "cal_prev"), `${prefix}nav:${year}-${String(month).padStart(2, "0")}:-1`)
+    .text(`${months[month]} ${year}`, "noop")
+    .text(botT(locale, "cal_next"), `${prefix}nav:${year}-${String(month).padStart(2, "0")}:1`);
+  kb.row();
+
+  // Weekday headers
+  for (const d of wd) kb.text(d, "noop");
+  kb.row();
+
+  // Days
+  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  const offset = firstDay === 0 ? 6 : firstDay - 1; // Mon-based offset
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  let col = 0;
+  for (let i = 0; i < offset; i++) { kb.text(" ", "noop"); col++; }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    kb.text(String(d), `${prefix}pick:${dateStr}`);
+    col++;
+    if (col === 7) { kb.row(); col = 0; }
+  }
+  if (col > 0) kb.row();
+
+  return kb;
+}
+
+async function sendRangeSummary(ctx: Context, profileId: string, locale: string, timezone: string, from: string, to: string) {
+  const dates: string[] = [];
+  const cur = new Date(from);
+  const end = new Date(to);
+  while (cur <= end) {
+    dates.push(cur.toISOString().slice(0, 10));
+    cur.setDate(cur.getDate() + 1);
+  }
+  if (dates.length === 0) return;
+
+  if (dates.length === 1) {
+    return sendDaySummary(ctx, profileId, locale, timezone, dates[0]);
+  }
+
+  // Multi-day summary
+  const profile = await prisma.profile.findUnique({ where: { id: profileId } });
+  const goal = profile?.dailyCalorieGoal || 2000;
+  let text = botT(locale, "history_range_title", { from, to }) + "\n";
+
+  const allMeals = await prisma.meal.findMany({ where: { profileId, date: { in: dates } }, orderBy: { date: "asc" } });
+  const allIntakes = await prisma.medicationIntake.findMany({ where: { profileId, date: { in: dates } }, orderBy: { date: "asc" } });
+  const allWorkouts = await prisma.workout.findMany({ where: { profileId, date: { in: dates } }, orderBy: { date: "asc" } });
+  const allWeights = await prisma.weightEntry.findMany({ where: { profileId, date: { in: dates } }, orderBy: { date: "asc" } });
+
+  if (allMeals.length === 0 && allIntakes.length === 0 && allWorkouts.length === 0 && allWeights.length === 0) {
+    await replyMain(ctx, text + "\n" + botT(locale, "history_no_data"), locale);
+    return;
+  }
+
+  const totalCal = allMeals.reduce((s, m) => s + m.calories, 0);
+  const avgCal = Math.round(totalCal / dates.length);
+  text += `\n🔥 ${Math.round(totalCal)} ккал за ${dates.length} дн. (ср. ${avgCal}/${goal})`;
+
+  // Group by day
+  for (const date of dates) {
+    const dayMeals = allMeals.filter(m => m.date === date);
+    const dayIntakes = allIntakes.filter(i => i.date === date);
+    const dayWorkouts = allWorkouts.filter(w => w.date === date);
+    const dayWeight = allWeights.find(w => w.date === date);
+    if (dayMeals.length === 0 && dayIntakes.length === 0 && dayWorkouts.length === 0 && !dayWeight) continue;
+
+    text += `\n\n📅 ${date}`;
+    const dayCal = dayMeals.reduce((s, m) => s + m.calories, 0);
+    if (dayMeals.length > 0) {
+      text += `\n  🍽 ${Math.round(dayCal)} ккал (${dayMeals.length} приёмов)`;
+    }
+    if (dayIntakes.length > 0) {
+      text += `\n  💊 ${dayIntakes.map(i => i.name).join(", ")}`;
+    }
+    if (dayWorkouts.length > 0) {
+      text += `\n  🏋️ ${dayWorkouts.map(w => `${botT(locale, w.type)} ${w.quantity}${w.unit}`).join(", ")}`;
+    }
+    if (dayWeight) text += `\n  ⚖️ ${dayWeight.weightKg} кг`;
+  }
+
+  await replyMain(ctx, text, locale);
+}
+
 async function sendDaySummary(ctx: Context, profileId: string, locale: string, timezone: string, date: string) {
   const profile = await prisma.profile.findUnique({ where: { id: profileId } });
   const meals = await prisma.meal.findMany({ where: { profileId, date }, orderBy: { createdAt: "asc" } });
@@ -550,8 +669,12 @@ async function sendDaySummary(ctx: Context, profileId: string, locale: string, t
 async function showHistory(ctx: Context) {
   const auth = await requireAuth(ctx);
   if (!auth) return;
-  setState(ctx.chat!.id, { step: "history:date", profileId: auth.profileId, locale: auth.locale, data: { timezone: auth.timezone } });
-  await replyCancel(ctx, botT(auth.locale, "history_prompt"), auth.locale);
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  setState(ctx.chat!.id, { step: "history:cal", profileId: auth.profileId, locale: auth.locale, data: { timezone: auth.timezone } });
+  const kb = buildCalendarKeyboard(year, month, auth.locale, "hcal_");
+  await ctx.reply(botT(auth.locale, "history_pick_start"), { reply_markup: kb });
 }
 
 async function showAdvice(ctx: Context) {
@@ -559,10 +682,44 @@ async function showAdvice(ctx: Context) {
   if (!auth) return;
   await ctx.reply(botT(auth.locale, "advice_prompt"), {
     reply_markup: new InlineKeyboard()
-      .text(botT(auth.locale, "advice_day"), "advice:day")
-      .text(botT(auth.locale, "advice_week"), "advice:week")
-      .text(botT(auth.locale, "advice_month"), "advice:month"),
+      .text(botT(auth.locale, "advice_day"), "advice:day:0")
+      .text(botT(auth.locale, "advice_week"), "advice:week:0")
+      .text(botT(auth.locale, "advice_month"), "advice:month:0"),
   });
+}
+
+async function sendAdvicePage(ctx: Context, chatId: number, period: string, offset: number) {
+  const profile = await getProfileByChatId(chatId);
+  if (!profile) return;
+  const l = profile.preferredLocale;
+  const adv = await prisma.advice.findMany({
+    where: { profileId: profile.id, period },
+    orderBy: { createdAt: "desc" },
+    skip: offset,
+    take: 1,
+  });
+  if (adv.length === 0) {
+    await replyMain(ctx, botT(l, "advice_none"), l);
+    return;
+  }
+  const a = adv[0];
+  const periodLabel = a.periodKey.split("__")[0];
+  let text = botT(l, "advice_title", { period: periodLabel }) + "\n\n";
+  text += `📌 ${a.title}\n\n`;
+  if (a.summary) text += `${a.summary}\n\n`;
+  text += a.content;
+
+  // Check if there are older/newer
+  const total = await prisma.advice.count({ where: { profileId: profile.id, period } });
+  const kb = new InlineKeyboard();
+  if (offset > 0) kb.text(botT(l, "advice_newer"), `advice:${period}:${offset - 1}`);
+  if (offset + 1 < total) kb.text(botT(l, "advice_older"), `advice:${period}:${offset + 1}`);
+  if (kb.inline_keyboard.length > 0 && kb.inline_keyboard[0].length > 0) {
+    await ctx.reply(text, { reply_markup: kb });
+  } else {
+    await ctx.reply(text);
+  }
+  await replyMain(ctx, "👆", l);
 }
 
 async function showSchedules(ctx: Context) {
@@ -794,32 +951,64 @@ bot.on("callback_query:data", async (ctx) => {
       return;
     }
 
-    // Advice periods
+    // Advice with pagination: advice:day:0, advice:week:1, etc.
     if (data.startsWith("advice:")) {
-      const period = data.split(":")[1]; // day | week | month
-      const profile = await getProfileByChatId(chatId);
-      if (!profile) return;
-      const l = profile.preferredLocale;
-      const advices = await prisma.advice.findMany({
-        where: { profileId: profile.id, period },
-        orderBy: { createdAt: "desc" },
-        take: 3,
-      });
-      if (advices.length === 0) {
-        await replyMain(ctx, botT(l, "advice_none"), l);
-        return;
-      }
-      for (const adv of advices) {
-        const periodLabel = period === "day" ? adv.periodKey.split("__")[0] : adv.periodKey.split("__")[0];
-        let text = botT(l, "advice_title", { period: periodLabel }) + "\n\n";
-        text += `📌 ${adv.title}\n\n`;
-        if (adv.summary) text += `${adv.summary}\n\n`;
-        text += adv.content;
-        await ctx.reply(text);
-      }
-      await replyMain(ctx, "👆", l);
+      const parts = data.split(":");
+      const period = parts[1];
+      const offset = parseInt(parts[2] || "0", 10);
+      await sendAdvicePage(ctx, chatId, period, offset);
       return;
     }
+
+    // Calendar navigation: hcal_nav:2026-08:-1 or hcal_nav:2026-08:1
+    if (data.startsWith("hcal_nav:")) {
+      const st = getState(chatId);
+      if (!st) return;
+      const parts = data.replace("hcal_nav:", "").split(":");
+      const [ym, dir] = [parts[0], parseInt(parts[1], 10)];
+      const [y, m] = ym.split("-").map(Number);
+      let newMonth = m - 1 + dir; // m is 1-based from callback
+      let newYear = y;
+      if (newMonth < 0) { newMonth = 11; newYear--; }
+      if (newMonth > 11) { newMonth = 0; newYear++; }
+      const phase = st.data?.startDate ? "history_pick_end" : "history_pick_start";
+      const kb = buildCalendarKeyboard(newYear, newMonth, st.locale!, "hcal_");
+      try {
+        await ctx.editMessageText(botT(st.locale!, phase), { reply_markup: kb });
+      } catch {
+        await ctx.reply(botT(st.locale!, phase), { reply_markup: kb });
+      }
+      return;
+    }
+
+    // Calendar date pick: hcal_pick:2026-08-19
+    if (data.startsWith("hcal_pick:")) {
+      const st = getState(chatId);
+      if (!st) return;
+      const pickedDate = data.replace("hcal_pick:", "");
+      if (!st.data?.startDate) {
+        // First pick — start date
+        st.data!.startDate = pickedDate;
+        const [y, m] = pickedDate.split("-").map(Number);
+        const kb = buildCalendarKeyboard(y, m - 1, st.locale!, "hcal_");
+        try {
+          await ctx.editMessageText(botT(st.locale!, "history_pick_end"), { reply_markup: kb });
+        } catch {
+          await ctx.reply(botT(st.locale!, "history_pick_end"), { reply_markup: kb });
+        }
+      } else {
+        // Second pick — end date
+        let from = st.data!.startDate;
+        let to = pickedDate;
+        if (from > to) [from, to] = [to, from];
+        clearState(chatId);
+        await sendRangeSummary(ctx, st.profileId!, st.locale!, st.data!.timezone, from, to);
+      }
+      return;
+    }
+
+    // noop (calendar headers etc.)
+    if (data === "noop") return;
 
     // Stop medication plan (confirm)
     if (data.startsWith("med_stop:")) {
@@ -880,10 +1069,18 @@ bot.on("callback_query:data", async (ctx) => {
       const info = botT(l, "profile_info", {
         name: profile.name,
         goal: profile.dailyCalorieGoal,
-        target: profile.targetWeightKg ? `${profile.targetWeightKg} кг` : "—",
-        height: profile.heightCm ? `${profile.heightCm} см` : "—",
+        target: profile.targetWeightKg ? `${profile.targetWeightKg}` : "—",
+        height: profile.heightCm ? `${profile.heightCm}` : "—",
       });
-      await ctx.reply(info);
+      await ctx.reply(info, {
+        reply_markup: new InlineKeyboard().text(botT(l, "profile_edit"), "settings:profile_edit"),
+      });
+      return;
+    }
+    if (data === "settings:profile_edit") {
+      const profile = await getProfileByChatId(chatId);
+      if (!profile) return;
+      const l = profile.preferredLocale;
       setState(chatId, { step: "settings:name", profileId: profile.id, locale: l, data: {} });
       await replyCancel(ctx, botT(l, "profile_name_prompt"), l);
       return;
@@ -1138,15 +1335,6 @@ bot.on("message:text", async (ctx) => {
       });
       clearState(chatId);
       await replyMain(ctx, botT(st.locale!, "workout_saved", { type: botT(st.locale!, st.data!.type), duration: st.data!.duration }), st.locale!);
-      return;
-    }
-
-    // ── History ──
-    if (st.step === "history:date") {
-      const date = text === "/skip" ? todayStr(st.data!.timezone) : parseDateInput(text);
-      if (!date) { await ctx.reply(botT(st.locale!, "history_prompt")); return; }
-      clearState(chatId);
-      await sendDaySummary(ctx, st.profileId!, st.locale!, st.data!.timezone, date);
       return;
     }
 
