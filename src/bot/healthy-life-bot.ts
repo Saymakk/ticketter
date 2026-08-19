@@ -1325,7 +1325,7 @@ bot.on("message:text", async (ctx) => {
     if (st.step === "med:time") {
       const profile = await prisma.profile.findUnique({ where: { id: st.profileId } });
       const tz = profile?.timezone || "UTC";
-      const time = text === "/skip" ? nowTime(tz) : text;
+      const time = text === "/skip" ? nowTime(tz) : text.replace(".", ":");
       await prisma.medicationIntake.create({
         data: {
           profileId: st.profileId!, planId: st.data!.planId || null,
