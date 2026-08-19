@@ -4,7 +4,7 @@ import { generateAdvice, describeAiFailure } from "@/lib/healthy-life/ai";
 import { saveAiRecord, linkAiRecordToAdvice } from "@/lib/healthy-life/ai-records";
 import { HL_LOCALE_META, isHlLocale } from "@/lib/healthy-life/i18n/locales";
 import { prisma } from "@/lib/healthy-life/prisma";
-import { claimReminderSlot, sendPushToProfile, sendTelegramToProfile } from "@/lib/healthy-life/push";
+import { claimReminderSlot, sendPushToProfile, sendTelegramAdviceToProfile, sendTelegramToProfile } from "@/lib/healthy-life/push";
 
 export type ZonedNow = {
   dateKey: string; // YYYY-MM-DD
@@ -62,6 +62,19 @@ export function isTimeDue(slot: string, nowKey: string, windowMin = 5): boolean 
   let diff = nowM - slotM;
   if (diff < 0) diff += 24 * 60;
   return diff >= 0 && diff < windowMin;
+}
+
+function getZonedWeekday(timeZone: string, date = new Date()): number {
+  const safeTz = timeZone?.trim() || "UTC";
+  try {
+    const name = new Intl.DateTimeFormat("en-US", { timeZone: safeTz, weekday: "long" }).format(date);
+    const map: Record<string, number> = {
+      Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 7,
+    };
+    return map[name] ?? 1;
+  } catch {
+    return 1;
+  }
 }
 
 function parseMealReminderTimes(raw: string | null | undefined): string[] {
@@ -283,16 +296,12 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
           result.meal += 1;
         }
       }
-      // ── Auto-advice at midnight (00:00) ─────────────────────────────────
-      if (isTimeDue("00:00", zoned.timeKey)) {
+      // ── Auto-advice at 00:01 (next day / week / month) ───────────────────
+      if (isTimeDue("00:01", zoned.timeKey)) {
         const locale = isHlLocale(profile.preferredLocale) ? profile.preferredLocale : "en";
         const aiLanguage = HL_LOCALE_META[locale].aiLanguage;
         const periods: Array<"day" | "week" | "month"> = ["day"];
-        // Week: Monday 00:00 means the previous week just ended
-        const dow = new Date(now).getDay(); // 0=Sun
-        const isoWeekday = dow === 0 ? 7 : dow;
-        if (isoWeekday === 1) periods.push("week");
-        // Month: 1st of month 00:00 means previous month ended
+        if (getZonedWeekday(profile.timezone, now) === 1) periods.push("week");
         const dayOfMonth = parseInt(zoned.dateKey.slice(8, 10), 10);
         if (dayOfMonth === 1) periods.push("month");
 
@@ -399,7 +408,12 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
               kind: "meal" as const,
             };
             await sendPushToProfile(profile.id, advPayload).catch((e) => console.error("push advice", e));
-            await sendTelegramToProfile(profile.id, advPayload);
+            await sendTelegramAdviceToProfile(profile.id, {
+              title: advicePayload.title,
+              summary: advicePayload.summary,
+              content: advicePayload.content,
+              period,
+            });
             result.advice += 1;
           } catch {
             result.errors += 1;

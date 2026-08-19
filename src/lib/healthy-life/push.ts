@@ -105,6 +105,48 @@ export async function sendTelegramToProfile(
   }
 }
 
+async function sendTelegramLongMessage(chatId: string, text: string) {
+  const token = process.env.HEALTHY_LIFE_TELEGRAM_BOT_TOKEN;
+  if (!token) return;
+  for (let i = 0; i < text.length; i += 4000) {
+    const chunk = text.slice(i, i + 4000);
+    try {
+      const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: chunk }),
+      });
+      if (!resp.ok) {
+        const err = await resp.text().catch(() => "");
+        console.error("Telegram message failed:", resp.status, err.slice(0, 300));
+      }
+    } catch (e) {
+      console.error("Telegram message error:", e);
+    }
+  }
+}
+
+/** Send full AI advice text to Telegram (not just a short notification). */
+export async function sendTelegramAdviceToProfile(
+  profileId: string,
+  advice: { title: string; summary?: string | null; content: string; period: "day" | "week" | "month" },
+) {
+  const token = process.env.HEALTHY_LIFE_TELEGRAM_BOT_TOKEN;
+  if (!token) return;
+
+  const profile = await prisma.profile.findUnique({
+    where: { id: profileId },
+    select: { telegramChatId: true, botLoggedOut: true },
+  });
+  if (!profile?.telegramChatId || profile.botLoggedOut) return;
+
+  const icon = advice.period === "day" ? "📊" : advice.period === "week" ? "📅" : "🗓";
+  const parts = [`${icon} ${advice.title}`];
+  if (advice.summary?.trim()) parts.push(advice.summary.trim());
+  if (advice.content?.trim()) parts.push(advice.content.trim());
+  await sendTelegramLongMessage(profile.telegramChatId, parts.join("\n\n"));
+}
+
 export async function claimReminderSlot(params: {
   profileId: string;
   kind: string;

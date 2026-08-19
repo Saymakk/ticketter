@@ -28,6 +28,7 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
 import { normalizePhone, phoneToEmail, phoneAuthEmailCandidates } from "../lib/auth/phone";
 import { isValidPassword } from "../lib/auth/password";
+import { weekKey, monthKey } from "../lib/healthy-life/dates";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -149,8 +150,15 @@ const translations: Record<string, Record<string, string>> = {
     cal_prev: "◀️", cal_next: "▶️",
     // Advice
     advice_prompt: "Выберите тип совета:",
-    advice_day: "📊 День", advice_week: "📊 Неделя", advice_month: "📊 Месяц",
+    advice_mode_prompt: "Как посмотреть анализ?",
+    advice_calendar: "📅 Календарь",
+    advice_last: "📋 Последний анализ",
+    advice_pick_date: "Выберите дату (активные дни в [скобках]):",
     advice_none: "Советов за этот период пока нет.",
+    btn_photo: "📷 Фото",
+    photo_pick_hint: "Нажмите «Фото» у нужной записи:",
+    photo_none: "Фото не найдено",
+    advice_day: "📊 День", advice_week: "📊 Неделя", advice_month: "📊 Месяц",
     advice_title: "💡 Совет ({period})",
     advice_newer: "▶️ Новее", advice_older: "◀️ Старше",
     // Profile
@@ -319,8 +327,15 @@ const translations: Record<string, Record<string, string>> = {
     history_pick_end: "📅 Now pick end date (or same day):",
     cal_prev: "◀️", cal_next: "▶️",
     advice_prompt: "Choose advice type:",
-    advice_day: "📊 Day", advice_week: "📊 Week", advice_month: "📊 Month",
+    advice_mode_prompt: "How do you want to view the analysis?",
+    advice_calendar: "📅 Calendar",
+    advice_last: "📋 Latest analysis",
+    advice_pick_date: "Pick a date (active days in [brackets]):",
     advice_none: "No advice for this period yet.",
+    btn_photo: "📷 Photo",
+    photo_pick_hint: "Tap Photo for the entry you need:",
+    photo_none: "Photo not found",
+    advice_day: "📊 Day", advice_week: "📊 Week", advice_month: "📊 Month",
     advice_title: "💡 Advice ({period})",
     advice_newer: "▶️ Newer", advice_older: "◀️ Older",
     profile_edit: "✏️ Edit",
@@ -487,8 +502,15 @@ const translations: Record<string, Record<string, string>> = {
     history_pick_end: "📅 Аяқталу күнін таңдаңыз (немесе сол күн):",
     cal_prev: "◀️", cal_next: "▶️",
     advice_prompt: "Кеңес түрін таңдаңыз:",
-    advice_day: "📊 Күн", advice_week: "📊 Апта", advice_month: "📊 Ай",
+    advice_mode_prompt: "Талдауды қалай көресіз?",
+    advice_calendar: "📅 Күнтізбе",
+    advice_last: "📋 Соңғы талдау",
+    advice_pick_date: "Күнді таңдаңыз (белсенді күндер [жақша]да):",
     advice_none: "Бұл кезеңге кеңес жоқ.",
+    btn_photo: "📷 Фото",
+    photo_pick_hint: "Фото үшін жазbаны таңдаңыз:",
+    photo_none: "Фото табылмады",
+    advice_day: "📊 Күн", advice_week: "📊 Апта", advice_month: "📊 Ай",
     advice_title: "💡 Кеңес ({period})",
     advice_newer: "▶️ Жаңа", advice_older: "◀️ Ескі",
     profile_edit: "✏️ Өзгерту",
@@ -754,6 +776,14 @@ async function goBack(ctx: Context) {
   if (to === "mslist") return showMealSchedules(ctx);
   if (to === "dslist") return showMedSchedules(ctx);
   if (to === "settings") return showSettings(ctx);
+  if (to === "advice:pick") {
+    await showAdvice(ctx);
+    return;
+  }
+  if (to === "advice:mode" && st?.profileId) {
+    await showAdviceMode(ctx, st.profileId, st.locale || "ru", String(st.data?.advicePeriod || "day"));
+    return;
+  }
   if (to === "sch_meal_card" && st?.data?.planId) return showMealPlanCard(ctx, st.data.planId);
   if (to === "sch_med_card" && st?.data?.planId) return showMedPlanCard(ctx, st.data.planId);
   clearState(chatId);
@@ -1304,6 +1334,107 @@ async function getActiveDays(profileId: string, year: number, month0: number): P
   return set;
 }
 
+type PhotoButtonItem = { id: string; label: string; kind: "meal" | "med-intake" | "med-plan" };
+
+async function intakePhotoItems(intakes: { id: string; name: string; photoPath: string | null; planId: string | null }[]): Promise<PhotoButtonItem[]> {
+  const items: PhotoButtonItem[] = [];
+  const planIds = [...new Set(intakes.filter((i) => !i.photoPath && i.planId).map((i) => i.planId!))];
+  const plans = planIds.length
+    ? await prisma.medicationPlan.findMany({ where: { id: { in: planIds } }, select: { id: true, photoPath: true } })
+    : [];
+  const planPhotos = new Set(plans.filter((p) => p.photoPath).map((p) => p.id));
+  for (const i of intakes) {
+    if (i.photoPath || (i.planId && planPhotos.has(i.planId))) {
+      items.push({ id: i.id, label: i.name, kind: "med-intake" });
+    }
+  }
+  return items;
+}
+
+async function sendPhotoButtons(ctx: Context, locale: string, items: PhotoButtonItem[]) {
+  if (items.length === 0) return;
+  const ik = new InlineKeyboard();
+  for (const item of items) {
+    const short = item.label.length > 22 ? `${item.label.slice(0, 22)}…` : item.label;
+    ik.text(`${botT(locale, "btn_photo")} · ${short}`, `photo:${item.kind}:${item.id}`).row();
+  }
+  await ctx.reply(botT(locale, "photo_pick_hint"), { reply_markup: ik });
+}
+
+async function resolvePhotoUrl(kind: string, id: string): Promise<string | null> {
+  if (kind === "meal") {
+    const m = await prisma.meal.findUnique({ where: { id } });
+    return m?.photoPath ?? null;
+  }
+  if (kind === "med-intake") {
+    const intake = await prisma.medicationIntake.findUnique({ where: { id } });
+    if (intake?.photoPath) return intake.photoPath;
+    if (intake?.planId) {
+      const plan = await prisma.medicationPlan.findUnique({ where: { id: intake.planId } });
+      return plan?.photoPath ?? null;
+    }
+    return null;
+  }
+  if (kind === "med-plan") {
+    const plan = await prisma.medicationPlan.findUnique({ where: { id } });
+    return plan?.photoPath ?? null;
+  }
+  return null;
+}
+
+async function advicePeriodKeyForDate(period: string, dateStr: string, locale: string): Promise<string> {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  if (period === "day") return dateStr;
+  if (period === "week") return weekKey(date);
+  return monthKey(date);
+}
+
+async function sendAdviceRecord(ctx: Context, profileId: string, locale: string, advice: { title: string; summary: string | null; content: string; periodKey: string; period: string }) {
+  const periodLabel = advice.periodKey.split("__")[0];
+  let text = botT(locale, "advice_title", { period: periodLabel }) + "\n\n";
+  text += `📌 ${advice.title}\n\n`;
+  if (advice.summary) text += `${advice.summary}\n\n`;
+  text += advice.content;
+  setState(ctx.chat!.id, {
+    step: "advice:page",
+    profileId,
+    locale,
+    data: { backTo: "advice:mode", advicePeriod: advice.period },
+  });
+  await replyKb(ctx, text, kb([[botT(locale, "kb_back")]]), false);
+}
+
+async function showAdviceCalendar(ctx: Context, profileId: string, locale: string, period: string) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  setState(ctx.chat!.id, {
+    step: "advice:cal",
+    profileId,
+    locale,
+    data: { backTo: "advice:mode", advicePeriod: period },
+  });
+  await sweepChat(ctx);
+  const calKb = buildCalendarKeyboard(year, month, locale, "acal_", await getActiveDays(profileId, year, month));
+  const msg = await ctx.reply(botT(locale, "advice_pick_date"), { reply_markup: calKb });
+  rememberMsg(ctx.chat!.id, msg.message_id);
+}
+
+async function showAdviceMode(ctx: Context, profileId: string, locale: string, period: string) {
+  setState(ctx.chat!.id, {
+    step: "advice:mode",
+    profileId,
+    locale,
+    data: { backTo: "advice:pick", advicePeriod: period },
+  });
+  await replyKb(ctx, botT(locale, "advice_mode_prompt"), kb([
+    [botT(locale, "advice_calendar")],
+    [botT(locale, "advice_last")],
+    [botT(locale, "kb_back")],
+  ]));
+}
+
 async function sendRangeSummary(ctx: Context, profileId: string, locale: string, timezone: string, from: string, to: string) {
   const dates: string[] = [];
   const cur = new Date(from);
@@ -1360,6 +1491,12 @@ async function sendRangeSummary(ctx: Context, profileId: string, locale: string,
   }
 
   await replyMain(ctx, text, locale);
+  const photoItems: PhotoButtonItem[] = [];
+  for (const m of allMeals) {
+    if (m.photoPath) photoItems.push({ id: m.id, label: m.name, kind: "meal" });
+  }
+  photoItems.push(...(await intakePhotoItems(allIntakes)));
+  await sendPhotoButtons(ctx, locale, photoItems);
 }
 
 const EDIT_WINDOW_MS = 60 * 60 * 1000;
@@ -1438,11 +1575,10 @@ async function sendTodaySection(ctx: Context, section: "meals" | "meds" | "worko
     }
     setState(ctx.chat!.id, { step: "today:meals", profileId: auth.profileId, locale: l, data: { backTo: "today", editMap, section } });
     await replyKb(ctx, text, kb([...rows, [botT(l, "kb_back")]]), false);
-    for (const m of meals) {
-      if (m.photoPath) {
-        try { await ctx.replyWithPhoto(m.photoPath, { caption: `🍽 ${m.name} — ${Math.round(m.calories)} ккал` }); } catch {}
-      }
-    }
+    const photoItems: PhotoButtonItem[] = meals
+      .filter((m) => m.photoPath)
+      .map((m) => ({ id: m.id, label: m.name, kind: "meal" as const }));
+    await sendPhotoButtons(ctx, l, photoItems);
     return;
   }
 
@@ -1465,6 +1601,7 @@ async function sendTodaySection(ctx: Context, section: "meals" | "meds" | "worko
     }
     setState(ctx.chat!.id, { step: "today:meds", profileId: auth.profileId, locale: l, data: { backTo: "today", editMap, section } });
     await replyKb(ctx, text, kb([...rows, [botT(l, "kb_back")]]), false);
+    await sendPhotoButtons(ctx, l, await intakePhotoItems(intakes));
     return;
   }
 
@@ -1528,6 +1665,12 @@ async function sendDaySummary(ctx: Context, profileId: string, locale: string, t
 
   text += weight ? botT(locale, "today_weight", { weight: weight.weightKg }) : botT(locale, "today_no_weight");
   await replyMain(ctx, text, locale);
+  const photoItems: PhotoButtonItem[] = [];
+  for (const m of meals) {
+    if (m.photoPath) photoItems.push({ id: m.id, label: m.name, kind: "meal" });
+  }
+  photoItems.push(...(await intakePhotoItems(intakes)));
+  await sendPhotoButtons(ctx, locale, photoItems);
 }
 
 async function showHistory(ctx: Context) {
@@ -1581,7 +1724,7 @@ async function sendAdvicePage(ctx: Context, chatId: number, period: string, offs
   if (offset + 1 < total) nav.push(botT(l, "advice_older"));
   if (nav.length) rows.push(nav);
   rows.push([botT(l, "kb_back")]);
-  setState(chatId, { step: "advice:page", profileId: profile.id, locale: l, data: { backTo: "main", advicePeriod: period, adviceOffset: offset } });
+  setState(chatId, { step: "advice:page", profileId: profile.id, locale: l, data: { backTo: "advice:mode", advicePeriod: period, adviceOffset: offset } });
   await replyKb(ctx, text, kb(rows), false);
 }
 
@@ -1781,6 +1924,7 @@ async function showMedPlanCard(ctx: Context, planId: string) {
     [botT(l, "sch_edit_name"), botT(l, "sch_edit_dosage")],
     [botT(l, "sch_edit_times"), botT(l, "sch_edit_rec")],
     [plan.active ? botT(l, "sch_pause") : botT(l, "sch_resume"), botT(l, "sch_delete")],
+    ...(plan.photoPath ? [[botT(l, "btn_photo")]] : []),
     [botT(l, "kb_back")],
   ]));
 }
@@ -1832,6 +1976,7 @@ async function saveNewSchedule(ctx: Context, st: UserState) {
         profileId: st.profileId!,
         name: st.data!.name,
         dosage: st.data!.dosage || null,
+        photoPath: st.data!.photoPath ? String(st.data!.photoPath) : null,
         timesJson,
         recurrence: rec,
         weekdaysJson,
@@ -2236,6 +2381,64 @@ bot.on("callback_query:data", async (ctx) => {
       const period = parts[1];
       const offset = parseInt(parts[2] || "0", 10);
       await sendAdvicePage(ctx, chatId, period, offset);
+      return;
+    }
+
+    if (data.startsWith("photo:")) {
+      const [, kind, id] = data.split(":");
+      const profile = await getProfileByChatId(chatId);
+      const l = profile?.preferredLocale || "ru";
+      const url = await resolvePhotoUrl(kind, id);
+      if (url) {
+        await ctx.answerCallbackQuery();
+        await ctx.replyWithPhoto(url);
+      } else {
+        await ctx.answerCallbackQuery({ text: botT(l, "photo_none"), show_alert: true });
+      }
+      return;
+    }
+
+    if (data.startsWith("acal_nav:")) {
+      const st = getState(chatId);
+      if (!st?.profileId) return;
+      const parts = data.replace("acal_nav:", "").split(":");
+      const [ym, dir] = [parts[0], parseInt(parts[1], 10)];
+      const [y, m1] = ym.split("-").map(Number);
+      let newMonth0 = m1 - 1 + dir;
+      let newYear = y;
+      if (newMonth0 < 0) { newMonth0 = 11; newYear--; }
+      if (newMonth0 > 11) { newMonth0 = 0; newYear++; }
+      const activeDays = await getActiveDays(st.profileId, newYear, newMonth0);
+      const kb = buildCalendarKeyboard(newYear, newMonth0, st.locale!, "acal_", activeDays);
+      try {
+        await ctx.editMessageText(botT(st.locale!, "advice_pick_date"), { reply_markup: kb });
+      } catch {
+        await ctx.reply(botT(st.locale!, "advice_pick_date"), { reply_markup: kb });
+      }
+      return;
+    }
+
+    if (data.startsWith("acal_pick:")) {
+      const st = getState(chatId);
+      if (!st?.profileId) return;
+      const pickedDate = data.replace("acal_pick:", "");
+      const period = String(st.data?.advicePeriod || "day");
+      const locale = st.locale || "ru";
+      const keyBase = await advicePeriodKeyForDate(period, pickedDate, locale);
+      const adv = await prisma.advice.findFirst({
+        where: {
+          profileId: st.profileId,
+          period,
+          periodKey: { startsWith: `${keyBase}__` },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      if (!adv) {
+        await ctx.answerCallbackQuery({ text: botT(locale, "advice_none"), show_alert: true });
+        return;
+      }
+      await ctx.answerCallbackQuery();
+      await sendAdviceRecord(ctx, st.profileId, locale, adv);
       return;
     }
 
@@ -2775,16 +2978,23 @@ async function handleScreen(ctx: Context, text: string, st: UserState): Promise<
     }
   }
 
-  if (st.step === "advice:pick" || st.step === "advice:page") {
-    if (text === botT(l, "advice_day")) { await sendAdvicePage(ctx, chatId, "day", 0); return true; }
-    if (text === botT(l, "advice_week")) { await sendAdvicePage(ctx, chatId, "week", 0); return true; }
-    if (text === botT(l, "advice_month")) { await sendAdvicePage(ctx, chatId, "month", 0); return true; }
-    if (st.step === "advice:page") {
-      const period = st.data?.advicePeriod || "day";
-      const offset = st.data?.adviceOffset || 0;
-      if (text === botT(l, "advice_newer")) { await sendAdvicePage(ctx, chatId, period, Math.max(0, offset - 1)); return true; }
-      if (text === botT(l, "advice_older")) { await sendAdvicePage(ctx, chatId, period, offset + 1); return true; }
-    }
+  if (st.step === "advice:pick") {
+    if (text === botT(l, "advice_day")) { await showAdviceMode(ctx, st.profileId!, l, "day"); return true; }
+    if (text === botT(l, "advice_week")) { await showAdviceMode(ctx, st.profileId!, l, "week"); return true; }
+    if (text === botT(l, "advice_month")) { await showAdviceMode(ctx, st.profileId!, l, "month"); return true; }
+  }
+
+  if (st.step === "advice:mode") {
+    const period = String(st.data?.advicePeriod || "day");
+    if (text === botT(l, "advice_calendar")) { await showAdviceCalendar(ctx, st.profileId!, l, period); return true; }
+    if (text === botT(l, "advice_last")) { await sendAdvicePage(ctx, chatId, period, 0); return true; }
+  }
+
+  if (st.step === "advice:page") {
+    const period = st.data?.advicePeriod || "day";
+    const offset = st.data?.adviceOffset || 0;
+    if (text === botT(l, "advice_newer")) { await sendAdvicePage(ctx, chatId, period, Math.max(0, offset - 1)); return true; }
+    if (text === botT(l, "advice_older")) { await sendAdvicePage(ctx, chatId, period, offset + 1); return true; }
   }
 
   if (st.step === "settings:menu") {
@@ -2876,6 +3086,14 @@ async function handleScreen(ctx: Context, text: string, st: UserState): Promise<
     const kind = st.step === "sch:meal:card" ? "meal" : "med";
     const planId = st.data?.planId as string;
     if (!planId) return false;
+    if (text === botT(l, "btn_photo")) {
+      if (kind === "med") {
+        const url = await resolvePhotoUrl("med-plan", planId);
+        if (url) await ctx.replyWithPhoto(url);
+        else await ctx.reply(botT(l, "photo_none"));
+      }
+      return true;
+    }
     if (text === `✅ ${botT(l, "taken")}`) {
       if (kind === "meal") await markMealTaken(ctx, planId);
       else await markMedTaken(ctx, planId);
@@ -3505,7 +3723,9 @@ bot.on("message:photo", async (ctx) => {
       const analyzing = await ctx.reply(botT(st.locale!, "med_photo_analyzing"));
       rememberMsg(ctx.chat.id, analyzing.message_id);
       const { buffer, base64 } = await downloadTelegramPhoto(ctx);
-      try { await uploadPhotoToStorage(buffer, "medications"); } catch {}
+      let photoPath: string | null = null;
+      try { photoPath = await uploadPhotoToStorage(buffer, "medications"); } catch {}
+      st.data!.photoPath = photoPath;
       const aiLang = AI_LANGUAGE[st.locale!] || AI_LANGUAGE.en;
       const result = await visionJson(
         base64,
