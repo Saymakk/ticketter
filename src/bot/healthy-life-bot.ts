@@ -144,7 +144,7 @@ const translations: Record<string, Record<string, string>> = {
     phone_saved: "✅ Телефон: {phone}", email_info: "📧 {email}",
     timezone_prompt: "Введите часовой пояс (например Asia/Almaty):", timezone_saved: "✅ Часовой пояс: {tz}",
     error: "❌ Ошибка. Попробуйте ещё раз.",
-    help: "📖 Команды:\n/meal — Еда\n/med — Лекарство\n/weight — Вес\n/workout — Тренировка\n/today — Сводка\n/history — История\n/advice — Советы\n/schedules — Расписания\n/settings — Настройки\n/cancel — Отмена",
+    help: "📖 Команды:\n/meal — Еда и расписание питания\n/med — Лекарства и расписание\n/weight — Вес\n/workout — Тренировка\n/today — Сводка\n/history — История\n/advice — Советы\n/schedules — Расписания\n/settings — Настройки\n/cancel — Отмена",
     running: "Бег", walking: "Ходьба", cycling: "Велосипед", strength: "Силовая",
     yoga: "Йога", swimming: "Плавание", hiit: "HIIT", sports: "Спорт", other: "Другое",
     cancel: "❌ Отмена", cancelled: "Действие отменено.",
@@ -190,6 +190,56 @@ const translations: Record<string, Record<string, string>> = {
     edit_med_time: "Новое время (или /skip):",
     entry_deleted: "✅ Запись удалена.", entry_updated: "✅ Запись обновлена!",
     edit_choose: "Что редактировать?",
+    hub_meal_hint: "Записать приём пищи или настроить расписание с напоминаниями:",
+    hub_med_hint: "Записать приём лекарства или настроить расписание с напоминаниями:",
+    hub_meal_log: "🍽 Записать приём пищи",
+    hub_meal_label: "📋 Сфотографировать этикетку",
+    hub_meal_sched: "📅 Расписание питания",
+    hub_med_log: "💊 Записать приём лекарства",
+    hub_med_sched: "📅 Расписание лекарств",
+    sch_pick_kind: "Какое расписание открыть?",
+    sch_meal_title: "📅 Расписание питания",
+    sch_med_title: "📅 Расписание лекарств",
+    sch_empty: "Пока пусто. Добавьте приём — бот будет напоминать в указанное время.",
+    sch_pick: "Нажмите на пункт, чтобы посмотреть или изменить:",
+    sch_add: "➕ Добавить в расписание",
+    sch_paused: "на паузе",
+    sch_active: "активно",
+    sch_back: "◀️ К списку",
+    sch_pause: "⏸ Пауза",
+    sch_resume: "▶️ Включить",
+    sch_delete: "🗑 Удалить",
+    sch_edit_name: "✏️ Название",
+    sch_edit_times: "🕐 Время",
+    sch_edit_rec: "🔁 Повтор",
+    sch_edit_type: "🍽 Тип",
+    sch_edit_dosage: "💊 Доза",
+    sch_name_prompt: "Название расписания (например Завтрак):",
+    sch_med_name_prompt: "Название лекарства (или фото упаковки):",
+    sch_times_prompt: "Время напоминаний через пробел или запятую.\nПример: 08:00 13:00 20:00\nМожно с точкой: 08.00, 13.00",
+    sch_times_invalid: "Не распознал время. Пример: 08:00 20:00",
+    sch_rec_prompt: "Как часто напоминать?",
+    sch_rec_daily: "Каждый день",
+    sch_rec_weekly: "По дням недели",
+    sch_rec_interval: "Через несколько дней",
+    sch_weekdays_prompt: "Выберите дни и нажмите «Готово»:",
+    sch_weekdays_done: "Готово",
+    sch_weekdays_need: "Выберите хотя бы один день.",
+    sch_interval_prompt: "Каждые сколько дней? (число, например 2):",
+    sch_interval_invalid: "Введите целое число от 1.",
+    sch_saved: "✅ Расписание сохранено. Напоминания будут приходить в Telegram.",
+    sch_updated: "✅ Расписание обновлено.",
+    sch_deleted: "✅ Расписание удалено.",
+    sch_paused_ok: "⏸ «{name}» на паузе — напоминания не приходят.",
+    sch_resumed_ok: "▶️ «{name}» снова активно.",
+    sch_delete_confirm: "Удалить расписание «{name}»?",
+    sch_type_prompt: "Тип приёма пищи:",
+    sch_card_times: "Время: {times}",
+    sch_card_rec: "Повтор: {rec}",
+    sch_card_status: "Статус: {status}",
+    sch_card_type: "Тип: {type}",
+    sch_card_dosage: "Дозировка: {dosage}",
+    sch_notify_hint: "Уведомления приходят в этот чат в указанное время.",
   },
   en: {
     welcome: "Welcome to Healthy Life! 🌿",
@@ -280,6 +330,56 @@ const translations: Record<string, Record<string, string>> = {
     edit_med_time: "New time (or /skip):",
     entry_deleted: "✅ Entry deleted.", entry_updated: "✅ Entry updated!",
     edit_choose: "What to edit?",
+    hub_meal_hint: "Log a meal or set up a meal schedule with reminders:",
+    hub_med_hint: "Log a dose or set up a medication schedule with reminders:",
+    hub_meal_log: "🍽 Log a meal",
+    hub_meal_label: "📋 Scan nutrition label",
+    hub_meal_sched: "📅 Meal schedule",
+    hub_med_log: "💊 Log a dose",
+    hub_med_sched: "📅 Medication schedule",
+    sch_pick_kind: "Which schedule to open?",
+    sch_meal_title: "📅 Meal schedule",
+    sch_med_title: "📅 Medication schedule",
+    sch_empty: "Nothing yet. Add a slot — the bot will remind you at those times.",
+    sch_pick: "Tap an item to view or edit:",
+    sch_add: "➕ Add to schedule",
+    sch_paused: "paused",
+    sch_active: "active",
+    sch_back: "◀️ Back to list",
+    sch_pause: "⏸ Pause",
+    sch_resume: "▶️ Resume",
+    sch_delete: "🗑 Delete",
+    sch_edit_name: "✏️ Name",
+    sch_edit_times: "🕐 Times",
+    sch_edit_rec: "🔁 Repeat",
+    sch_edit_type: "🍽 Type",
+    sch_edit_dosage: "💊 Dosage",
+    sch_name_prompt: "Schedule name (e.g. Breakfast):",
+    sch_med_name_prompt: "Medication name (or pack photo):",
+    sch_times_prompt: "Reminder times, space or comma separated.\nExample: 08:00 13:00 20:00\nDots work too: 08.00, 13.00",
+    sch_times_invalid: "Could not parse times. Example: 08:00 20:00",
+    sch_rec_prompt: "How often should I remind you?",
+    sch_rec_daily: "Every day",
+    sch_rec_weekly: "On weekdays",
+    sch_rec_interval: "Every N days",
+    sch_weekdays_prompt: "Pick days, then tap Done:",
+    sch_weekdays_done: "Done",
+    sch_weekdays_need: "Pick at least one day.",
+    sch_interval_prompt: "Every how many days? (e.g. 2):",
+    sch_interval_invalid: "Enter a whole number from 1.",
+    sch_saved: "✅ Schedule saved. Reminders will come in Telegram.",
+    sch_updated: "✅ Schedule updated.",
+    sch_deleted: "✅ Schedule deleted.",
+    sch_paused_ok: "⏸ «{name}» paused — no more reminders.",
+    sch_resumed_ok: "▶️ «{name}» is active again.",
+    sch_delete_confirm: "Delete schedule «{name}»?",
+    sch_type_prompt: "Meal type:",
+    sch_card_times: "Times: {times}",
+    sch_card_rec: "Repeat: {rec}",
+    sch_card_status: "Status: {status}",
+    sch_card_type: "Type: {type}",
+    sch_card_dosage: "Dosage: {dosage}",
+    sch_notify_hint: "Reminders arrive in this chat at the times you set.",
   },
   kk: {
     welcome: "Healthy Life-қа қош келдіңіз! 🌿",
@@ -370,6 +470,56 @@ const translations: Record<string, Record<string, string>> = {
     edit_med_time: "Жаңа уақыт (немесе /skip):",
     entry_deleted: "✅ Жазба жойылды.", entry_updated: "✅ Жазба жаңартылды!",
     edit_choose: "Нені өзгертесіз?",
+    hub_meal_hint: "Тамақтануды жазыңыз немесе еске салу кестесін баптаңыз:",
+    hub_med_hint: "Дәрі қабылдауды жазыңыз немесе еске салу кестесін баптаңыз:",
+    hub_meal_log: "🍽 Тамақтануды жазу",
+    hub_meal_label: "📋 Этикетканы суретке түсіру",
+    hub_meal_sched: "📅 Тамақ кестесі",
+    hub_med_log: "💊 Дәрі қабылдауды жазу",
+    hub_med_sched: "📅 Дәрі кестесі",
+    sch_pick_kind: "Қай кестені ашамыз?",
+    sch_meal_title: "📅 Тамақ кестесі",
+    sch_med_title: "📅 Дәрі кестесі",
+    sch_empty: "Әзірге бос. Қабылдау қосыңыз — бот сол уақытта еске салады.",
+    sch_pick: "Қарау немесе өзгерту үшін түртіңіз:",
+    sch_add: "➕ Кестеге қосу",
+    sch_paused: "кідіртілген",
+    sch_active: "белсенді",
+    sch_back: "◀️ Тізімге",
+    sch_pause: "⏸ Кідірту",
+    sch_resume: "▶️ Қосу",
+    sch_delete: "🗑 Жою",
+    sch_edit_name: "✏️ Атауы",
+    sch_edit_times: "🕐 Уақыт",
+    sch_edit_rec: "🔁 Қайталау",
+    sch_edit_type: "🍽 Түрі",
+    sch_edit_dosage: "💊 Доза",
+    sch_name_prompt: "Кесте атауы (мысалы Таңғы ас):",
+    sch_med_name_prompt: "Дәрі атауы (немесе қаптама суреті):",
+    sch_times_prompt: "Еске салу уақыттары, бос орын немесе үтір арқылы.\nМысал: 08:00 13:00 20:00\nНүкте де болады: 08.00, 13.00",
+    sch_times_invalid: "Уақытты тани алмадым. Мысал: 08:00 20:00",
+    sch_rec_prompt: "Қаншалықты жиі еске салайын?",
+    sch_rec_daily: "Күн сайын",
+    sch_rec_weekly: "Апта күндері",
+    sch_rec_interval: "Бірнеше күннен кейін",
+    sch_weekdays_prompt: "Күндерді таңдап, «Дайын» басыңыз:",
+    sch_weekdays_done: "Дайын",
+    sch_weekdays_need: "Кемінде бір күн таңдаңыз.",
+    sch_interval_prompt: "Неше күн сайын? (мысалы 2):",
+    sch_interval_invalid: "1-ден бастап бүтін сан енгізіңіз.",
+    sch_saved: "✅ Кесте сақталды. Еске салулар Telegram-ға келеді.",
+    sch_updated: "✅ Кесте жаңартылды.",
+    sch_deleted: "✅ Кесте жойылды.",
+    sch_paused_ok: "⏸ «{name}» кідіртілді — еске салулар жіберілмейді.",
+    sch_resumed_ok: "▶️ «{name}» қайта белсенді.",
+    sch_delete_confirm: "«{name}» кестесін жою?",
+    sch_type_prompt: "Тамақ түрі:",
+    sch_card_times: "Уақыт: {times}",
+    sch_card_rec: "Қайталау: {rec}",
+    sch_card_status: "Күйі: {status}",
+    sch_card_type: "Түрі: {type}",
+    sch_card_dosage: "Дозасы: {dosage}",
+    sch_notify_hint: "Еске салулар осы чатқа көрсетілген уақытта келеді.",
   },
 };
 
@@ -544,6 +694,36 @@ async function linkProfile(userId: string, chatId: number, phone?: string) {
 }
 
 // ─── Feature flows ────────────────────────────────────────────────────────────
+
+async function showMealHub(ctx: Context) {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  const l = auth.locale;
+  await ctx.reply(botT(l, "hub_meal_hint"), {
+    reply_markup: new InlineKeyboard()
+      .text(botT(l, "hub_meal_log"), "mlog").row()
+      .text(botT(l, "hub_meal_label"), "mlabel").row()
+      .text(botT(l, "hub_meal_sched"), "mslist"),
+  });
+}
+
+async function showMedHub(ctx: Context) {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  const l = auth.locale;
+  await ctx.reply(botT(l, "hub_med_hint"), {
+    reply_markup: new InlineKeyboard()
+      .text(botT(l, "hub_med_log"), "dlog").row()
+      .text(botT(l, "hub_med_sched"), "dslist"),
+  });
+}
+
+async function startLabelFlow(ctx: Context) {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  setState(ctx.chat!.id, { step: "meal:label", profileId: auth.profileId, locale: auth.locale, data: { mealType: "snack" } });
+  await replyCancel(ctx, botT(auth.locale, "meal_label_prompt"), auth.locale);
+}
 
 async function startMealFlow(ctx: Context) {
   const auth = await requireAuth(ctx);
@@ -879,57 +1059,304 @@ async function sendAdvicePage(ctx: Context, chatId: number, period: string, offs
   }
 }
 
+function parseTimesJson(json: string | null | undefined): string[] {
+  try {
+    const parsed = JSON.parse(json || "[]");
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseWeekdaysJson(json: string | null | undefined): number[] {
+  try {
+    const parsed = JSON.parse(json || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return [...new Set(parsed.map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 7))].sort((a, b) => a - b);
+  } catch {
+    return [];
+  }
+}
+
+function normalizeClock(raw: string): string | null {
+  const m = raw.trim().replace(".", ":").match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const h = Math.min(23, Math.max(0, Number(m[1])));
+  const min = Math.min(59, Math.max(0, Number(m[2])));
+  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
+function parseTimesInput(text: string): string[] {
+  const parts = text.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
+  const times = parts.map(normalizeClock).filter((t): t is string => !!t);
+  return [...new Set(times)].sort();
+}
+
+function formatRecurrence(plan: { recurrence: string; intervalDays: number; weekdaysJson: string }, locale: string): string {
+  if (plan.recurrence === "interval") return botT(locale, "schedule_interval", { n: plan.intervalDays });
+  if (plan.recurrence === "weekly") {
+    const days = parseWeekdaysJson(plan.weekdaysJson);
+    const labels = getWeekdays(locale);
+    return days.length ? days.map((d) => labels[d - 1]).join(", ") : botT(locale, "schedule_weekly");
+  }
+  return botT(locale, "schedule_daily");
+}
+
+function recKeyboard(locale: string): InlineKeyboard {
+  return new InlineKeyboard()
+    .text(botT(locale, "sch_rec_daily"), "srec:daily").row()
+    .text(botT(locale, "sch_rec_weekly"), "srec:weekly").row()
+    .text(botT(locale, "sch_rec_interval"), "srec:interval");
+}
+
+function weekdayKeyboard(selected: number[], locale: string): InlineKeyboard {
+  const kb = new InlineKeyboard();
+  const labels = getWeekdays(locale);
+  for (let i = 1; i <= 7; i++) {
+    const mark = selected.includes(i) ? "✓ " : "";
+    kb.text(`${mark}${labels[i - 1]}`, `swd:${i}`);
+    if (i === 4) kb.row();
+  }
+  kb.row().text(botT(locale, "sch_weekdays_done"), "swd:ok");
+  return kb;
+}
+
+function mealTypeKeyboard(locale: string, prefix: string): InlineKeyboard {
+  return new InlineKeyboard()
+    .text(botT(locale, "breakfast"), `${prefix}breakfast`)
+    .text(botT(locale, "lunch"), `${prefix}lunch`).row()
+    .text(botT(locale, "dinner"), `${prefix}dinner`)
+    .text(botT(locale, "snack"), `${prefix}snack`);
+}
+
 async function showSchedules(ctx: Context) {
   const auth = await requireAuth(ctx);
   if (!auth) return;
-  const mealPlans = await prisma.mealPlan.findMany({ where: { profileId: auth.profileId, active: true }, orderBy: { createdAt: "asc" } });
-  const medPlans = await prisma.medicationPlan.findMany({ where: { profileId: auth.profileId, active: true }, orderBy: { createdAt: "asc" } });
   const l = auth.locale;
+  await ctx.reply(`${botT(l, "schedules_title")}\n${botT(l, "sch_pick_kind")}\n\n${botT(l, "sch_notify_hint")}`, {
+    reply_markup: new InlineKeyboard()
+      .text(botT(l, "hub_meal_sched"), "mslist").row()
+      .text(botT(l, "hub_med_sched"), "dslist"),
+  });
+}
 
-  let text = botT(l, "schedules_title") + "\n";
-
-  if (mealPlans.length > 0) {
-    text += "\n" + botT(l, "meal_schedules");
-    for (const p of mealPlans) {
-      const times = JSON.parse(p.timesJson || "[]");
-      const rec = p.recurrence === "interval" ? botT(l, "schedule_interval", { n: p.intervalDays }) : botT(l, p.recurrence === "weekly" ? "schedule_weekly" : "schedule_daily");
-      text += `\n  • ${p.name} (${botT(l, p.mealType)}) — ${times.join(", ")} [${rec}]`;
-    }
+async function showMealSchedules(ctx: Context) {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  const l = auth.locale;
+  const plans = await prisma.mealPlan.findMany({
+    where: { profileId: auth.profileId },
+    orderBy: [{ active: "desc" }, { createdAt: "asc" }],
+  });
+  const kb = new InlineKeyboard();
+  let text = botT(l, "sch_meal_title") + "\n" + botT(l, "sch_notify_hint") + "\n";
+  if (plans.length === 0) {
+    text += "\n" + botT(l, "sch_empty");
   } else {
-    text += "\n" + botT(l, "no_meal_schedules");
-  }
-
-  if (medPlans.length > 0) {
-    text += "\n\n" + botT(l, "med_schedules");
-    for (const p of medPlans) {
-      const times = JSON.parse(p.timesJson || "[]");
-      const rec = p.recurrence === "interval" ? botT(l, "schedule_interval", { n: p.intervalDays }) : botT(l, p.recurrence === "weekly" ? "schedule_weekly" : "schedule_daily");
-      text += `\n  • 💊 ${p.name}${p.dosage ? ` (${p.dosage})` : ""} — ${times.join(", ")} [${rec}]`;
+    text += "\n" + botT(l, "sch_pick");
+    for (const p of plans) {
+      const times = parseTimesJson(p.timesJson).join(", ") || "—";
+      const rec = formatRecurrence(p, l);
+      const pause = p.active ? "" : ` · ${botT(l, "sch_paused")}`;
+      kb.text(`${p.active ? "🍽" : "⏸"} ${p.name} · ${times} [${rec}]${pause}`.slice(0, 64), `msv:${p.id}`).row();
     }
+  }
+  kb.text(botT(l, "sch_add"), "msadd");
+  await ctx.reply(text, { reply_markup: kb });
+}
+
+async function showMedSchedules(ctx: Context) {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  const l = auth.locale;
+  const plans = await prisma.medicationPlan.findMany({
+    where: { profileId: auth.profileId },
+    orderBy: [{ active: "desc" }, { createdAt: "asc" }],
+  });
+  const kb = new InlineKeyboard();
+  let text = botT(l, "sch_med_title") + "\n" + botT(l, "sch_notify_hint") + "\n";
+  if (plans.length === 0) {
+    text += "\n" + botT(l, "sch_empty");
   } else {
-    text += "\n\n" + botT(l, "no_med_schedules");
-  }
-
-  await replyMain(ctx, text, l);
-
-  // Meal plan "taken" buttons
-  if (mealPlans.length > 0) {
-    const kb = new InlineKeyboard();
-    for (const p of mealPlans) {
-      kb.text(`✅ ${botT(l, "taken")} — ${p.name}`, `taken_meal:${p.id}`).row();
+    text += "\n" + botT(l, "sch_pick");
+    for (const p of plans) {
+      const times = parseTimesJson(p.timesJson).join(", ") || "—";
+      const rec = formatRecurrence(p, l);
+      const pause = p.active ? "" : ` · ${botT(l, "sch_paused")}`;
+      const dose = p.dosage ? ` (${p.dosage})` : "";
+      kb.text(`${p.active ? "💊" : "⏸"} ${p.name}${dose} · ${times} [${rec}]${pause}`.slice(0, 64), `dsv:${p.id}`).row();
     }
-    await ctx.reply(botT(l, "meal_schedules"), { reply_markup: kb });
   }
+  kb.text(botT(l, "sch_add"), "dsadd");
+  await ctx.reply(text, { reply_markup: kb });
+}
 
-  // Med plan "taken" + "stop" buttons
-  if (medPlans.length > 0) {
-    const kb = new InlineKeyboard();
-    for (const p of medPlans) {
-      kb.text(`✅ ${botT(l, "taken")} — ${p.name}`, `taken_med:${p.id}`)
-        .text(`${botT(l, "med_stop")}`, `med_stop:${p.id}`).row();
-    }
-    await ctx.reply(botT(l, "med_schedules"), { reply_markup: kb });
+async function showMealPlanCard(ctx: Context, planId: string) {
+  const plan = await prisma.mealPlan.findUnique({ where: { id: planId } });
+  if (!plan) return;
+  const profile = await prisma.profile.findUnique({ where: { id: plan.profileId } });
+  const l = profile?.preferredLocale || "ru";
+  const times = parseTimesJson(plan.timesJson).join(", ") || "—";
+  const status = plan.active ? botT(l, "sch_active") : botT(l, "sch_paused");
+  const text = [
+    `🍽 ${plan.name}`,
+    botT(l, "sch_card_type", { type: botT(l, plan.mealType) }),
+    botT(l, "sch_card_times", { times }),
+    botT(l, "sch_card_rec", { rec: formatRecurrence(plan, l) }),
+    botT(l, "sch_card_status", { status }),
+  ].join("\n");
+  const kb = new InlineKeyboard()
+    .text(`✅ ${botT(l, "taken")}`, `taken_meal:${plan.id}`).row()
+    .text(botT(l, "sch_edit_name"), `mse:n:${plan.id}`)
+    .text(botT(l, "sch_edit_times"), `mse:t:${plan.id}`).row()
+    .text(botT(l, "sch_edit_rec"), `mse:r:${plan.id}`)
+    .text(botT(l, "sch_edit_type"), `mse:m:${plan.id}`).row()
+    .text(plan.active ? botT(l, "sch_pause") : botT(l, "sch_resume"), `msp:${plan.id}`)
+    .text(botT(l, "sch_delete"), `msd:${plan.id}`).row()
+    .text(botT(l, "sch_back"), "mslist");
+  await ctx.reply(text, { reply_markup: kb });
+}
+
+async function showMedPlanCard(ctx: Context, planId: string) {
+  const plan = await prisma.medicationPlan.findUnique({ where: { id: planId } });
+  if (!plan) return;
+  const profile = await prisma.profile.findUnique({ where: { id: plan.profileId } });
+  const l = profile?.preferredLocale || "ru";
+  const times = parseTimesJson(plan.timesJson).join(", ") || "—";
+  const status = plan.active ? botT(l, "sch_active") : botT(l, "sch_paused");
+  const text = [
+    `💊 ${plan.name}`,
+    botT(l, "sch_card_dosage", { dosage: plan.dosage || "—" }),
+    botT(l, "sch_card_times", { times }),
+    botT(l, "sch_card_rec", { rec: formatRecurrence(plan, l) }),
+    botT(l, "sch_card_status", { status }),
+  ].join("\n");
+  const kb = new InlineKeyboard()
+    .text(`✅ ${botT(l, "taken")}`, `taken_med:${plan.id}`)
+    .text(botT(l, "med_stop"), `med_stop:${plan.id}`).row()
+    .text(botT(l, "sch_edit_name"), `dse:n:${plan.id}`)
+    .text(botT(l, "sch_edit_dosage"), `dse:d:${plan.id}`).row()
+    .text(botT(l, "sch_edit_times"), `dse:t:${plan.id}`)
+    .text(botT(l, "sch_edit_rec"), `dse:r:${plan.id}`).row()
+    .text(plan.active ? botT(l, "sch_pause") : botT(l, "sch_resume"), `dsp:${plan.id}`)
+    .text(botT(l, "sch_delete"), `dsd:${plan.id}`).row()
+    .text(botT(l, "sch_back"), "dslist");
+  await ctx.reply(text, { reply_markup: kb });
+}
+
+async function beginScheduleAdd(ctx: Context, kind: "meal" | "med") {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  const l = auth.locale;
+  setState(ctx.chat!.id, { step: "sch:name", profileId: auth.profileId, locale: l, data: { kind } });
+  await replyCancel(ctx, botT(l, kind === "meal" ? "sch_name_prompt" : "sch_med_name_prompt"), l);
+}
+
+async function promptScheduleTimes(ctx: Context, st: UserState) {
+  st.step = "sch:times";
+  await replyCancel(ctx, botT(st.locale!, "sch_times_prompt"), st.locale!);
+}
+
+async function promptScheduleRecurrence(ctx: Context, st: UserState) {
+  st.step = "sch:rec";
+  await ctx.reply(botT(st.locale!, "sch_rec_prompt"), { reply_markup: recKeyboard(st.locale!) });
+}
+
+async function saveNewSchedule(ctx: Context, st: UserState) {
+  const rec = st.data!.recurrence || "daily";
+  const weekdays = rec === "weekly" ? (st.data!.weekdays as number[] || []) : [];
+  const intervalDays = rec === "interval" ? Math.max(1, Number(st.data!.intervalDays) || 1) : 1;
+  const profile = await prisma.profile.findUnique({ where: { id: st.profileId } });
+  const today = todayStr(profile?.timezone);
+  const timesJson = JSON.stringify(st.data!.times || []);
+  const weekdaysJson = rec === "weekly" ? JSON.stringify([...weekdays].sort((a, b) => a - b)) : "[]";
+  const kind = st.data!.kind as "meal" | "med";
+  if (kind === "meal") {
+    await prisma.mealPlan.create({
+      data: {
+        profileId: st.profileId!,
+        name: st.data!.name,
+        mealType: st.data!.mealType || "snack",
+        timesJson,
+        recurrence: rec,
+        weekdaysJson,
+        intervalDays,
+        anchorDate: rec === "interval" ? today : null,
+        active: true,
+      },
+    });
+  } else {
+    await prisma.medicationPlan.create({
+      data: {
+        profileId: st.profileId!,
+        name: st.data!.name,
+        dosage: st.data!.dosage || null,
+        timesJson,
+        recurrence: rec,
+        weekdaysJson,
+        intervalDays,
+        anchorDate: rec === "interval" ? today : null,
+        active: true,
+      },
+    });
   }
+  const loc = st.locale!;
+  clearState(ctx.chat!.id);
+  await replyMain(ctx, botT(loc, "sch_saved"), loc);
+  if (kind === "meal") await showMealSchedules(ctx);
+  else await showMedSchedules(ctx);
+}
+
+async function afterRecurrenceChosen(ctx: Context, st: UserState, rec: string) {
+  st.data!.recurrence = rec;
+  if (rec === "weekly") {
+    st.data!.weekdays = st.data!.weekdays || [];
+    st.step = "sch:weekdays";
+    await ctx.reply(botT(st.locale!, "sch_weekdays_prompt"), { reply_markup: weekdayKeyboard(st.data!.weekdays, st.locale!) });
+    return;
+  }
+  if (rec === "interval") {
+    st.step = "sch:interval";
+    await replyCancel(ctx, botT(st.locale!, "sch_interval_prompt"), st.locale!);
+    return;
+  }
+  if (st.data!.editId) {
+    await applySchedulePatch(ctx, st, { recurrence: "daily", weekdaysJson: "[]", intervalDays: 1, anchorDate: null });
+    return;
+  }
+  await saveNewSchedule(ctx, st);
+}
+
+async function applySchedulePatch(ctx: Context, st: UserState, data: Record<string, unknown>) {
+  const kind = st.data!.kind as "meal" | "med";
+  const id = st.data!.editId as string;
+  if (kind === "meal") await prisma.mealPlan.update({ where: { id }, data });
+  else await prisma.medicationPlan.update({ where: { id }, data });
+  const loc = st.locale!;
+  clearState(ctx.chat!.id);
+  await replyMain(ctx, botT(loc, "sch_updated"), loc);
+  if (kind === "meal") await showMealPlanCard(ctx, id);
+  else await showMedPlanCard(ctx, id);
+}
+
+async function startScheduleFieldEdit(ctx: Context, kind: "meal" | "med", field: string, id: string) {
+  const profile = await getProfileByChatId(ctx.chat!.id);
+  if (!profile) return;
+  const l = profile.preferredLocale;
+  if (field === "r") {
+    setState(ctx.chat!.id, { step: "sch:rec", profileId: profile.id, locale: l, data: { kind, editId: id } });
+    await ctx.reply(botT(l, "sch_rec_prompt"), { reply_markup: recKeyboard(l) });
+    return;
+  }
+  if (field === "m") {
+    setState(ctx.chat!.id, { step: "sch:type", profileId: profile.id, locale: l, data: { kind, editId: id } });
+    await ctx.reply(botT(l, "sch_type_prompt"), { reply_markup: mealTypeKeyboard(l, "smt:") });
+    return;
+  }
+  const step = field === "n" ? "sch_edit:name" : field === "d" ? "sch_edit:dosage" : "sch_edit:times";
+  const prompt = field === "n" ? (kind === "meal" ? "sch_name_prompt" : "sch_med_name_prompt") : field === "d" ? "med_dosage_prompt" : "sch_times_prompt";
+  setState(ctx.chat!.id, { step, profileId: profile.id, locale: l, data: { kind, editId: id } });
+  await replyCancel(ctx, botT(l, prompt), l);
 }
 
 async function showSettings(ctx: Context) {
@@ -980,8 +1407,8 @@ bot.command("cancel", async (ctx) => {
   await replyMain(ctx, botT(l, "cancelled"), l);
 });
 
-bot.command("meal", startMealFlow);
-bot.command("med", startMedFlow);
+bot.command("meal", showMealHub);
+bot.command("med", showMedHub);
 bot.command("weight", startWeightFlow);
 bot.command("workout", startWorkoutFlow);
 bot.command("today", showToday);
@@ -1048,6 +1475,129 @@ bot.on("callback_query:data", async (ctx) => {
       const locale = st?.locale || "ru";
       clearState(chatId);
       await replyMain(ctx, botT(locale, "cancelled"), locale);
+      return;
+    }
+
+    if (data === "mlog") { await startMealFlow(ctx); return; }
+    if (data === "mlabel") { await startLabelFlow(ctx); return; }
+    if (data === "mslist") { await showMealSchedules(ctx); return; }
+    if (data === "msadd") { await beginScheduleAdd(ctx, "meal"); return; }
+    if (data === "dlog") { await startMedFlow(ctx); return; }
+    if (data === "dslist") { await showMedSchedules(ctx); return; }
+    if (data === "dsadd") { await beginScheduleAdd(ctx, "med"); return; }
+    if (data.startsWith("msv:")) { await showMealPlanCard(ctx, data.slice(4)); return; }
+    if (data.startsWith("dsv:")) { await showMedPlanCard(ctx, data.slice(4)); return; }
+
+    if (data.startsWith("mse:") || data.startsWith("dse:")) {
+      const kind = data.startsWith("mse:") ? "meal" : "med";
+      const [, field, id] = data.split(":");
+      if (field && id) await startScheduleFieldEdit(ctx, kind, field, id);
+      return;
+    }
+
+    if (data.startsWith("msp:") || data.startsWith("dsp:")) {
+      const isMeal = data.startsWith("msp:");
+      const id = data.slice(4);
+      if (isMeal) {
+        const plan = await prisma.mealPlan.findUnique({ where: { id } });
+        if (!plan) return;
+        await prisma.mealPlan.update({ where: { id }, data: { active: !plan.active } });
+        const profile = await getProfileByChatId(chatId);
+        const l = profile?.preferredLocale || "ru";
+        await ctx.reply(botT(l, plan.active ? "sch_paused_ok" : "sch_resumed_ok", { name: plan.name }));
+        await showMealPlanCard(ctx, id);
+      } else {
+        const plan = await prisma.medicationPlan.findUnique({ where: { id } });
+        if (!plan) return;
+        await prisma.medicationPlan.update({ where: { id }, data: { active: !plan.active } });
+        const profile = await getProfileByChatId(chatId);
+        const l = profile?.preferredLocale || "ru";
+        await ctx.reply(botT(l, plan.active ? "sch_paused_ok" : "sch_resumed_ok", { name: plan.name }));
+        await showMedPlanCard(ctx, id);
+      }
+      return;
+    }
+
+    if (data.startsWith("msd:") || data.startsWith("dsd:")) {
+      const isMeal = data.startsWith("msd:");
+      const id = data.slice(4);
+      const plan = isMeal
+        ? await prisma.mealPlan.findUnique({ where: { id } })
+        : await prisma.medicationPlan.findUnique({ where: { id } });
+      if (!plan) return;
+      const profile = await getProfileByChatId(chatId);
+      const l = profile?.preferredLocale || "ru";
+      await ctx.reply(botT(l, "sch_delete_confirm", { name: plan.name }), {
+        reply_markup: new InlineKeyboard()
+          .text(botT(l, "yes"), `${isMeal ? "msdy" : "dsdy"}:${id}`)
+          .text(botT(l, "no"), isMeal ? "mslist" : "dslist"),
+      });
+      return;
+    }
+    if (data.startsWith("msdy:") || data.startsWith("dsdy:")) {
+      const isMeal = data.startsWith("msdy:");
+      const id = data.split(":")[1];
+      if (isMeal) await prisma.mealPlan.delete({ where: { id } }).catch(() => {});
+      else await prisma.medicationPlan.delete({ where: { id } }).catch(() => {});
+      const profile = await getProfileByChatId(chatId);
+      const l = profile?.preferredLocale || "ru";
+      await replyMain(ctx, botT(l, "sch_deleted"), l);
+      if (isMeal) await showMealSchedules(ctx);
+      else await showMedSchedules(ctx);
+      return;
+    }
+
+    if (data.startsWith("smt:")) {
+      const st = getState(chatId);
+      const type = data.slice(4);
+      if (st?.data?.editId && st.data.kind === "meal") {
+        await applySchedulePatch(ctx, st, { mealType: type });
+        return;
+      }
+      if (st) {
+        st.data!.mealType = type;
+        await promptScheduleTimes(ctx, st);
+      }
+      return;
+    }
+
+    if (data.startsWith("srec:")) {
+      const st = getState(chatId);
+      if (!st) return;
+      await afterRecurrenceChosen(ctx, st, data.slice(5));
+      return;
+    }
+
+    if (data.startsWith("swd:")) {
+      const st = getState(chatId);
+      if (!st) return;
+      const token = data.slice(4);
+      const selected: number[] = st.data!.weekdays || [];
+      if (token === "ok") {
+        if (selected.length === 0) {
+          await ctx.reply(botT(st.locale!, "sch_weekdays_need"));
+          return;
+        }
+        st.data!.weekdays = selected;
+        if (st.data!.editId) {
+          await applySchedulePatch(ctx, st, {
+            recurrence: "weekly",
+            weekdaysJson: JSON.stringify([...selected].sort((a, b) => a - b)),
+            intervalDays: 1,
+          });
+          return;
+        }
+        await saveNewSchedule(ctx, st);
+        return;
+      }
+      const day = parseInt(token, 10);
+      const next = selected.includes(day) ? selected.filter((d) => d !== day) : [...selected, day].sort((a, b) => a - b);
+      st.data!.weekdays = next;
+      try {
+        await ctx.editMessageReplyMarkup({ reply_markup: weekdayKeyboard(next, st.locale!) });
+      } catch {
+        await ctx.reply(botT(st.locale!, "sch_weekdays_prompt"), { reply_markup: weekdayKeyboard(next, st.locale!) });
+      }
       return;
     }
 
@@ -1246,7 +1796,7 @@ bot.on("callback_query:data", async (ctx) => {
           calories: 0, protein: null, fat: null, carbs: null,
         },
       });
-      try { await ctx.editMessageText(botT(l, "taken_meal_done", { name: plan.name })); } catch {}
+      try { await ctx.reply(botT(l, "taken_meal_done", { name: plan.name })); } catch {}
       return;
     }
     if (data.startsWith("taken_med:")) {
@@ -1264,7 +1814,7 @@ bot.on("callback_query:data", async (ctx) => {
           date: today, name: plan.name, dosage: plan.dosage || null, takenTime: time,
         },
       });
-      try { await ctx.editMessageText(botT(l, "taken_med_done", { name: plan.name, time })); } catch {}
+      try { await ctx.reply(botT(l, "taken_med_done", { name: plan.name, time })); } catch {}
       return;
     }
 
@@ -1431,8 +1981,8 @@ bot.on("message:contact", async (ctx) => {
 const KB_ACTIONS: Record<string, (ctx: Context) => Promise<void>> = {};
 for (const locale of Object.keys(translations)) {
   const t = translations[locale];
-  if (t.kb_meal) KB_ACTIONS[t.kb_meal] = startMealFlow;
-  if (t.kb_med) KB_ACTIONS[t.kb_med] = startMedFlow;
+  if (t.kb_meal) KB_ACTIONS[t.kb_meal] = showMealHub;
+  if (t.kb_med) KB_ACTIONS[t.kb_med] = showMedHub;
   if (t.kb_weight) KB_ACTIONS[t.kb_weight] = startWeightFlow;
   if (t.kb_workout) KB_ACTIONS[t.kb_workout] = startWorkoutFlow;
   if (t.kb_today) KB_ACTIONS[t.kb_today] = showToday;
@@ -1663,6 +2213,71 @@ bot.on("message:text", async (ctx) => {
       return;
     }
 
+    // ── Schedule create / edit ──
+    if (st.step === "sch:name") {
+      st.data!.name = text;
+      if (st.data!.kind === "meal") {
+        st.step = "sch:type";
+        await ctx.reply(botT(st.locale!, "sch_type_prompt"), { reply_markup: mealTypeKeyboard(st.locale!, "smt:") });
+      } else {
+        st.step = "sch:dosage";
+        await replyCancel(ctx, botT(st.locale!, "med_dosage_prompt"), st.locale!);
+      }
+      return;
+    }
+    if (st.step === "sch:dosage") {
+      st.data!.dosage = text === "/skip" ? "" : text;
+      await promptScheduleTimes(ctx, st);
+      return;
+    }
+    if (st.step === "sch:times") {
+      const times = parseTimesInput(text);
+      if (times.length === 0) {
+        await ctx.reply(botT(st.locale!, "sch_times_invalid"));
+        return;
+      }
+      st.data!.times = times;
+      await promptScheduleRecurrence(ctx, st);
+      return;
+    }
+    if (st.step === "sch:interval") {
+      const n = parseInt(text, 10);
+      if (!Number.isInteger(n) || n < 1) {
+        await ctx.reply(botT(st.locale!, "sch_interval_invalid"));
+        return;
+      }
+      st.data!.intervalDays = n;
+      if (st.data!.editId) {
+        const profile = await prisma.profile.findUnique({ where: { id: st.profileId } });
+        await applySchedulePatch(ctx, st, {
+          recurrence: "interval",
+          intervalDays: n,
+          weekdaysJson: "[]",
+          anchorDate: todayStr(profile?.timezone),
+        });
+        return;
+      }
+      await saveNewSchedule(ctx, st);
+      return;
+    }
+    if (st.step === "sch_edit:name") {
+      await applySchedulePatch(ctx, st, { name: text });
+      return;
+    }
+    if (st.step === "sch_edit:dosage") {
+      await applySchedulePatch(ctx, st, { dosage: text === "/skip" ? null : text });
+      return;
+    }
+    if (st.step === "sch_edit:times") {
+      const times = parseTimesInput(text);
+      if (times.length === 0) {
+        await ctx.reply(botT(st.locale!, "sch_times_invalid"));
+        return;
+      }
+      await applySchedulePatch(ctx, st, { timesJson: JSON.stringify(times) });
+      return;
+    }
+
     // ── Med flow ──
     if (st.step === "med:name") {
       st.data!.name = text; st.step = "med:dosage";
@@ -1821,6 +2436,29 @@ bot.on("message:photo", async (ctx) => {
     return;
   }
 
+  // ── Medication pack photo while adding a schedule ──
+  if (st?.step === "sch:name" && st.data?.kind === "med") {
+    try {
+      await ctx.reply(botT(st.locale!, "med_photo_analyzing"));
+      const { buffer, base64 } = await downloadTelegramPhoto(ctx);
+      try { await uploadPhotoToStorage(buffer, "medications"); } catch {}
+      const aiLang = AI_LANGUAGE[st.locale!] || AI_LANGUAGE.en;
+      const result = await visionJson(
+        base64,
+        `You are a pharmacist assistant. Identify the medication from the photo of its packaging. Answer ONLY with valid JSON, no markdown: {"name": string, "dosage": string}. Write name and dosage in ${aiLang}. If unreadable, return name="—" and dosage="".`,
+        "What medication is this? Read the name and dosage from the pack.",
+      );
+      st.data!.name = result.name;
+      st.data!.dosage = result.dosage || "";
+      await ctx.reply(botT(st.locale!, "med_photo_result", { name: `${result.name} (${result.dosage || ""})` }));
+      await promptScheduleTimes(ctx, st);
+    } catch (e: any) {
+      console.error("Schedule med photo error:", e);
+      await replyCancel(ctx, `${botT(st.locale!, "error")}\n${aiErrorDetail(e)}\n\n${botT(st.locale!, "sch_med_name_prompt")}`, st.locale!);
+    }
+    return;
+  }
+
   // ── Nutrition label photo ──
   if (st?.step === "meal:label") {
     try {
@@ -1901,8 +2539,8 @@ bot.catch((err) => { console.error("Bot error:", err); });
 async function main() {
   await bot.api.setMyCommands([
     { command: "start", description: "Главное меню" },
-    { command: "meal", description: "Записать еду" },
-    { command: "med", description: "Записать лекарство" },
+    { command: "meal", description: "Еда и расписание питания" },
+    { command: "med", description: "Лекарства и расписание" },
     { command: "weight", description: "Записать вес" },
     { command: "workout", description: "Записать тренировку" },
     { command: "today", description: "Сводка за сегодня" },
