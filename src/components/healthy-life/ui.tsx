@@ -88,15 +88,20 @@ export function Button({
 
 export function Field({
   label,
+  hint,
   children,
 }: {
   label: string;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <label className="block space-y-1.5">
       <span className="text-xs font-medium tracking-wide text-[var(--muted)] uppercase">{label}</span>
       {children}
+      {hint ? (
+        <span className="block text-xs leading-relaxed whitespace-pre-line text-[var(--muted)]">{hint}</span>
+      ) : null}
     </label>
   );
 }

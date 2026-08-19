@@ -23,17 +23,15 @@ export const kk = defineMessages({
   auth: {
     loginTitle: "Кіру",
     registerTitle: "Тіркелгі жасау",
-    subtitle: "Электрондық пошта немесе телефон және құпия сөз",
+    subtitle: "Пошта немесе телефон және құпия сөз",
     email: "Электрондық пошта",
-    phone: "Телефон",
-    methodEmail: "Пошта",
-    methodPhone: "Телефон",
-    phonePlaceholder: "+7 700 123 45 67",
+    login: "Пошта немесе телефон",
+    loginPlaceholder: "you@email.com немесе +1 202 555 0123",
     phoneHint:
-      "KZ/RU нөмірлер: +7, 8 немесе 7 және 10 цифр. Мысалы: +7 700 123 45 67, 87001234567, 7001234567. Бос орын мен сызықшаны қоюға болады.",
+      "Кез келген ел. Кодты жазыңыз: +1 202 555 0123, +44 20 7946 0958, +7 700 123 45 67. Бос орын, жақша, дефис болса да болады.",
     phoneInvalid:
-      "Телефонды +7XXXXXXXXXX, 8XXXXXXXXXX, 7XXXXXXXXXX немесе 10 цифр форматында енгізіңіз.",
-    emailInvalid: "Email енгізіңіз, мысалы name@mail.com",
+      "Нөмір қате. Ел коды бар халықаралық нөмір керек, 8–15 цифр. Мысалы: +1 202 555 0123.",
+    emailInvalid: "Бұл email емес. Мысалы: name@mail.com",
     identifierRequired: "Пошта немесе телефон енгізіңіз.",
     password: "Құпия сөз",
     confirmPassword: "Құпия сөзді растаңыз",

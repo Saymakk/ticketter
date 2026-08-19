@@ -4,6 +4,8 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { resetAuthClient } from "@/lib/healthy-life/supabase/client";
+import { looksLikeEmail, resolveAuthEmail, resolveAuthEmailCandidates } from "@/lib/auth/login";
+import { tryNormalizePhone, phoneToEmail } from "@/lib/auth/phone";
 import {
   readRememberMePreference,
   writeRememberMePreference,
@@ -12,11 +14,8 @@ import { useHlRouting } from "@/lib/healthy-life/routing";
 import { useT } from "@/lib/healthy-life/i18n";
 import { AuthNotice, type AuthNoticeTone } from "@/components/healthy-life/AuthNotice";
 import { Button, Card, Field, PageHeader, Shell, inputClass } from "@/components/healthy-life/ui";
-import { looksLikeEmail, normalizeEmail } from "@/lib/auth/login";
-import { looksLikePhone, normalizePhone, phoneAuthEmailCandidates, phoneToEmail } from "@/lib/auth/phone";
 
 type AuthMode = "login" | "register";
-type AuthMethod = "email" | "phone";
 
 function delay(ms: number) {
   return new Promise<void>((resolve) => {
@@ -31,8 +30,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const params = useSearchParams();
   const next = params.get("next") || "/";
 
-  const [method, setMethod] = useState<AuthMethod>("email");
-  const [identifier, setIdentifier] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -68,35 +66,6 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     return message;
   }
 
-  function resolveIdentifier():
-    | { ok: true; emails: string[]; authEmail: string; phone?: string }
-    | { ok: false; message: string } {
-    const raw = identifier.trim();
-    if (!raw) return { ok: false, message: t("auth.identifierRequired") };
-
-    if (looksLikeEmail(raw)) {
-      const email = normalizeEmail(raw);
-      return { ok: true, emails: [email], authEmail: email };
-    }
-
-    const asPhone = method === "phone" || looksLikePhone(raw);
-    if (asPhone) {
-      try {
-        const phone = normalizePhone(raw);
-        return {
-          ok: true,
-          emails: phoneAuthEmailCandidates(raw),
-          authEmail: phoneToEmail(phone),
-          phone,
-        };
-      } catch {
-        return { ok: false, message: t("auth.phoneInvalid") };
-      }
-    }
-
-    return { ok: false, message: t("auth.emailInvalid") };
-  }
-
   async function finishSignedIn(successMessage: string) {
     setNotice({ message: successMessage, tone: "success" });
     await delay(1100);
@@ -112,16 +81,45 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     setLoading(true);
     setNotice(null);
 
-    const resolved = resolveIdentifier();
-    if (!resolved.ok) {
+    const rawLogin = login.trim();
+    if (!rawLogin) {
       setLoading(false);
-      setNotice({ message: resolved.message, tone: "error" });
+      setNotice({ message: t("auth.identifierRequired"), tone: "error" });
       return;
     }
 
     if (password.length < 6) {
       setLoading(false);
       setNotice({ message: t("auth.passwordTooShort"), tone: "error" });
+      return;
+    }
+
+    let authEmails: string[];
+    let authMode: "email" | "phone";
+    let phone: string | undefined;
+    try {
+      if (looksLikeEmail(rawLogin) || rawLogin.includes("@")) {
+        if (!looksLikeEmail(rawLogin)) {
+          throw new Error("invalid_email");
+        }
+        const resolved = resolveAuthEmail(rawLogin);
+        authEmails = [resolved.email];
+        authMode = "email";
+      } else {
+        const normalized = tryNormalizePhone(rawLogin);
+        if (!normalized) throw new Error("invalid_phone");
+        phone = normalized;
+        authEmails = resolveAuthEmailCandidates(rawLogin).emails;
+        authMode = "phone";
+        if (authEmails.length === 0) throw new Error("invalid_phone");
+      }
+    } catch (err) {
+      setLoading(false);
+      const code = err instanceof Error ? err.message : "";
+      setNotice({
+        message: code === "invalid_email" ? t("auth.emailInvalid") : t("auth.phoneInvalid"),
+        tone: "error",
+      });
       return;
     }
 
@@ -135,10 +133,11 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           return;
         }
 
+        const primaryEmail = authMode === "phone" && phone ? phoneToEmail(phone) : authEmails[0];
         const { data, error } = await supabase.auth.signUp({
-          email: resolved.authEmail,
+          email: primaryEmail,
           password,
-          options: resolved.phone ? { data: { phone: resolved.phone } } : undefined,
+          options: phone ? { data: { phone } } : undefined,
         });
 
         if (error) {
@@ -146,9 +145,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           return;
         }
 
+        // Prefer the session from signUp; otherwise sign in immediately (auto-login).
         if (!data.session) {
           const { error: signInError } = await supabase.auth.signInWithPassword({
-            email: resolved.authEmail,
+            email: primaryEmail,
             password,
           });
 
@@ -167,7 +167,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       }
 
       let signedIn = false;
-      for (const email of resolved.emails) {
+      for (const email of authEmails) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (!error) {
           signedIn = true;
@@ -192,7 +192,6 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   }
 
   const nextQuery = next !== "/" ? `?next=${encodeURIComponent(next)}` : "";
-  const phoneMode = method === "phone";
 
   return (
     <Shell className="relative z-10 pb-10">
@@ -212,49 +211,20 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
       <Card className="relative z-10">
         <form className="space-y-3" onSubmit={onSubmit} noValidate>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              className={`rounded-2xl px-3 py-2.5 text-sm font-semibold touch-manipulation ${
-                !phoneMode
-                  ? "bg-[var(--accent)] text-white"
-                  : "bg-[var(--accent-soft)] text-[var(--accent-ink)]"
-              }`}
-              onClick={() => setMethod("email")}
-            >
-              {t("auth.methodEmail")}
-            </button>
-            <button
-              type="button"
-              className={`rounded-2xl px-3 py-2.5 text-sm font-semibold touch-manipulation ${
-                phoneMode
-                  ? "bg-[var(--accent)] text-white"
-                  : "bg-[var(--accent-soft)] text-[var(--accent-ink)]"
-              }`}
-              onClick={() => setMethod("phone")}
-            >
-              {t("auth.methodPhone")}
-            </button>
-          </div>
-
-          <Field label={phoneMode ? t("auth.phone") : t("auth.email")}>
+          <Field label={t("auth.login")} hint={t("auth.phoneHint")}>
             <input
               className={inputClass}
-              type={phoneMode ? "tel" : "email"}
-              inputMode={phoneMode ? "tel" : "email"}
-              autoComplete={phoneMode ? "tel" : "email"}
+              type="text"
+              inputMode={login.includes("@") ? "email" : "tel"}
+              autoComplete="username"
               autoCapitalize="none"
               autoCorrect="off"
               required
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              placeholder={phoneMode ? t("auth.phonePlaceholder") : "you@email.com"}
+              value={login}
+              onChange={(e) => setLogin(e.target.value)}
+              placeholder={t("auth.loginPlaceholder")}
             />
           </Field>
-          {phoneMode ? (
-            <p className="text-xs leading-relaxed text-[var(--muted)]">{t("auth.phoneHint")}</p>
-          ) : null}
-
           <div className="block space-y-1.5">
             <span className="text-xs font-medium tracking-wide text-[var(--muted)] uppercase">
               {t("auth.password")}

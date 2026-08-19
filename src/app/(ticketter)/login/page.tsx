@@ -120,9 +120,6 @@ function LoginForm() {
                 autoComplete="username"
                 required
               />
-              <span className="mt-1 block text-xs font-normal text-slate-500">
-                {t("login.phoneHint")}
-              </span>
             </label>
 
             <label className={labelClass}>

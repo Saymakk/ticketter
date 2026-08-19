@@ -1,4 +1,7 @@
-/** Нормализует телефон к формату 7XXXXXXXXXX (KZ/RU) для единого логина в Auth. */
+/**
+ * International phone for Auth: digits in E.164 (no plus), 8–15 characters.
+ * Local RU/KZ `8XXXXXXXXXX` is mapped to `7…` so old accounts still match.
+ */
 export function normalizePhone(input: string): string {
   let digits = input.replace(/\D/g, "");
 
@@ -6,32 +9,15 @@ export function normalizePhone(input: string): string {
     digits = digits.slice(2);
   }
 
-  // 8XXXXXXXXXX → 7XXXXXXXXXX
   if (digits.length === 11 && digits.startsWith("8")) {
     digits = `7${digits.slice(1)}`;
   }
 
-  // 10 цифр без кода страны → добавляем 7
-  if (digits.length === 10) {
-    digits = `7${digits}`;
-  }
-
-  if (digits.length === 11 && digits.startsWith("7")) {
+  if (digits.length >= 8 && digits.length <= 15) {
     return digits;
   }
 
-  if (digits.length < 10) {
-    throw new Error("Неверный формат телефона");
-  }
-
   throw new Error("Неверный формат телефона");
-}
-
-/** True if the input looks like a KZ/RU phone rather than an email. */
-export function looksLikePhone(input: string): boolean {
-  if (input.includes("@")) return false;
-  const digits = input.replace(/\D/g, "");
-  return digits.length >= 10 && digits.length <= 15;
 }
 
 export function phoneToEmail(phoneInput: string): string {
@@ -39,7 +25,7 @@ export function phoneToEmail(phoneInput: string): string {
   return `phone_${p}@ticketter.local`;
 }
 
-/** Варианты auth-email для входа (новый формат + legacy после старой нормализации). */
+/** Варианты auth-email для входа (актуальный + legacy после старой нормализации). */
 export function phoneAuthEmailCandidates(phoneInput: string): string[] {
   const digits = phoneInput.replace(/\D/g, "");
   const candidates = new Set<string>();
@@ -48,6 +34,10 @@ export function phoneAuthEmailCandidates(phoneInput: string): string[] {
     candidates.add(phoneToEmail(phoneInput));
   } catch {
     // ignore
+  }
+
+  if (digits.length >= 8 && digits.length <= 15) {
+    candidates.add(`phone_${digits}@ticketter.local`);
   }
 
   if (digits.length >= 10) {
@@ -72,4 +62,19 @@ export function phoneAuthEmailCandidates(phoneInput: string): string[] {
 export function last6FromPhone(phoneInput: string) {
   const p = normalizePhone(phoneInput);
   return p.slice(-6);
+}
+
+export function tryNormalizePhone(input: string): string | null {
+  try {
+    return normalizePhone(input);
+  } catch {
+    return null;
+  }
+}
+
+/** Reverse of phoneToEmail — `phone_77001234567@ticketter.local` → `77001234567`. */
+export function phoneFromAuthEmail(email: string | null | undefined): string | null {
+  if (!email) return null;
+  const m = email.trim().toLowerCase().match(/^phone_(\d{8,15})@ticketter\.local$/);
+  return m?.[1] ?? null;
 }
