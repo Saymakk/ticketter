@@ -170,6 +170,9 @@ const translations: Record<string, Record<string, string>> = {
     med_stop: "🛑 Приём окончен", med_stopped: "✅ «{name}» убран из расписания.",
     med_stop_confirm: "Убрать «{name}» из расписания? Напоминания больше не будут приходить.",
     yes: "Да", no: "Нет",
+    settings_logout: "🚪 Выйти из аккаунта",
+    logout_confirm: "Вы уверены, что хотите выйти? Привязка Telegram будет удалена.",
+    logout_done: "✅ Вы вышли из аккаунта. Напишите /start чтобы войти снова.",
     kb_cancel: "❌ Отмена", kb_back: "◀️ Назад", kb_history: "📅 История", kb_advice: "💡 Советы",
   },
   en: {
@@ -241,6 +244,9 @@ const translations: Record<string, Record<string, string>> = {
     med_stop: "🛑 Course finished", med_stopped: "✅ «{name}» removed from schedule.",
     med_stop_confirm: "Remove «{name}» from schedule? No more reminders will be sent.",
     yes: "Yes", no: "No",
+    settings_logout: "🚪 Logout",
+    logout_confirm: "Are you sure? Telegram link will be removed.",
+    logout_done: "✅ Logged out. Type /start to login again.",
     kb_cancel: "❌ Cancel", kb_back: "◀️ Back", kb_history: "📅 History", kb_advice: "💡 Advice",
   },
   kk: {
@@ -312,6 +318,9 @@ const translations: Record<string, Record<string, string>> = {
     med_stop: "🛑 Қабылдау аяқталды", med_stopped: "✅ «{name}» кестеден алынды.",
     med_stop_confirm: "«{name}» кестеден алу? Еске салулар жіберілмейді.",
     yes: "Иә", no: "Жоқ",
+    settings_logout: "🚪 Шығу",
+    logout_confirm: "Шығуға сенімдісіз бе? Telegram байланысы жойылады.",
+    logout_done: "✅ Шықтыңыз. Қайта кіру үшін /start жазыңыз.",
     kb_cancel: "❌ Болдырмау", kb_back: "◀️ Артқа", kb_history: "📅 Тарих", kb_advice: "💡 Кеңес",
   },
 };
@@ -775,6 +784,7 @@ async function showSettings(ctx: Context) {
     .text(botT(auth.locale, "settings_timezone"), "settings:timezone").row()
     .text(botT(auth.locale, "settings_email"), "settings:email").row();
   if (!profile?.phone) kb.text(botT(auth.locale, "settings_phone"), "settings:phone").row();
+  kb.text(botT(auth.locale, "settings_logout"), "settings:logout").row();
   await ctx.reply(botT(auth.locale, "settings_title"), { reply_markup: kb });
 }
 
@@ -1100,6 +1110,32 @@ bot.on("callback_query:data", async (ctx) => {
       setState(chatId, { step: "settings:phone", profileId: profile.id, locale: profile.preferredLocale, data: {} });
       const kb = new Keyboard().requestContact(botT(profile.preferredLocale, "share_contact")).resized().oneTime();
       await ctx.reply(botT(profile.preferredLocale, "enter_phone"), { reply_markup: kb });
+      return;
+    }
+    if (data === "settings:logout") {
+      const profile = await getProfileByChatId(chatId);
+      const l = profile?.preferredLocale || "ru";
+      await ctx.reply(botT(l, "logout_confirm"), {
+        reply_markup: new InlineKeyboard()
+          .text(botT(l, "yes"), "logout:yes")
+          .text(botT(l, "no"), "logout:no"),
+      });
+      return;
+    }
+    if (data === "logout:yes") {
+      const profile = await getProfileByChatId(chatId);
+      const l = profile?.preferredLocale || "ru";
+      if (profile) {
+        await prisma.profile.update({ where: { id: profile.id }, data: { telegramChatId: null } });
+      }
+      clearState(chatId);
+      await ctx.reply(botT(l, "logout_done"), { reply_markup: { remove_keyboard: true } });
+      return;
+    }
+    if (data === "logout:no") {
+      const profile = await getProfileByChatId(chatId);
+      const l = profile?.preferredLocale || "ru";
+      await replyMain(ctx, botT(l, "cancelled"), l);
       return;
     }
     if (data === "settings:timezone") {
