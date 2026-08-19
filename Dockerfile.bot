@@ -1,0 +1,12 @@
+FROM node:22-alpine
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+RUN npm ci && npx prisma generate
+
+COPY src/bot ./src/bot
+COPY src/lib/auth/phone.ts ./src/lib/auth/phone.ts
+
+ENV NODE_ENV=production
+CMD ["npx", "tsx", "src/bot/healthy-life-bot.ts"]

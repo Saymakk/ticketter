@@ -24,3 +24,13 @@ services:
     environment:
       SUPABASE_PROVIDER: cloud
     restart: unless-stopped
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    env_file:
+      - .env
+    environment:
+      SUPABASE_PROVIDER: cloud
+    restart: unless-stopped
