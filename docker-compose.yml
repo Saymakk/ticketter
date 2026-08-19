@@ -34,3 +34,25 @@ services:
     environment:
       SUPABASE_PROVIDER: cloud
     restart: unless-stopped
+    depends_on:
+      - ticketter
+
+  reminders:
+    image: curlimages/curl:8.16.0
+    env_file:
+      - .env
+    depends_on:
+      - ticketter
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "reminder loop started"
+        sleep 20
+        while true; do
+          curl -sS -o /dev/null -w "reminders HTTP %{http_code}\n" \
+            -H "Authorization: Bearer $$HEALTHY_LIFE_CRON_SECRET" \
+            "http://ticketter:3000/api/cron/healthy-life-reminders" || true
+          sleep 60
+        done
+

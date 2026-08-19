@@ -48,6 +48,22 @@ export function getZonedNow(timeZone: string, date = new Date()): ZonedNow {
   }
 }
 
+function minutesOf(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return -1;
+  return h * 60 + m;
+}
+
+/** True if slot is due now or was due in the last `windowMin` minutes (cron can skip a tick). */
+export function isTimeDue(slot: string, nowKey: string, windowMin = 5): boolean {
+  const slotM = minutesOf(slot);
+  const nowM = minutesOf(nowKey);
+  if (slotM < 0 || nowM < 0) return false;
+  let diff = nowM - slotM;
+  if (diff < 0) diff += 24 * 60;
+  return diff >= 0 && diff < windowMin;
+}
+
 function parseMealReminderTimes(raw: string | null | undefined): string[] {
   if (!raw) return [];
   try {
@@ -120,10 +136,9 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
 
   const profiles = await prisma.profile.findMany({
     where: {
-      pushEnabled: true,
       OR: [
-        { pushSubscriptions: { some: {} } },
-        { telegramChatId: { not: null } },
+        { pushEnabled: true, pushSubscriptions: { some: {} } },
+        { telegramChatId: { not: null }, botLoggedOut: false },
       ],
     },
     include: {
@@ -142,20 +157,19 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
       for (const plan of profile.medicationPlans) {
         if (!isPlanScheduledOnDate(plan, zoned.dateKey)) continue;
         const times = parsePlanTimes(plan.timesJson);
-        if (!times.includes(zoned.timeKey)) continue;
-
+        for (const dueSlot of times.filter((t) => isTimeDue(t, zoned.timeKey))) {
         const alreadyTaken = await prisma.medicationIntake.findFirst({
           where: {
             profileId: profile.id,
             planId: plan.id,
             date: zoned.dateKey,
-            scheduledTime: zoned.timeKey,
+            scheduledTime: dueSlot,
           },
           select: { id: true },
         });
         if (alreadyTaken) continue;
 
-        const dedupeKey = `${plan.id}|${zoned.dateKey}|${zoned.timeKey}`;
+        const dedupeKey = `${plan.id}|${zoned.dateKey}|${dueSlot}`;
         const claimed = await claimReminderSlot({
           profileId: profile.id,
           kind: "medication",
@@ -166,24 +180,21 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
         const dosage = plan.dosage ? ` (${plan.dosage})` : "";
         const medPayload = {
           title: copy.medTitle,
-          body: copy.medBody(plan.name, dosage, zoned.timeKey),
+          body: copy.medBody(plan.name, dosage, dueSlot),
           url: "/",
-          tag: `med-${plan.id}-${zoned.timeKey}`,
+          tag: `med-${plan.id}-${dueSlot}`,
           kind: "medication" as const,
         };
-        await Promise.all([
-          sendPushToProfile(profile.id, medPayload),
-          sendTelegramToProfile(profile.id, medPayload),
-        ]);
+        await sendPushToProfile(profile.id, medPayload).catch((e) => console.error("push med", e));
+        if (!profile.botLoggedOut) await sendTelegramToProfile(profile.id, medPayload);
         result.medication += 1;
+        }
       }
 
       for (const plan of profile.mealPlans) {
         if (!isPlanScheduledOnDate(plan, zoned.dateKey)) continue;
         const times = parsePlanTimes(plan.timesJson);
-        if (!times.includes(zoned.timeKey)) continue;
-
-        // Skip if this meal type was already logged today.
+        for (const dueSlot of times.filter((t) => isTimeDue(t, zoned.timeKey))) {
         const alreadyLogged = await prisma.meal.findFirst({
           where: {
             profileId: profile.id,
@@ -194,7 +205,7 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
         });
         if (alreadyLogged) continue;
 
-        const dedupeKey = `mealplan|${plan.id}|${zoned.dateKey}|${zoned.timeKey}`;
+        const dedupeKey = `mealplan|${plan.id}|${zoned.dateKey}|${dueSlot}`;
         const claimed = await claimReminderSlot({
           profileId: profile.id,
           kind: "meal",
@@ -204,22 +215,21 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
 
         const mealPlanPayload = {
           title: copy.mealTitle,
-          body: copy.mealBody(plan.name, zoned.timeKey),
+          body: copy.mealBody(plan.name, dueSlot),
           url: "/",
-          tag: `mealplan-${plan.id}-${zoned.timeKey}`,
+          tag: `mealplan-${plan.id}-${dueSlot}`,
           kind: "meal" as const,
         };
-        await Promise.all([
-          sendPushToProfile(profile.id, mealPlanPayload),
-          sendTelegramToProfile(profile.id, mealPlanPayload),
-        ]);
+        await sendPushToProfile(profile.id, mealPlanPayload).catch((e) => console.error("push meal", e));
+        await sendTelegramToProfile(profile.id, mealPlanPayload);
         result.meal += 1;
+        }
       }
 
       const weightTime = profile.weightReminderTime
         ? normalizeTime(profile.weightReminderTime)
         : "";
-      if (weightTime && weightTime === zoned.timeKey) {
+      if (weightTime && isTimeDue(weightTime, zoned.timeKey)) {
         const hasWeight = await prisma.weightEntry.findUnique({
           where: {
             profileId_date: { profileId: profile.id, date: zoned.dateKey },
@@ -241,10 +251,8 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
               tag: `weight-${zoned.dateKey}`,
               kind: "weight" as const,
             };
-            await Promise.all([
-              sendPushToProfile(profile.id, weightPayload),
-              sendTelegramToProfile(profile.id, weightPayload),
-            ]);
+            await sendPushToProfile(profile.id, weightPayload).catch((e) => console.error("push weight", e));
+            await sendTelegramToProfile(profile.id, weightPayload);
             result.weight += 1;
           }
         }
@@ -252,7 +260,7 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
 
       // Legacy free-form meal times on profile (kept for older prefs).
       const mealTimes = parseMealReminderTimes(profile.mealReminderTimesJson);
-      if (mealTimes.includes(zoned.timeKey)) {
+      if (mealTimes.some((t) => isTimeDue(t, zoned.timeKey))) {
         const mealCount = await prisma.meal.count({
           where: { profileId: profile.id, date: zoned.dateKey },
         });
@@ -270,15 +278,13 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
             tag: `meal-${zoned.dateKey}-${zoned.timeKey}`,
             kind: "meal" as const,
           };
-          await Promise.all([
-            sendPushToProfile(profile.id, legacyMealPayload),
-            sendTelegramToProfile(profile.id, legacyMealPayload),
-          ]);
+          await sendPushToProfile(profile.id, legacyMealPayload).catch((e) => console.error("push meal-legacy", e));
+          await sendTelegramToProfile(profile.id, legacyMealPayload);
           result.meal += 1;
         }
       }
       // ── Auto-advice at midnight (00:00) ─────────────────────────────────
-      if (zoned.timeKey === "00:00") {
+      if (isTimeDue("00:00", zoned.timeKey)) {
         const locale = isHlLocale(profile.preferredLocale) ? profile.preferredLocale : "en";
         const aiLanguage = HL_LOCALE_META[locale].aiLanguage;
         const periods: Array<"day" | "week" | "month"> = ["day"];
@@ -392,10 +398,8 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
               tag: `advice-${period}-${zoned.dateKey}`,
               kind: "meal" as const,
             };
-            await Promise.all([
-              sendPushToProfile(profile.id, advPayload),
-              sendTelegramToProfile(profile.id, advPayload),
-            ]);
+            await sendPushToProfile(profile.id, advPayload).catch((e) => console.error("push advice", e));
+            await sendTelegramToProfile(profile.id, advPayload);
             result.advice += 1;
           } catch {
             result.errors += 1;

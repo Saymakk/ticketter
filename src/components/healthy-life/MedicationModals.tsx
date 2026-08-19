@@ -317,16 +317,22 @@ export function AddMedicationModal({
       if (!res.ok) throw new Error(data.error || t("error"));
       setPhotoPath(data.photoPath);
 
-      const analysis = data.analysis as { name?: string } | undefined;
+      const analysis = data.analysis as { name?: string; dosage?: string } | undefined;
       const aiName = analysis?.name?.trim() || "";
+      const aiDosage = analysis?.dosage?.trim() || "";
       setAiDetectedName(aiName || null);
 
       // Keep schedule name if user already picked a plan; otherwise fill from photo.
       if (aiName && !planId) {
         setName(aiName);
+        if (aiDosage) setDosage(aiDosage);
         setRecognizeHint(t("med.recognized"));
       } else if (aiName && planId && !name.trim()) {
         setName(aiName);
+        if (aiDosage && !dosage.trim()) setDosage(aiDosage);
+        setRecognizeHint(t("med.recognized"));
+      } else if (aiDosage && !dosage.trim()) {
+        setDosage(aiDosage);
         setRecognizeHint(t("med.recognized"));
       } else if (!aiName) {
         setRecognizeHint(t("med.recognizeFailed"));
@@ -590,11 +596,16 @@ export function MedicationPlansModal({
       if (!res.ok) throw new Error(data.error || t("error"));
       setPhotoPath(data.photoPath);
 
-      const analysis = data.analysis as { name?: string } | undefined;
+      const analysis = data.analysis as { name?: string; dosage?: string } | undefined;
       const aiName = analysis?.name?.trim() || "";
+      const aiDosage = analysis?.dosage?.trim() || "";
       setAiDetectedName(aiName || null);
       if (aiName) {
         setName(aiName);
+        if (aiDosage) setDosage(aiDosage);
+        setRecognizeHint(t("med.recognized"));
+      } else if (aiDosage) {
+        setDosage(aiDosage);
         setRecognizeHint(t("med.recognized"));
       } else {
         setRecognizeHint(t("med.recognizeFailed"));

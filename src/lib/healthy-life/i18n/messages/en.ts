@@ -151,7 +151,7 @@ export const en = {
     replacePhoto: "Replace photo",
     uploading: "Uploading photo…",
     recognizing: "Recognizing medication…",
-    recognized: "Name filled from photo — you can edit it.",
+    recognized: "Name and dose filled from photo — confirm or edit them.",
     recognizeFailed: "Could not read the name from the photo — enter it manually.",
     markTaken: "Log intake",
     taken: "Taken at",

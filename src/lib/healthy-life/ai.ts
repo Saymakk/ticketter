@@ -381,6 +381,7 @@ export function nutritionLabelToPer100(analysis: NutritionLabelAnalysis): {
 
 const MedicationAnalysisSchema = z.object({
   name: z.string(),
+  dosage: z.string().optional().nullable(),
   confidence: z.number().min(0).max(1).optional().nullable(),
 });
 
@@ -411,19 +412,20 @@ LANGUAGE: write "name" in ${language}.
 
 Reply ONLY with valid JSON (no markdown):
 {
-  "name": "medication trade or generic name; if strength/volume/count is visible, append it in parentheses, e.g. \\"Nurofen (200 mg)\\" or \\"Amoxicillin (20 tablets)\\"",
+  "name": "medication trade or generic name only, without strength",
+  "dosage": "strength / amount as printed, e.g. \\"200 mg\\" or \\"1 tablet\\" or \\"5 ml\\"; empty string if not visible",
   "confidence": number from 0 to 1
 }
 
-Do NOT return a separate dosage field — put amount/volume only inside the name in parentheses when visible.
-If you cannot identify it, return {"name":"","confidence":0}.`,
+Keep "name" and "dosage" as separate fields. Do not put the dose inside the name.
+If you cannot identify it, return {"name":"","dosage":"","confidence":0}.`,
       },
       {
         role: "user",
         content: [
           {
             type: "text",
-            text: "Read the medication name from this photo. Prefer the brand/trade name. Put strength or pack size in parentheses next to the name if visible.",
+            text: "Read the medication name and dosage from this photo. Prefer the brand/trade name. Put the strength in the dosage field, not in the name.",
           },
           {
             type: "image_url",
@@ -444,6 +446,7 @@ If you cannot identify it, return {"name":"","confidence":0}.`,
 export function mockMedicationAnalysis(_reason?: string): MedicationAnalysis {
   return {
     name: "",
+    dosage: "",
     confidence: 0,
   };
 }

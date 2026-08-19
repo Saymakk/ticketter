@@ -122,7 +122,8 @@ const translations: Record<string, Record<string, string>> = {
     med_prompt: "Выберите лекарство или добавьте новое:", med_custom: "➕ Другое",
     med_name_prompt: "Название лекарства (или отправьте фото упаковки):", med_dosage_prompt: "Дозировка:",
     med_photo_analyzing: "🔍 Анализирую фото упаковки...",
-    med_photo_result: "🤖 AI определил: {name}\n\nПодтвердить?",
+    med_photo_result: "🤖 AI определил: {name}\n💊 {dosage}\n\nПодтвердить?",
+    med_dosage_keep: "Дозировка (или /skip чтобы оставить «{dosage}»):",
     med_time_prompt: "Время приёма (ЧЧ:ММ) или /skip:", med_saved: "✅ 💊 {name} {dosage} в {time}",
     weight_prompt: "Введите вес (кг):", weight_saved: "✅ Вес: {weight} кг",
     workout_type_prompt: "Тип тренировки:", workout_duration_prompt: "Продолжительность (мин):",
@@ -182,6 +183,8 @@ const translations: Record<string, Record<string, string>> = {
     logout_confirm: "Вы уверены, что хотите выйти?",
     logout_done: "✅ Вы вышли из аккаунта. Напишите /start чтобы войти снова.",
     kb_cancel: "❌ Отмена", kb_back: "◀️ Назад", kb_history: "📅 История", kb_advice: "💡 Советы",
+    kb_sec_meals: "🍽 Приёмы пищи", kb_sec_meds: "💊 Приёмы лекарств", kb_sec_workouts: "🏋️ Тренировки дня",
+    today_pick: "Что показать за сегодня?",
     recent_editable: "✏️ Недавние записи (можно изменить в течение часа):",
     edit_meal: "✏️ {name}", delete_entry: "🗑 Удалить",
     edit_meal_name: "Новое название (или /skip):", edit_meal_cal: "Новые калории (или /skip):",
@@ -227,7 +230,9 @@ const translations: Record<string, Record<string, string>> = {
     sch_weekdays_need: "Выберите хотя бы один день.",
     sch_interval_prompt: "Каждые сколько дней? (число, например 2):",
     sch_interval_invalid: "Введите целое число от 1.",
-    sch_saved: "✅ Расписание сохранено. Напоминания будут приходить в Telegram.",
+    sch_saved: "✅ Расписание сохранено. Напоминания придут в этот чат и в пуш сайта.",
+    sch_saved_when: "Часовой пояс: {tz}. Сейчас {now}. Напоминания: {times}.",
+    tz_utc_warn: "⚠️ Сейчас стоит UTC. Если вы не в UTC — поставьте свой пояс в Настройках, иначе уведомления придут не в то время.",
     sch_updated: "✅ Расписание обновлено.",
     sch_deleted: "✅ Расписание удалено.",
     sch_paused_ok: "⏸ «{name}» на паузе — напоминания не приходят.",
@@ -266,7 +271,8 @@ const translations: Record<string, Record<string, string>> = {
     med_prompt: "Choose medication or add new:", med_custom: "➕ Other",
     med_name_prompt: "Medication name (or send pack photo):", med_dosage_prompt: "Dosage:",
     med_photo_analyzing: "🔍 Analyzing pack photo...",
-    med_photo_result: "🤖 AI detected: {name}\n\nConfirm?",
+    med_photo_result: "🤖 AI detected: {name}\n💊 {dosage}\n\nConfirm?",
+    med_dosage_keep: "Dosage (or /skip to keep «{dosage}»):",
     med_time_prompt: "Time (HH:MM) or /skip:", med_saved: "✅ 💊 {name} {dosage} at {time}",
     weight_prompt: "Weight (kg):", weight_saved: "✅ Weight: {weight} kg",
     workout_type_prompt: "Workout type:", workout_duration_prompt: "Duration (min):",
@@ -322,6 +328,8 @@ const translations: Record<string, Record<string, string>> = {
     logout_confirm: "Are you sure you want to logout?",
     logout_done: "✅ Logged out. Type /start to login again.",
     kb_cancel: "❌ Cancel", kb_back: "◀️ Back", kb_history: "📅 History", kb_advice: "💡 Advice",
+    kb_sec_meals: "🍽 Meals", kb_sec_meds: "💊 Doses", kb_sec_workouts: "🏋️ Workouts",
+    today_pick: "What should I show for today?",
     recent_editable: "✏️ Recent entries (editable within an hour):",
     edit_meal: "✏️ {name}", delete_entry: "🗑 Delete",
     edit_meal_name: "New name (or /skip):", edit_meal_cal: "New calories (or /skip):",
@@ -367,7 +375,9 @@ const translations: Record<string, Record<string, string>> = {
     sch_weekdays_need: "Pick at least one day.",
     sch_interval_prompt: "Every how many days? (e.g. 2):",
     sch_interval_invalid: "Enter a whole number from 1.",
-    sch_saved: "✅ Schedule saved. Reminders will come in Telegram.",
+    sch_saved: "✅ Schedule saved. Reminders will come in this chat and as site push.",
+    sch_saved_when: "Timezone: {tz}. Now {now}. Reminders: {times}.",
+    tz_utc_warn: "⚠️ Timezone is UTC. Set yours in Settings or reminders will fire at the wrong hour.",
     sch_updated: "✅ Schedule updated.",
     sch_deleted: "✅ Schedule deleted.",
     sch_paused_ok: "⏸ «{name}» paused — no more reminders.",
@@ -406,7 +416,8 @@ const translations: Record<string, Record<string, string>> = {
     med_prompt: "Дәріні таңдаңыз:", med_custom: "➕ Басқа",
     med_name_prompt: "Дәрі атауы (немесе қаптама суреті):", med_dosage_prompt: "Дозасы:",
     med_photo_analyzing: "🔍 Қаптама суреті талдануда...",
-    med_photo_result: "🤖 AI: {name}\n\nРастайсыз ба?",
+    med_photo_result: "🤖 AI: {name}\n💊 {dosage}\n\nРастайсыз ба?",
+    med_dosage_keep: "Доза (немесе /skip — «{dosage}» қалдыру):",
     med_time_prompt: "Уақыт (СС:ММ) немесе /skip:", med_saved: "✅ 💊 {name} {dosage} {time}",
     weight_prompt: "Салмақ (кг):", weight_saved: "✅ Салмақ: {weight} кг",
     workout_type_prompt: "Жаттығу түрі:", workout_duration_prompt: "Ұзақтығы (мин):",
@@ -462,6 +473,8 @@ const translations: Record<string, Record<string, string>> = {
     logout_confirm: "Шығуға сенімдісіз бе?",
     logout_done: "✅ Шықтыңыз. Қайта кіру үшін /start жазыңыз.",
     kb_cancel: "❌ Болдырмау", kb_back: "◀️ Артқа", kb_history: "📅 Тарих", kb_advice: "💡 Кеңес",
+    kb_sec_meals: "🍽 Тамақтану", kb_sec_meds: "💊 Дәрі қабылдау", kb_sec_workouts: "🏋️ Жаттығулар",
+    today_pick: "Бүгін не көрсетілсін?",
     recent_editable: "✏️ Соңғы жазбалар (бір сағат ішінде өзгертуге болады):",
     edit_meal: "✏️ {name}", delete_entry: "🗑 Жою",
     edit_meal_name: "Жаңа атау (немесе /skip):", edit_meal_cal: "Жаңа калория (немесе /skip):",
@@ -507,7 +520,9 @@ const translations: Record<string, Record<string, string>> = {
     sch_weekdays_need: "Кемінде бір күн таңдаңыз.",
     sch_interval_prompt: "Неше күн сайын? (мысалы 2):",
     sch_interval_invalid: "1-ден бастап бүтін сан енгізіңіз.",
-    sch_saved: "✅ Кесте сақталды. Еске салулар Telegram-ға келеді.",
+    sch_saved: "✅ Кесте сақталды. Еске салулар осы чатқа және сайт пушына келеді.",
+    sch_saved_when: "Уақыт белдеуі: {tz}. Қазір {now}. Еске салулар: {times}.",
+    tz_utc_warn: "⚠️ Қазір UTC тұр. Өз белдеуіңізді Баптаулардан қойыңыз, әйтпесе еске салулар басқа уақытта келеді.",
     sch_updated: "✅ Кесте жаңартылды.",
     sch_deleted: "✅ Кесте жойылды.",
     sch_paused_ok: "⏸ «{name}» кідіртілді — еске салулар жіберілмейді.",
@@ -548,31 +563,38 @@ function getState(chatId: number) { return states.get(chatId); }
 function setState(chatId: number, state: UserState) { states.set(chatId, state); }
 function clearState(chatId: number) { states.delete(chatId); }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+/** Bot prompts and user taps to delete so the chat stays readable. */
+const ephemeralMsgs = new Map<number, number[]>();
 
-function todayStr(timezone = "UTC"): string {
-  try {
-    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
-    return `${parts.find(p => p.type === "year")!.value}-${parts.find(p => p.type === "month")!.value}-${parts.find(p => p.type === "day")!.value}`;
-  } catch { return new Date().toISOString().slice(0, 10); }
+function rememberMsg(chatId: number | undefined, id?: number) {
+  if (!chatId || !id) return;
+  const list = ephemeralMsgs.get(chatId) || [];
+  list.push(id);
+  ephemeralMsgs.set(chatId, list);
 }
 
-function nowTime(timezone = "UTC"): string {
-  try { return new Date().toLocaleTimeString("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false }); }
-  catch { return new Date().toISOString().slice(11, 16); }
+async function sweepChat(ctx: Context) {
+  const chatId = ctx.chat?.id;
+  if (!chatId) return;
+  const ids = ephemeralMsgs.get(chatId) || [];
+  ephemeralMsgs.delete(chatId);
+  const userMsg = ctx.message;
+  const isPhoto = !!userMsg?.photo;
+  const isCmd = !!userMsg?.text?.startsWith("/");
+  if (userMsg?.message_id && !isPhoto && !isCmd) ids.push(userMsg.message_id);
+  const cbMsg = ctx.callbackQuery?.message;
+  if (cbMsg && "message_id" in cbMsg) ids.push(cbMsg.message_id);
+  await Promise.all([...new Set(ids)].map((id) => ctx.api.deleteMessage(chatId, id).catch(() => {})));
 }
 
-function parseDateInput(input: string): string | null {
-  const m = input.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
-  if (!m) return null;
-  return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+function kb(rows: string[][]): Keyboard {
+  const k = new Keyboard();
+  for (const row of rows) {
+    for (const label of row) if (label) k.text(label);
+    k.row();
+  }
+  return k.resized().persistent();
 }
-
-async function getProfileByChatId(chatId: number) {
-  return prisma.profile.findUnique({ where: { telegramChatId: String(chatId) } });
-}
-
-// ─── Dynamic keyboards ───────────────────────────────────────────────────────
 
 function mainKeyboard(locale = "ru"): Keyboard {
   return new Keyboard()
@@ -585,17 +607,147 @@ function mainKeyboard(locale = "ru"): Keyboard {
 }
 
 function cancelKeyboard(locale = "ru"): Keyboard {
-  return new Keyboard()
-    .text(botT(locale, "kb_cancel"))
-    .resized().persistent();
+  return kb([[botT(locale, "kb_cancel")]]);
+}
+
+function mealHubKeyboard(locale: string): Keyboard {
+  return kb([
+    [botT(locale, "hub_meal_log")],
+    [botT(locale, "hub_meal_label")],
+    [botT(locale, "hub_meal_sched")],
+    [botT(locale, "kb_back")],
+  ]);
+}
+
+function medHubKeyboard(locale: string): Keyboard {
+  return kb([
+    [botT(locale, "hub_med_log")],
+    [botT(locale, "hub_med_sched")],
+    [botT(locale, "kb_back")],
+  ]);
+}
+
+function todayPickKeyboard(locale: string): Keyboard {
+  return kb([
+    [botT(locale, "kb_sec_meals"), botT(locale, "kb_sec_meds")],
+    [botT(locale, "kb_sec_workouts"), botT(locale, "kb_back")],
+  ]);
+}
+
+function mealTypeReplyKb(locale: string): Keyboard {
+  return kb([
+    [botT(locale, "breakfast"), botT(locale, "lunch")],
+    [botT(locale, "dinner"), botT(locale, "snack")],
+    [botT(locale, "label")],
+    [botT(locale, "kb_cancel")],
+  ]);
+}
+
+function workoutTypeReplyKb(locale: string): Keyboard {
+  const types = ["running", "walking", "cycling", "strength", "yoga", "swimming", "hiit", "sports", "other"];
+  const rows: string[][] = [];
+  for (let i = 0; i < types.length; i += 3) {
+    rows.push(types.slice(i, i + 3).map((t) => botT(locale, t)));
+  }
+  rows.push([botT(locale, "kb_cancel")]);
+  return kb(rows);
+}
+
+function recReplyKb(locale: string): Keyboard {
+  return kb([
+    [botT(locale, "sch_rec_daily")],
+    [botT(locale, "sch_rec_weekly")],
+    [botT(locale, "sch_rec_interval")],
+    [botT(locale, "kb_cancel")],
+  ]);
+}
+
+function weekdayReplyKb(selected: number[], locale: string): Keyboard {
+  const labels = getWeekdays(locale);
+  const row1: string[] = [];
+  const row2: string[] = [];
+  for (let i = 1; i <= 7; i++) {
+    const mark = selected.includes(i) ? "✓ " : "";
+    (i <= 4 ? row1 : row2).push(`${mark}${labels[i - 1]}`);
+  }
+  return kb([row1, row2, [botT(locale, "sch_weekdays_done")], [botT(locale, "kb_cancel")]]);
+}
+
+function yesNoKeyboard(locale: string): Keyboard {
+  return kb([[botT(locale, "yes"), botT(locale, "no")]]);
+}
+
+function confirmEditKeyboard(locale: string): Keyboard {
+  return kb([[botT(locale, "confirm"), botT(locale, "edit")], [botT(locale, "kb_cancel")]]);
 }
 
 async function replyMain(ctx: Context, text: string, locale = "ru") {
+  await sweepChat(ctx);
   await ctx.reply(text, { reply_markup: mainKeyboard(locale) });
 }
 
 async function replyCancel(ctx: Context, text: string, locale = "ru") {
-  await ctx.reply(text, { reply_markup: cancelKeyboard(locale) });
+  await sweepChat(ctx);
+  const msg = await ctx.reply(text, { reply_markup: cancelKeyboard(locale) });
+  rememberMsg(ctx.chat?.id, msg.message_id);
+}
+
+async function replyKb(ctx: Context, text: string, keyboard: Keyboard, track = true) {
+  await sweepChat(ctx);
+  const msg = await ctx.reply(text, { reply_markup: keyboard });
+  if (track) rememberMsg(ctx.chat?.id, msg.message_id);
+  return msg;
+}
+
+async function goBack(ctx: Context) {
+  const chatId = ctx.chat!.id;
+  const st = getState(chatId);
+  const to = st?.data?.backTo || "main";
+  if (to === "meal_hub") return showMealHub(ctx);
+  if (to === "med_hub") return showMedHub(ctx);
+  if (to === "today") return showToday(ctx);
+  if (to === "mslist") return showMealSchedules(ctx);
+  if (to === "dslist") return showMedSchedules(ctx);
+  if (to === "settings") return showSettings(ctx);
+  if (to === "sch_meal_card" && st?.data?.planId) return showMealPlanCard(ctx, st.data.planId);
+  if (to === "sch_med_card" && st?.data?.planId) return showMedPlanCard(ctx, st.data.planId);
+  clearState(chatId);
+  const profile = await getProfileByChatId(chatId);
+  const l = profile?.preferredLocale || st?.locale || "ru";
+  await replyMain(ctx, botT(l, "main_menu"), l);
+}
+
+function todayStr(timezone = "UTC"): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+    return `${parts.find(p => p.type === "year")!.value}-${parts.find(p => p.type === "month")!.value}-${parts.find(p => p.type === "day")!.value}`;
+  } catch { return new Date().toISOString().slice(0, 10); }
+}
+
+function nowTime(timezone = "UTC"): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date());
+    const hour = parts.find((p) => p.type === "hour")?.value ?? "00";
+    const minute = parts.find((p) => p.type === "minute")?.value ?? "00";
+    return `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`;
+  } catch {
+    return new Date().toISOString().slice(11, 16);
+  }
+}
+
+function parseDateInput(input: string): string | null {
+  const m = input.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+  if (!m) return null;
+  return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+}
+
+async function getProfileByChatId(chatId: number) {
+  return prisma.profile.findUnique({ where: { telegramChatId: String(chatId) } });
 }
 
 async function requireAuth(ctx: Context): Promise<{ profileId: string; locale: string; timezone: string } | null> {
@@ -605,11 +757,11 @@ async function requireAuth(ctx: Context): Promise<{ profileId: string; locale: s
   if (!profile || profile.botLoggedOut) {
     const st = getState(chatId);
     const locale = st?.locale || profile?.preferredLocale || "ru";
-    await ctx.reply(botT(locale, "not_linked"), {
-      reply_markup: new InlineKeyboard()
-        .text(botT(locale, "login_email"), "auth:email")
-        .text(botT(locale, "login_phone"), "auth:phone"),
-    });
+    setState(chatId, { step: "awaiting_auth", locale, data: {} });
+    await replyKb(ctx, botT(locale, "not_linked"), kb([
+      [botT(locale, "login_email")],
+      [botT(locale, "login_phone")],
+    ]));
     return null;
   }
   return { profileId: profile.id, locale: profile.preferredLocale, timezone: profile.timezone };
@@ -688,7 +840,9 @@ async function linkProfile(userId: string, chatId: number, phone?: string) {
   if (profile) {
     profile = await prisma.profile.update({ where: { id: profile.id }, data: updateData });
   } else {
-    profile = await prisma.profile.create({ data: { userId, ...updateData } });
+    profile = await prisma.profile.create({
+      data: { userId, timezone: "Asia/Almaty", ...updateData },
+    });
   }
   return profile;
 }
@@ -699,84 +853,76 @@ async function showMealHub(ctx: Context) {
   const auth = await requireAuth(ctx);
   if (!auth) return;
   const l = auth.locale;
-  await ctx.reply(botT(l, "hub_meal_hint"), {
-    reply_markup: new InlineKeyboard()
-      .text(botT(l, "hub_meal_log"), "mlog").row()
-      .text(botT(l, "hub_meal_label"), "mlabel").row()
-      .text(botT(l, "hub_meal_sched"), "mslist"),
-  });
+  setState(ctx.chat!.id, { step: "hub:meal", profileId: auth.profileId, locale: l, data: { backTo: "main" } });
+  await replyKb(ctx, botT(l, "hub_meal_hint"), mealHubKeyboard(l));
 }
 
 async function showMedHub(ctx: Context) {
   const auth = await requireAuth(ctx);
   if (!auth) return;
   const l = auth.locale;
-  await ctx.reply(botT(l, "hub_med_hint"), {
-    reply_markup: new InlineKeyboard()
-      .text(botT(l, "hub_med_log"), "dlog").row()
-      .text(botT(l, "hub_med_sched"), "dslist"),
-  });
+  setState(ctx.chat!.id, { step: "hub:med", profileId: auth.profileId, locale: l, data: { backTo: "main" } });
+  await replyKb(ctx, botT(l, "hub_med_hint"), medHubKeyboard(l));
 }
 
 async function startLabelFlow(ctx: Context) {
   const auth = await requireAuth(ctx);
   if (!auth) return;
-  setState(ctx.chat!.id, { step: "meal:label", profileId: auth.profileId, locale: auth.locale, data: { mealType: "snack" } });
+  setState(ctx.chat!.id, { step: "meal:label", profileId: auth.profileId, locale: auth.locale, data: { mealType: "snack", backTo: "meal_hub" } });
   await replyCancel(ctx, botT(auth.locale, "meal_label_prompt"), auth.locale);
 }
 
 async function startMealFlow(ctx: Context) {
   const auth = await requireAuth(ctx);
   if (!auth) return;
-  setState(ctx.chat!.id, { step: "meal:type", profileId: auth.profileId, locale: auth.locale, data: {} });
-  await ctx.reply(botT(auth.locale, "meal_type_prompt"), {
-    reply_markup: new InlineKeyboard()
-      .text(botT(auth.locale, "breakfast"), "meal_type:breakfast")
-      .text(botT(auth.locale, "lunch"), "meal_type:lunch").row()
-      .text(botT(auth.locale, "dinner"), "meal_type:dinner")
-      .text(botT(auth.locale, "snack"), "meal_type:snack").row()
-      .text(botT(auth.locale, "label"), "meal_type:label"),
-  });
+  setState(ctx.chat!.id, { step: "meal:type", profileId: auth.profileId, locale: auth.locale, data: { backTo: "meal_hub" } });
+  await replyKb(ctx, botT(auth.locale, "meal_type_prompt"), mealTypeReplyKb(auth.locale));
 }
 
 async function startMedFlow(ctx: Context) {
   const auth = await requireAuth(ctx);
   if (!auth) return;
   const plans = await prisma.medicationPlan.findMany({ where: { profileId: auth.profileId, active: true } });
-  const kb = new InlineKeyboard();
+  const listMap: Record<string, string> = {};
+  const rows: string[][] = [];
   for (const plan of plans) {
-    kb.text(`💊 ${plan.name}${plan.dosage ? ` (${plan.dosage})` : ""}`, `med_plan:${plan.id}`).row();
+    const label = `💊 ${plan.name}${plan.dosage ? ` (${plan.dosage})` : ""}`;
+    listMap[label] = plan.id;
+    rows.push([label]);
   }
-  kb.text(botT(auth.locale, "med_custom"), "med_plan:custom");
-  setState(ctx.chat!.id, { step: "med:choose", profileId: auth.profileId, locale: auth.locale, data: {} });
-  await ctx.reply(botT(auth.locale, "med_prompt"), { reply_markup: kb });
+  rows.push([botT(auth.locale, "med_custom")]);
+  rows.push([botT(auth.locale, "kb_cancel")]);
+  setState(ctx.chat!.id, { step: "med:choose", profileId: auth.profileId, locale: auth.locale, data: { backTo: "med_hub", listMap } });
+  await replyKb(ctx, botT(auth.locale, "med_prompt"), kb(rows));
 }
 
 async function startWeightFlow(ctx: Context) {
   const auth = await requireAuth(ctx);
   if (!auth) return;
-  setState(ctx.chat!.id, { step: "weight:input", profileId: auth.profileId, locale: auth.locale, data: {} });
+  setState(ctx.chat!.id, { step: "weight:input", profileId: auth.profileId, locale: auth.locale, data: { backTo: "main" } });
   await replyCancel(ctx, botT(auth.locale, "weight_prompt"), auth.locale);
 }
 
 async function startWorkoutFlow(ctx: Context) {
   const auth = await requireAuth(ctx);
   if (!auth) return;
-  const types = ["running", "walking", "cycling", "strength", "yoga", "swimming", "hiit", "sports", "other"];
-  const kb = new InlineKeyboard();
-  for (let i = 0; i < types.length; i++) {
-    kb.text(botT(auth.locale, types[i]), `workout_type:${types[i]}`);
-    if ((i + 1) % 3 === 0) kb.row();
-  }
-  setState(ctx.chat!.id, { step: "workout:type", profileId: auth.profileId, locale: auth.locale, data: {} });
-  await ctx.reply(botT(auth.locale, "workout_type_prompt"), { reply_markup: kb });
+  setState(ctx.chat!.id, { step: "workout:type", profileId: auth.profileId, locale: auth.locale, data: { backTo: "main" } });
+  await replyKb(ctx, botT(auth.locale, "workout_type_prompt"), workoutTypeReplyKb(auth.locale));
 }
 
 async function showToday(ctx: Context) {
   const auth = await requireAuth(ctx);
   if (!auth) return;
   const today = todayStr(auth.timezone);
-  await sendDaySummary(ctx, auth.profileId, auth.locale, auth.timezone, today);
+  const meals = await prisma.meal.findMany({ where: { profileId: auth.profileId, date: today } });
+  const goal = (await prisma.profile.findUnique({ where: { id: auth.profileId } }))?.dailyCalorieGoal || 2000;
+  const eaten = meals.reduce((s, m) => s + m.calories, 0);
+  const l = auth.locale;
+  setState(ctx.chat!.id, { step: "today:pick", profileId: auth.profileId, locale: l, data: { backTo: "main", timezone: auth.timezone, date: today } });
+  const text = botT(l, "today_title") + " (" + today + ")\n"
+    + botT(l, "today_calories", { eaten: Math.round(eaten), goal, remaining: Math.max(0, Math.round(goal - eaten)) })
+    + "\n\n" + botT(l, "today_pick");
+  await replyKb(ctx, text, todayPickKeyboard(l));
 }
 
 // ─── Inline calendar ──────────────────────────────────────────────────────────
@@ -940,10 +1086,90 @@ async function buildRecentPanel(
   return { text: botT(locale, "recent_editable"), kb };
 }
 
-async function sendRecentPanel(ctx: Context, profileId: string, locale: string) {
-  const profile = await prisma.profile.findUnique({ where: { id: profileId } });
-  const panel = await buildRecentPanel(profileId, locale, profile?.timezone || "UTC");
-  if (panel) await ctx.reply(panel.text, { reply_markup: panel.kb });
+async function sendRecentPanel(ctx: Context, _profileId: string, _locale: string) {
+  await sendTodaySection(ctx, "meals");
+}
+
+async function sendTodaySection(ctx: Context, section: "meals" | "meds" | "workouts") {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  const l = auth.locale;
+  const date = todayStr(auth.timezone);
+  const rows: string[][] = [];
+  const editMap: Record<string, { kind: string; id: string }> = {};
+  let text = botT(l, "today_title") + " (" + date + ")\n";
+
+  if (section === "meals") {
+    const meals = await prisma.meal.findMany({ where: { profileId: auth.profileId, date }, orderBy: { createdAt: "asc" } });
+    const goal = (await prisma.profile.findUnique({ where: { id: auth.profileId } }))?.dailyCalorieGoal || 2000;
+    const eaten = meals.reduce((s, m) => s + m.calories, 0);
+    text += botT(l, "today_calories", { eaten: Math.round(eaten), goal, remaining: Math.max(0, Math.round(goal - eaten)) });
+    if (meals.length === 0) text += botT(l, "today_no_meals");
+    else {
+      text += botT(l, "today_meals");
+      meals.forEach((m, i) => {
+        const n = i + 1;
+        text += `\n  ${n}. ${botT(l, m.mealType)}: ${m.name} — ${Math.round(m.calories)} ккал`;
+        if (m.photoPath) text += " 📷";
+        if (m.createdAt.getTime() >= Date.now() - EDIT_WINDOW_MS) {
+          const editLbl = `✏️ ${n}`;
+          const delLbl = `🗑 ${n}`;
+          editMap[editLbl] = { kind: "meal", id: m.id };
+          editMap[delLbl] = { kind: "del-meal", id: m.id };
+          rows.push([editLbl, delLbl]);
+        }
+      });
+    }
+    setState(ctx.chat!.id, { step: "today:meals", profileId: auth.profileId, locale: l, data: { backTo: "today", editMap, section } });
+    await replyKb(ctx, text, kb([...rows, [botT(l, "kb_back")]]), false);
+    for (const m of meals) {
+      if (m.photoPath) {
+        try { await ctx.replyWithPhoto(m.photoPath, { caption: `🍽 ${m.name} — ${Math.round(m.calories)} ккал` }); } catch {}
+      }
+    }
+    return;
+  }
+
+  if (section === "meds") {
+    const intakes = await prisma.medicationIntake.findMany({ where: { profileId: auth.profileId, date }, orderBy: { createdAt: "asc" } });
+    if (intakes.length === 0) text += botT(l, "today_no_meds");
+    else {
+      text += botT(l, "today_meds");
+      intakes.forEach((item, i) => {
+        const n = i + 1;
+        text += `\n  ${n}. ${item.name}${item.dosage ? ` (${item.dosage})` : ""} — ${item.takenTime}`;
+        if (item.createdAt.getTime() >= Date.now() - EDIT_WINDOW_MS) {
+          const editLbl = `✏️ ${n}`;
+          const delLbl = `🗑 ${n}`;
+          editMap[editLbl] = { kind: "med", id: item.id };
+          editMap[delLbl] = { kind: "del-med", id: item.id };
+          rows.push([editLbl, delLbl]);
+        }
+      });
+    }
+    setState(ctx.chat!.id, { step: "today:meds", profileId: auth.profileId, locale: l, data: { backTo: "today", editMap, section } });
+    await replyKb(ctx, text, kb([...rows, [botT(l, "kb_back")]]), false);
+    return;
+  }
+
+  const workouts = await prisma.workout.findMany({ where: { profileId: auth.profileId, date }, orderBy: { createdAt: "asc" } });
+  if (workouts.length === 0) text += botT(l, "today_no_workouts");
+  else {
+    text += botT(l, "today_workouts");
+    workouts.forEach((w, i) => {
+      const n = i + 1;
+      text += `\n  ${n}. ${botT(l, w.type)} — ${w.quantity} ${w.unit}`;
+      if (w.createdAt.getTime() >= Date.now() - EDIT_WINDOW_MS) {
+        const editLbl = `✏️ ${n}`;
+        const delLbl = `🗑 ${n}`;
+        editMap[editLbl] = { kind: "workout", id: w.id };
+        editMap[delLbl] = { kind: "del-workout", id: w.id };
+        rows.push([editLbl, delLbl]);
+      }
+    });
+  }
+  setState(ctx.chat!.id, { step: "today:workouts", profileId: auth.profileId, locale: l, data: { backTo: "today", editMap, section } });
+  await replyKb(ctx, text, kb([...rows, [botT(l, "kb_back")]]), false);
 }
 
 async function sendDaySummary(ctx: Context, profileId: string, locale: string, timezone: string, date: string) {
@@ -985,22 +1211,7 @@ async function sendDaySummary(ctx: Context, profileId: string, locale: string, t
   }
 
   text += weight ? botT(locale, "today_weight", { weight: weight.weightKg }) : botT(locale, "today_no_weight");
-
-  const panel = await buildRecentPanel(profileId, locale, timezone);
-  if (panel) {
-    await replyMain(ctx, text, locale);
-    await ctx.reply(panel.text, { reply_markup: panel.kb });
-  } else {
-    await replyMain(ctx, text, locale);
-  }
-
-  for (const m of meals) {
-    if (m.photoPath) {
-      try {
-        await ctx.replyWithPhoto(m.photoPath, { caption: `🍽 ${m.name} — ${Math.round(m.calories)} ккал` });
-      } catch {}
-    }
-  }
+  await replyMain(ctx, text, locale);
 }
 
 async function showHistory(ctx: Context) {
@@ -1009,21 +1220,22 @@ async function showHistory(ctx: Context) {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
-  setState(ctx.chat!.id, { step: "history:cal", profileId: auth.profileId, locale: auth.locale, data: { timezone: auth.timezone } });
-  const activeDays = await getActiveDays(auth.profileId, year, month);
-  const kb = buildCalendarKeyboard(year, month, auth.locale, "hcal_", activeDays);
-  await ctx.reply(botT(auth.locale, "history_pick_start"), { reply_markup: kb });
+  setState(ctx.chat!.id, { step: "history:cal", profileId: auth.profileId, locale: auth.locale, data: { timezone: auth.timezone, backTo: "main" } });
+  await sweepChat(ctx);
+  const calKb = buildCalendarKeyboard(year, month, auth.locale, "hcal_", await getActiveDays(auth.profileId, year, month));
+  const msg = await ctx.reply(botT(auth.locale, "history_pick_start"), { reply_markup: calKb });
+  rememberMsg(ctx.chat!.id, msg.message_id);
 }
 
 async function showAdvice(ctx: Context) {
   const auth = await requireAuth(ctx);
   if (!auth) return;
-  await ctx.reply(botT(auth.locale, "advice_prompt"), {
-    reply_markup: new InlineKeyboard()
-      .text(botT(auth.locale, "advice_day"), "advice:day:0")
-      .text(botT(auth.locale, "advice_week"), "advice:week:0")
-      .text(botT(auth.locale, "advice_month"), "advice:month:0"),
-  });
+  const l = auth.locale;
+  setState(ctx.chat!.id, { step: "advice:pick", profileId: auth.profileId, locale: l, data: { backTo: "main" } });
+  await replyKb(ctx, botT(l, "advice_prompt"), kb([
+    [botT(l, "advice_day"), botT(l, "advice_week"), botT(l, "advice_month")],
+    [botT(l, "kb_back")],
+  ]));
 }
 
 async function sendAdvicePage(ctx: Context, chatId: number, period: string, offset: number) {
@@ -1046,23 +1258,22 @@ async function sendAdvicePage(ctx: Context, chatId: number, period: string, offs
   text += `📌 ${a.title}\n\n`;
   if (a.summary) text += `${a.summary}\n\n`;
   text += a.content;
-
-  // Check if there are older/newer
   const total = await prisma.advice.count({ where: { profileId: profile.id, period } });
-  const kb = new InlineKeyboard();
-  if (offset > 0) kb.text(botT(l, "advice_newer"), `advice:${period}:${offset - 1}`);
-  if (offset + 1 < total) kb.text(botT(l, "advice_older"), `advice:${period}:${offset + 1}`);
-  if (kb.inline_keyboard.length > 0 && kb.inline_keyboard[0].length > 0) {
-    await ctx.reply(text, { reply_markup: kb });
-  } else {
-    await replyMain(ctx, text, l);
-  }
+  const rows: string[][] = [];
+  const nav: string[] = [];
+  if (offset > 0) nav.push(botT(l, "advice_newer"));
+  if (offset + 1 < total) nav.push(botT(l, "advice_older"));
+  if (nav.length) rows.push(nav);
+  rows.push([botT(l, "kb_back")]);
+  setState(chatId, { step: "advice:page", profileId: profile.id, locale: l, data: { backTo: "main", advicePeriod: period, adviceOffset: offset } });
+  await replyKb(ctx, text, kb(rows), false);
 }
 
 function parseTimesJson(json: string | null | undefined): string[] {
   try {
     const parsed = JSON.parse(json || "[]");
-    return Array.isArray(parsed) ? parsed.map(String) : [];
+    if (!Array.isArray(parsed)) return [];
+    return [...new Set(parsed.map((t) => normalizeClock(String(t))).filter((t): t is string => !!t))].sort();
   } catch {
     return [];
   }
@@ -1133,11 +1344,12 @@ async function showSchedules(ctx: Context) {
   const auth = await requireAuth(ctx);
   if (!auth) return;
   const l = auth.locale;
-  await ctx.reply(`${botT(l, "schedules_title")}\n${botT(l, "sch_pick_kind")}\n\n${botT(l, "sch_notify_hint")}`, {
-    reply_markup: new InlineKeyboard()
-      .text(botT(l, "hub_meal_sched"), "mslist").row()
-      .text(botT(l, "hub_med_sched"), "dslist"),
-  });
+  setState(ctx.chat!.id, { step: "sch:pick", profileId: auth.profileId, locale: l, data: { backTo: "main" } });
+  await replyKb(ctx, `${botT(l, "schedules_title")}\n${botT(l, "sch_pick_kind")}\n\n${botT(l, "sch_notify_hint")}`, kb([
+    [botT(l, "hub_meal_sched")],
+    [botT(l, "hub_med_sched")],
+    [botT(l, "kb_back")],
+  ]));
 }
 
 async function showMealSchedules(ctx: Context) {
@@ -1148,21 +1360,25 @@ async function showMealSchedules(ctx: Context) {
     where: { profileId: auth.profileId },
     orderBy: [{ active: "desc" }, { createdAt: "asc" }],
   });
-  const kb = new InlineKeyboard();
+  const listMap: Record<string, string> = {};
+  const rows: string[][] = [];
   let text = botT(l, "sch_meal_title") + "\n" + botT(l, "sch_notify_hint") + "\n";
-  if (plans.length === 0) {
-    text += "\n" + botT(l, "sch_empty");
-  } else {
+  if (plans.length === 0) text += "\n" + botT(l, "sch_empty");
+  else {
     text += "\n" + botT(l, "sch_pick");
     for (const p of plans) {
       const times = parseTimesJson(p.timesJson).join(", ") || "—";
       const rec = formatRecurrence(p, l);
       const pause = p.active ? "" : ` · ${botT(l, "sch_paused")}`;
-      kb.text(`${p.active ? "🍽" : "⏸"} ${p.name} · ${times} [${rec}]${pause}`.slice(0, 64), `msv:${p.id}`).row();
+      const label = `${p.active ? "🍽" : "⏸"} ${p.name} · ${times} [${rec}]${pause}`.slice(0, 64);
+      listMap[label] = p.id;
+      rows.push([label]);
     }
   }
-  kb.text(botT(l, "sch_add"), "msadd");
-  await ctx.reply(text, { reply_markup: kb });
+  rows.push([botT(l, "sch_add")]);
+  rows.push([botT(l, "kb_back")]);
+  setState(ctx.chat!.id, { step: "sch:meal:list", profileId: auth.profileId, locale: l, data: { backTo: "meal_hub", listMap } });
+  await replyKb(ctx, text, kb(rows));
 }
 
 async function showMedSchedules(ctx: Context) {
@@ -1173,22 +1389,26 @@ async function showMedSchedules(ctx: Context) {
     where: { profileId: auth.profileId },
     orderBy: [{ active: "desc" }, { createdAt: "asc" }],
   });
-  const kb = new InlineKeyboard();
+  const listMap: Record<string, string> = {};
+  const rows: string[][] = [];
   let text = botT(l, "sch_med_title") + "\n" + botT(l, "sch_notify_hint") + "\n";
-  if (plans.length === 0) {
-    text += "\n" + botT(l, "sch_empty");
-  } else {
+  if (plans.length === 0) text += "\n" + botT(l, "sch_empty");
+  else {
     text += "\n" + botT(l, "sch_pick");
     for (const p of plans) {
       const times = parseTimesJson(p.timesJson).join(", ") || "—";
       const rec = formatRecurrence(p, l);
       const pause = p.active ? "" : ` · ${botT(l, "sch_paused")}`;
       const dose = p.dosage ? ` (${p.dosage})` : "";
-      kb.text(`${p.active ? "💊" : "⏸"} ${p.name}${dose} · ${times} [${rec}]${pause}`.slice(0, 64), `dsv:${p.id}`).row();
+      const label = `${p.active ? "💊" : "⏸"} ${p.name}${dose} · ${times} [${rec}]${pause}`.slice(0, 64);
+      listMap[label] = p.id;
+      rows.push([label]);
     }
   }
-  kb.text(botT(l, "sch_add"), "dsadd");
-  await ctx.reply(text, { reply_markup: kb });
+  rows.push([botT(l, "sch_add")]);
+  rows.push([botT(l, "kb_back")]);
+  setState(ctx.chat!.id, { step: "sch:med:list", profileId: auth.profileId, locale: l, data: { backTo: "med_hub", listMap } });
+  await replyKb(ctx, text, kb(rows));
 }
 
 async function showMealPlanCard(ctx: Context, planId: string) {
@@ -1205,16 +1425,19 @@ async function showMealPlanCard(ctx: Context, planId: string) {
     botT(l, "sch_card_rec", { rec: formatRecurrence(plan, l) }),
     botT(l, "sch_card_status", { status }),
   ].join("\n");
-  const kb = new InlineKeyboard()
-    .text(`✅ ${botT(l, "taken")}`, `taken_meal:${plan.id}`).row()
-    .text(botT(l, "sch_edit_name"), `mse:n:${plan.id}`)
-    .text(botT(l, "sch_edit_times"), `mse:t:${plan.id}`).row()
-    .text(botT(l, "sch_edit_rec"), `mse:r:${plan.id}`)
-    .text(botT(l, "sch_edit_type"), `mse:m:${plan.id}`).row()
-    .text(plan.active ? botT(l, "sch_pause") : botT(l, "sch_resume"), `msp:${plan.id}`)
-    .text(botT(l, "sch_delete"), `msd:${plan.id}`).row()
-    .text(botT(l, "sch_back"), "mslist");
-  await ctx.reply(text, { reply_markup: kb });
+  setState(ctx.chat!.id, {
+    step: "sch:meal:card",
+    profileId: plan.profileId,
+    locale: l,
+    data: { backTo: "mslist", planId, kind: "meal", active: plan.active },
+  });
+  await replyKb(ctx, text, kb([
+    [`✅ ${botT(l, "taken")}`],
+    [botT(l, "sch_edit_name"), botT(l, "sch_edit_times")],
+    [botT(l, "sch_edit_rec"), botT(l, "sch_edit_type")],
+    [plan.active ? botT(l, "sch_pause") : botT(l, "sch_resume"), botT(l, "sch_delete")],
+    [botT(l, "kb_back")],
+  ]));
 }
 
 async function showMedPlanCard(ctx: Context, planId: string) {
@@ -1231,24 +1454,26 @@ async function showMedPlanCard(ctx: Context, planId: string) {
     botT(l, "sch_card_rec", { rec: formatRecurrence(plan, l) }),
     botT(l, "sch_card_status", { status }),
   ].join("\n");
-  const kb = new InlineKeyboard()
-    .text(`✅ ${botT(l, "taken")}`, `taken_med:${plan.id}`)
-    .text(botT(l, "med_stop"), `med_stop:${plan.id}`).row()
-    .text(botT(l, "sch_edit_name"), `dse:n:${plan.id}`)
-    .text(botT(l, "sch_edit_dosage"), `dse:d:${plan.id}`).row()
-    .text(botT(l, "sch_edit_times"), `dse:t:${plan.id}`)
-    .text(botT(l, "sch_edit_rec"), `dse:r:${plan.id}`).row()
-    .text(plan.active ? botT(l, "sch_pause") : botT(l, "sch_resume"), `dsp:${plan.id}`)
-    .text(botT(l, "sch_delete"), `dsd:${plan.id}`).row()
-    .text(botT(l, "sch_back"), "dslist");
-  await ctx.reply(text, { reply_markup: kb });
+  setState(ctx.chat!.id, {
+    step: "sch:med:card",
+    profileId: plan.profileId,
+    locale: l,
+    data: { backTo: "dslist", planId, kind: "med", active: plan.active },
+  });
+  await replyKb(ctx, text, kb([
+    [`✅ ${botT(l, "taken")}`],
+    [botT(l, "sch_edit_name"), botT(l, "sch_edit_dosage")],
+    [botT(l, "sch_edit_times"), botT(l, "sch_edit_rec")],
+    [plan.active ? botT(l, "sch_pause") : botT(l, "sch_resume"), botT(l, "sch_delete")],
+    [botT(l, "kb_back")],
+  ]));
 }
 
 async function beginScheduleAdd(ctx: Context, kind: "meal" | "med") {
   const auth = await requireAuth(ctx);
   if (!auth) return;
   const l = auth.locale;
-  setState(ctx.chat!.id, { step: "sch:name", profileId: auth.profileId, locale: l, data: { kind } });
+  setState(ctx.chat!.id, { step: "sch:name", profileId: auth.profileId, locale: l, data: { kind, backTo: kind === "meal" ? "mslist" : "dslist" } });
   await replyCancel(ctx, botT(l, kind === "meal" ? "sch_name_prompt" : "sch_med_name_prompt"), l);
 }
 
@@ -1259,7 +1484,7 @@ async function promptScheduleTimes(ctx: Context, st: UserState) {
 
 async function promptScheduleRecurrence(ctx: Context, st: UserState) {
   st.step = "sch:rec";
-  await ctx.reply(botT(st.locale!, "sch_rec_prompt"), { reply_markup: recKeyboard(st.locale!) });
+  await replyKb(ctx, botT(st.locale!, "sch_rec_prompt"), recReplyKb(st.locale!));
 }
 
 async function saveNewSchedule(ctx: Context, st: UserState) {
@@ -1301,8 +1526,12 @@ async function saveNewSchedule(ctx: Context, st: UserState) {
     });
   }
   const loc = st.locale!;
+  const tz = profile?.timezone || "UTC";
+  const timesLabel = (st.data!.times as string[] || []).join(", ") || "—";
+  let saved = botT(loc, "sch_saved") + "\n" + botT(loc, "sch_saved_when", { tz, now: nowTime(tz), times: timesLabel });
+  if (tz === "UTC") saved += "\n" + botT(loc, "tz_utc_warn");
   clearState(ctx.chat!.id);
-  await replyMain(ctx, botT(loc, "sch_saved"), loc);
+  await replyMain(ctx, saved, loc);
   if (kind === "meal") await showMealSchedules(ctx);
   else await showMedSchedules(ctx);
 }
@@ -1312,7 +1541,7 @@ async function afterRecurrenceChosen(ctx: Context, st: UserState, rec: string) {
   if (rec === "weekly") {
     st.data!.weekdays = st.data!.weekdays || [];
     st.step = "sch:weekdays";
-    await ctx.reply(botT(st.locale!, "sch_weekdays_prompt"), { reply_markup: weekdayKeyboard(st.data!.weekdays, st.locale!) });
+    await replyKb(ctx, botT(st.locale!, "sch_weekdays_prompt"), weekdayReplyKb(st.data!.weekdays, st.locale!));
     return;
   }
   if (rec === "interval") {
@@ -1344,18 +1573,18 @@ async function startScheduleFieldEdit(ctx: Context, kind: "meal" | "med", field:
   if (!profile) return;
   const l = profile.preferredLocale;
   if (field === "r") {
-    setState(ctx.chat!.id, { step: "sch:rec", profileId: profile.id, locale: l, data: { kind, editId: id } });
-    await ctx.reply(botT(l, "sch_rec_prompt"), { reply_markup: recKeyboard(l) });
+    setState(ctx.chat!.id, { step: "sch:rec", profileId: profile.id, locale: l, data: { kind, editId: id, planId: id, backTo: kind === "meal" ? "sch_meal_card" : "sch_med_card" } });
+    await replyKb(ctx, botT(l, "sch_rec_prompt"), recReplyKb(l));
     return;
   }
   if (field === "m") {
-    setState(ctx.chat!.id, { step: "sch:type", profileId: profile.id, locale: l, data: { kind, editId: id } });
-    await ctx.reply(botT(l, "sch_type_prompt"), { reply_markup: mealTypeKeyboard(l, "smt:") });
+    setState(ctx.chat!.id, { step: "sch:type", profileId: profile.id, locale: l, data: { kind, editId: id, planId: id, backTo: "sch_meal_card" } });
+    await replyKb(ctx, botT(l, "sch_type_prompt"), mealTypeReplyKb(l));
     return;
   }
   const step = field === "n" ? "sch_edit:name" : field === "d" ? "sch_edit:dosage" : "sch_edit:times";
   const prompt = field === "n" ? (kind === "meal" ? "sch_name_prompt" : "sch_med_name_prompt") : field === "d" ? "med_dosage_prompt" : "sch_times_prompt";
-  setState(ctx.chat!.id, { step, profileId: profile.id, locale: l, data: { kind, editId: id } });
+  setState(ctx.chat!.id, { step, profileId: profile.id, locale: l, data: { kind, editId: id, planId: id, backTo: kind === "meal" ? "sch_meal_card" : "sch_med_card" } });
   await replyCancel(ctx, botT(l, prompt), l);
 }
 
@@ -1363,14 +1592,18 @@ async function showSettings(ctx: Context) {
   const auth = await requireAuth(ctx);
   if (!auth) return;
   const profile = await prisma.profile.findUnique({ where: { id: auth.profileId } });
-  const kb = new InlineKeyboard()
-    .text(botT(auth.locale, "settings_language"), "settings:language").row()
-    .text(botT(auth.locale, "settings_profile"), "settings:profile").row()
-    .text(botT(auth.locale, "settings_timezone"), "settings:timezone").row()
-    .text(botT(auth.locale, "settings_email"), "settings:email").row();
-  if (!profile?.phone) kb.text(botT(auth.locale, "settings_phone"), "settings:phone").row();
-  kb.text(botT(auth.locale, "settings_logout"), "settings:logout").row();
-  await ctx.reply(botT(auth.locale, "settings_title"), { reply_markup: kb });
+  const l = auth.locale;
+  const rows = [
+    [botT(l, "settings_language")],
+    [botT(l, "settings_profile")],
+    [botT(l, "settings_timezone")],
+    [botT(l, "settings_email")],
+  ];
+  if (!profile?.phone) rows.push([botT(l, "settings_phone")]);
+  rows.push([botT(l, "settings_logout")]);
+  rows.push([botT(l, "kb_back")]);
+  setState(ctx.chat!.id, { step: "settings:menu", profileId: auth.profileId, locale: l, data: { backTo: "main" } });
+  await replyKb(ctx, botT(l, "settings_title"), kb(rows));
 }
 
 // ─── Commands ─────────────────────────────────────────────────────────────────
@@ -1383,14 +1616,13 @@ bot.command("start", async (ctx) => {
     const l = profile.preferredLocale;
     await replyMain(ctx, botT(l, "welcome") + "\n" + botT(l, "main_menu"), l);
   } else {
-    const kb = new InlineKeyboard();
+    const rows: string[][] = [];
     const entries = Object.entries(LOCALES_META);
-    for (let i = 0; i < entries.length; i++) {
-      const [code, name] = entries[i];
-      kb.text(name, `start_lang:${code}`);
-      if ((i + 1) % 3 === 0) kb.row();
+    for (let i = 0; i < entries.length; i += 3) {
+      rows.push(entries.slice(i, i + 3).map(([, name]) => name));
     }
-    await ctx.reply("🌿 Healthy Life\n\n" + botT("en", "choose_language"), { reply_markup: kb });
+    setState(chatId, { step: "start:lang", data: {} });
+    await replyKb(ctx, "🌿 Healthy Life\n\n" + botT("en", "choose_language"), kb(rows));
   }
 });
 
@@ -1995,6 +2227,411 @@ for (const locale of Object.keys(translations)) {
     const l = profile?.preferredLocale || "ru";
     await replyMain(ctx, botT(l, "cancelled"), l);
   };
+  if (t.kb_back) KB_ACTIONS[t.kb_back] = goBack;
+  if (t.hub_meal_log) KB_ACTIONS[t.hub_meal_log] = startMealFlow;
+  if (t.hub_meal_label) KB_ACTIONS[t.hub_meal_label] = startLabelFlow;
+  if (t.hub_meal_sched) KB_ACTIONS[t.hub_meal_sched] = showMealSchedules;
+  if (t.hub_med_log) KB_ACTIONS[t.hub_med_log] = startMedFlow;
+  if (t.hub_med_sched) KB_ACTIONS[t.hub_med_sched] = showMedSchedules;
+  if (t.kb_sec_meals) KB_ACTIONS[t.kb_sec_meals] = (ctx) => sendTodaySection(ctx, "meals");
+  if (t.kb_sec_meds) KB_ACTIONS[t.kb_sec_meds] = (ctx) => sendTodaySection(ctx, "meds");
+  if (t.kb_sec_workouts) KB_ACTIONS[t.kb_sec_workouts] = (ctx) => sendTodaySection(ctx, "workouts");
+}
+
+async function markMealTaken(ctx: Context, planId: string) {
+  const plan = await prisma.mealPlan.findUnique({ where: { id: planId } });
+  if (!plan) return;
+  const profile = await prisma.profile.findUnique({ where: { id: plan.profileId } });
+  const l = profile?.preferredLocale || "ru";
+  await prisma.meal.create({
+    data: { profileId: plan.profileId, date: todayStr(profile?.timezone), mealType: plan.mealType, name: plan.name, calories: 0 },
+  });
+  await ctx.reply(botT(l, "taken_meal_done", { name: plan.name }));
+  await showMealPlanCard(ctx, planId);
+}
+
+async function markMedTaken(ctx: Context, planId: string) {
+  const plan = await prisma.medicationPlan.findUnique({ where: { id: planId } });
+  if (!plan) return;
+  const profile = await prisma.profile.findUnique({ where: { id: plan.profileId } });
+  const l = profile?.preferredLocale || "ru";
+  const time = nowTime(profile?.timezone);
+  await prisma.medicationIntake.create({
+    data: { profileId: plan.profileId, planId: plan.id, date: todayStr(profile?.timezone), name: plan.name, dosage: plan.dosage || null, takenTime: time },
+  });
+  await ctx.reply(botT(l, "taken_med_done", { name: plan.name, time }));
+  await showMedPlanCard(ctx, planId);
+}
+
+async function handleScreen(ctx: Context, text: string, st: UserState): Promise<boolean> {
+  const l = st.locale || "ru";
+  const chatId = ctx.chat!.id;
+
+  if (st.step === "start:lang") {
+    const code = Object.entries(LOCALES_META).find(([, n]) => n === text)?.[0];
+    if (!code) return false;
+    setState(chatId, { step: "awaiting_auth", locale: code, data: {} });
+    await replyKb(ctx, botT(code, "welcome") + "\n\n" + botT(code, "not_linked"), kb([
+      [botT(code, "login_email")],
+      [botT(code, "login_phone")],
+    ]));
+    return true;
+  }
+
+  if (st.step === "awaiting_auth") {
+    if (text === botT(l, "login_email")) {
+      setState(chatId, { step: "auth:email", locale: l, data: {} });
+      await replyCancel(ctx, botT(l, "enter_email"), l);
+      return true;
+    }
+    if (text === botT(l, "login_phone")) {
+      setState(chatId, { step: "auth:phone", locale: l, data: {} });
+      const phoneKb = new Keyboard().requestContact(botT(l, "share_contact")).text(botT(l, "kb_cancel")).resized().persistent();
+      await sweepChat(ctx);
+      const msg = await ctx.reply(botT(l, "enter_phone"), { reply_markup: phoneKb });
+      rememberMsg(chatId, msg.message_id);
+      return true;
+    }
+  }
+
+  if (st.step === "meal:type") {
+    if (text === botT(l, "label")) { await startLabelFlow(ctx); return true; }
+    for (const type of ["breakfast", "lunch", "dinner", "snack"]) {
+      if (text === botT(l, type)) {
+        st.data!.mealType = type;
+        st.step = "meal:input";
+        await replyCancel(ctx, botT(l, "meal_input_prompt"), l);
+        return true;
+      }
+    }
+  }
+
+  if (st.step === "meal:photo_confirm") {
+    if (text === botT(l, "confirm") && st.data?.aiResult) {
+      const { aiResult, mealType, photoPath } = st.data;
+      const profile = await prisma.profile.findUnique({ where: { id: st.profileId } });
+      await prisma.meal.create({
+        data: {
+          profileId: st.profileId!, date: todayStr(profile?.timezone), mealType: mealType || "snack",
+          name: aiResult.name, calories: aiResult.calories, protein: aiResult.protein, carbs: aiResult.carbs, fat: aiResult.fat,
+          aiDetectedName: aiResult.name, aiCalories: aiResult.calories, photoPath: photoPath || null,
+        },
+      });
+      clearState(chatId);
+      await replyMain(ctx, botT(l, "meal_saved", { name: aiResult.name, cal: Math.round(aiResult.calories) }), l);
+      return true;
+    }
+    if (text === botT(l, "edit")) {
+      st.step = "meal:text_name";
+      st.data!.aiResult = undefined;
+      await replyCancel(ctx, botT(l, "meal_input_prompt"), l);
+      return true;
+    }
+  }
+
+  if (st.step === "med:photo_confirm" || st.step === "sch:photo_confirm") {
+    if (text === botT(l, "confirm")) {
+      const suggested = String(st.data?.dosage || "");
+      st.step = st.step === "sch:photo_confirm" ? "sch:dosage" : "med:dosage";
+      await replyCancel(
+        ctx,
+        suggested ? botT(l, "med_dosage_keep", { dosage: suggested }) : botT(l, "med_dosage_prompt"),
+        l,
+      );
+      return true;
+    }
+    if (text === botT(l, "edit")) {
+      const isSch = st.step === "sch:photo_confirm";
+      st.step = isSch ? "sch:name" : "med:name";
+      await replyCancel(ctx, botT(l, isSch ? "sch_med_name_prompt" : "med_name_prompt"), l);
+      return true;
+    }
+  }
+
+  if (st.step === "med:choose") {
+    if (text === botT(l, "med_custom")) {
+      st.step = "med:name";
+      await replyCancel(ctx, botT(l, "med_name_prompt"), l);
+      return true;
+    }
+    const planId = st.data?.listMap?.[text];
+    if (planId) {
+      const plan = await prisma.medicationPlan.findUnique({ where: { id: planId } });
+      if (!plan) return true;
+      st.data!.planId = plan.id;
+      st.data!.name = plan.name;
+      st.data!.dosage = plan.dosage || "";
+      st.step = "med:time";
+      await replyCancel(ctx, botT(l, "med_time_prompt"), l);
+      return true;
+    }
+  }
+
+  if (st.step === "workout:type") {
+    for (const type of ["running", "walking", "cycling", "strength", "yoga", "swimming", "hiit", "sports", "other"]) {
+      if (text === botT(l, type)) {
+        st.data!.type = type;
+        st.step = "workout:duration";
+        await replyCancel(ctx, botT(l, "workout_duration_prompt"), l);
+        return true;
+      }
+    }
+  }
+
+  if (st.step?.startsWith("today:")) {
+    const item = st.data?.editMap?.[text];
+    if (item) {
+      if (item.kind.startsWith("del-")) {
+        const type = item.kind.slice(4);
+        if (type === "meal") await prisma.meal.delete({ where: { id: item.id } }).catch(() => {});
+        else if (type === "med") await prisma.medicationIntake.delete({ where: { id: item.id } }).catch(() => {});
+        else if (type === "workout") await prisma.workout.delete({ where: { id: item.id } }).catch(() => {});
+        await sendTodaySection(ctx, (st.data?.section || "meals") as "meals" | "meds" | "workouts");
+        return true;
+      }
+      if (item.kind === "meal") {
+        setState(chatId, { step: "edit_meal:name", profileId: st.profileId, locale: l, data: { entryId: item.id, backTo: "today" } });
+        await replyCancel(ctx, botT(l, "edit_meal_name"), l);
+        return true;
+      }
+      if (item.kind === "med") {
+        setState(chatId, { step: "edit_med:name", profileId: st.profileId, locale: l, data: { entryId: item.id, backTo: "today" } });
+        await replyCancel(ctx, botT(l, "edit_med_name"), l);
+        return true;
+      }
+      if (item.kind === "workout") {
+        setState(chatId, { step: "edit_workout:duration", profileId: st.profileId, locale: l, data: { entryId: item.id, backTo: "today" } });
+        await replyCancel(ctx, botT(l, "workout_duration_prompt"), l);
+        return true;
+      }
+    }
+  }
+
+  if (st.step === "advice:pick" || st.step === "advice:page") {
+    if (text === botT(l, "advice_day")) { await sendAdvicePage(ctx, chatId, "day", 0); return true; }
+    if (text === botT(l, "advice_week")) { await sendAdvicePage(ctx, chatId, "week", 0); return true; }
+    if (text === botT(l, "advice_month")) { await sendAdvicePage(ctx, chatId, "month", 0); return true; }
+    if (st.step === "advice:page") {
+      const period = st.data?.advicePeriod || "day";
+      const offset = st.data?.adviceOffset || 0;
+      if (text === botT(l, "advice_newer")) { await sendAdvicePage(ctx, chatId, period, Math.max(0, offset - 1)); return true; }
+      if (text === botT(l, "advice_older")) { await sendAdvicePage(ctx, chatId, period, offset + 1); return true; }
+    }
+  }
+
+  if (st.step === "settings:menu") {
+    if (text === botT(l, "settings_language")) {
+      const rows: string[][] = [];
+      const entries = Object.entries(LOCALES_META);
+      for (let i = 0; i < entries.length; i += 3) rows.push(entries.slice(i, i + 3).map(([, n]) => n));
+      rows.push([botT(l, "kb_back")]);
+      setState(chatId, { step: "settings:language", profileId: st.profileId, locale: l, data: { backTo: "settings" } });
+      await replyKb(ctx, botT(l, "language_prompt"), kb(rows));
+      return true;
+    }
+    if (text === botT(l, "settings_profile")) {
+      const profile = await getProfileByChatId(chatId);
+      if (!profile) return true;
+      const info = botT(l, "profile_info", {
+        name: profile.name, goal: profile.dailyCalorieGoal,
+        target: profile.targetWeightKg ? `${profile.targetWeightKg}` : "—",
+        height: profile.heightCm ? `${profile.heightCm}` : "—",
+      });
+      setState(chatId, { step: "settings:profile_view", profileId: profile.id, locale: l, data: { backTo: "settings" } });
+      await replyKb(ctx, info, kb([[botT(l, "profile_edit")], [botT(l, "kb_back")]]));
+      return true;
+    }
+    if (text === botT(l, "settings_email")) {
+      const profile = await getProfileByChatId(chatId);
+      if (!profile?.userId) return true;
+      const { data: userData } = await supabaseAdmin.auth.admin.getUserById(profile.userId);
+      await replyKb(ctx, botT(l, "email_info", { email: userData?.user?.email || "—" }), kb([[botT(l, "kb_back")]]));
+      return true;
+    }
+    if (text === botT(l, "settings_phone")) {
+      setState(chatId, { step: "settings:phone", profileId: st.profileId, locale: l, data: { backTo: "settings" } });
+      const phoneKb = new Keyboard().requestContact(botT(l, "share_contact")).text(botT(l, "kb_cancel")).resized().persistent();
+      await sweepChat(ctx);
+      const msg = await ctx.reply(botT(l, "enter_phone"), { reply_markup: phoneKb });
+      rememberMsg(chatId, msg.message_id);
+      return true;
+    }
+    if (text === botT(l, "settings_timezone")) {
+      setState(chatId, { step: "settings:timezone", profileId: st.profileId, locale: l, data: { backTo: "settings" } });
+      await replyCancel(ctx, botT(l, "timezone_prompt"), l);
+      return true;
+    }
+    if (text === botT(l, "settings_logout")) {
+      setState(chatId, { step: "confirm:logout", profileId: st.profileId, locale: l, data: { backTo: "settings" } });
+      await replyKb(ctx, botT(l, "logout_confirm"), yesNoKeyboard(l));
+      return true;
+    }
+  }
+
+  if (st.step === "settings:language") {
+    const code = Object.entries(LOCALES_META).find(([, n]) => n === text)?.[0];
+    if (!code) return false;
+    if (st.profileId) await prisma.profile.update({ where: { id: st.profileId }, data: { preferredLocale: code } });
+    await replyMain(ctx, botT(code, "language_saved", { lang: LOCALES_META[code] }), code);
+    return true;
+  }
+
+  if (st.step === "settings:profile_view" && text === botT(l, "profile_edit")) {
+    setState(chatId, { step: "settings:name", profileId: st.profileId, locale: l, data: { backTo: "settings" } });
+    await replyCancel(ctx, botT(l, "profile_name_prompt"), l);
+    return true;
+  }
+
+  if (st.step === "confirm:logout") {
+    if (text === botT(l, "yes")) {
+      if (st.profileId) await prisma.profile.update({ where: { id: st.profileId }, data: { botLoggedOut: true } });
+      clearState(chatId);
+      await sweepChat(ctx);
+      await ctx.reply(botT(l, "logout_done"), { reply_markup: { remove_keyboard: true } });
+      return true;
+    }
+    if (text === botT(l, "no")) { await showSettings(ctx); return true; }
+  }
+
+  if (st.step === "sch:meal:list") {
+    if (text === botT(l, "sch_add")) { await beginScheduleAdd(ctx, "meal"); return true; }
+    const id = st.data?.listMap?.[text];
+    if (id) { await showMealPlanCard(ctx, id); return true; }
+  }
+  if (st.step === "sch:med:list") {
+    if (text === botT(l, "sch_add")) { await beginScheduleAdd(ctx, "med"); return true; }
+    const id = st.data?.listMap?.[text];
+    if (id) { await showMedPlanCard(ctx, id); return true; }
+  }
+
+  if (st.step === "sch:meal:card" || st.step === "sch:med:card") {
+    const kind = st.step === "sch:meal:card" ? "meal" : "med";
+    const planId = st.data?.planId as string;
+    if (!planId) return false;
+    if (text === `✅ ${botT(l, "taken")}`) {
+      if (kind === "meal") await markMealTaken(ctx, planId);
+      else await markMedTaken(ctx, planId);
+      return true;
+    }
+    if (text === botT(l, "sch_edit_name")) { await startScheduleFieldEdit(ctx, kind, "n", planId); return true; }
+    if (text === botT(l, "sch_edit_times")) { await startScheduleFieldEdit(ctx, kind, "t", planId); return true; }
+    if (text === botT(l, "sch_edit_rec")) { await startScheduleFieldEdit(ctx, kind, "r", planId); return true; }
+    if (text === botT(l, "sch_edit_type")) { await startScheduleFieldEdit(ctx, kind, "m", planId); return true; }
+    if (text === botT(l, "sch_edit_dosage")) { await startScheduleFieldEdit(ctx, kind, "d", planId); return true; }
+    if (text === botT(l, "sch_pause") || text === botT(l, "sch_resume")) {
+      if (kind === "meal") {
+        const plan = await prisma.mealPlan.findUnique({ where: { id: planId } });
+        if (plan) {
+          await prisma.mealPlan.update({ where: { id: planId }, data: { active: !plan.active } });
+          await showMealPlanCard(ctx, planId);
+        }
+      } else {
+        const plan = await prisma.medicationPlan.findUnique({ where: { id: planId } });
+        if (plan) {
+          await prisma.medicationPlan.update({ where: { id: planId }, data: { active: !plan.active } });
+          await showMedPlanCard(ctx, planId);
+        }
+      }
+      return true;
+    }
+    if (text === botT(l, "sch_delete")) {
+      setState(chatId, { step: "confirm:sch_del", profileId: st.profileId, locale: l, data: { kind, planId, backTo: kind === "meal" ? "mslist" : "dslist" } });
+      await replyKb(ctx, botT(l, "sch_delete_confirm", { name: "—" }), yesNoKeyboard(l));
+      return true;
+    }
+  }
+
+  if (st.step === "confirm:sch_del") {
+    if (text === botT(l, "yes")) {
+      const id = st.data?.planId;
+      if (st.data?.kind === "meal") await prisma.mealPlan.delete({ where: { id } }).catch(() => {});
+      else await prisma.medicationPlan.delete({ where: { id } }).catch(() => {});
+      await replyMain(ctx, botT(l, "sch_deleted"), l);
+      if (st.data?.kind === "meal") await showMealSchedules(ctx);
+      else await showMedSchedules(ctx);
+      return true;
+    }
+    if (text === botT(l, "no")) {
+      if (st.data?.kind === "meal") await showMealSchedules(ctx);
+      else await showMedSchedules(ctx);
+      return true;
+    }
+  }
+
+  if (st.step === "sch:rec") {
+    if (text === botT(l, "sch_rec_daily")) { await afterRecurrenceChosen(ctx, st, "daily"); return true; }
+    if (text === botT(l, "sch_rec_weekly")) { await afterRecurrenceChosen(ctx, st, "weekly"); return true; }
+    if (text === botT(l, "sch_rec_interval")) { await afterRecurrenceChosen(ctx, st, "interval"); return true; }
+  }
+
+  if (st.step === "sch:weekdays") {
+    if (text === botT(l, "sch_weekdays_done")) {
+      const selected: number[] = st.data!.weekdays || [];
+      if (selected.length === 0) { await ctx.reply(botT(l, "sch_weekdays_need")); return true; }
+      st.data!.weekdays = selected;
+      if (st.data!.editId) {
+        await applySchedulePatch(ctx, st, { recurrence: "weekly", weekdaysJson: JSON.stringify([...selected].sort((a, b) => a - b)), intervalDays: 1 });
+        return true;
+      }
+      await saveNewSchedule(ctx, st);
+      return true;
+    }
+    const raw = text.replace(/^✓\s*/, "");
+    const idx = getWeekdays(l).indexOf(raw);
+    if (idx >= 0) {
+      const day = idx + 1;
+      const selected: number[] = st.data!.weekdays || [];
+      st.data!.weekdays = selected.includes(day) ? selected.filter((d) => d !== day) : [...selected, day].sort((a, b) => a - b);
+      await replyKb(ctx, botT(l, "sch_weekdays_prompt"), weekdayReplyKb(st.data!.weekdays, l));
+      return true;
+    }
+  }
+
+  if (st.step === "sch:type" || (st.step === "sch:name" && false)) {
+    /* handled below */
+  }
+  if (st.step === "sch:type") {
+    for (const type of ["breakfast", "lunch", "dinner", "snack"]) {
+      if (text === botT(l, type)) {
+        if (st.data?.editId && st.data.kind === "meal") {
+          await applySchedulePatch(ctx, st, { mealType: type });
+          return true;
+        }
+        st.data!.mealType = type;
+        await promptScheduleTimes(ctx, st);
+        return true;
+      }
+    }
+  }
+
+  if (st.step === "auth:email_password" || st.step === "auth:phone_password") {
+    if (text === botT(l, "register_yes") || text === botT(l, "register_no")) return false;
+  }
+
+  if (st.step === "auth:register") {
+    if (text === botT(l, "register_yes")) {
+      if (!st.data?.email || !st.data?.password) return true;
+      const { user, error } = await trySignUp(st.data.email, st.data.password);
+      if (error || !user) {
+        await replyMain(ctx, botT(l, "register_failed", { error: error?.message || "unknown" }), l);
+        return true;
+      }
+      const profile = await linkProfile(user.id, chatId, st.data.phone);
+      if (l !== profile.preferredLocale) {
+        await prisma.profile.update({ where: { id: profile.id }, data: { preferredLocale: l } });
+      }
+      clearState(chatId);
+      await replyMain(ctx, botT(l, "register_success"), l);
+      return true;
+    }
+    if (text === botT(l, "register_no")) {
+      clearState(chatId);
+      await replyMain(ctx, botT(l, "cancelled"), l);
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // ─── Text handler ─────────────────────────────────────────────────────────────
@@ -2003,10 +2640,12 @@ bot.on("message:text", async (ctx) => {
   const chatId = ctx.chat.id;
   const text = ctx.message.text.trim();
 
+  const st = getState(chatId);
+  if (st && await handleScreen(ctx, text, st)) return;
+
   const action = KB_ACTIONS[text];
   if (action) return action(ctx);
 
-  const st = getState(chatId);
   if (!st) return;
 
   try {
@@ -2028,11 +2667,11 @@ bot.on("message:text", async (ctx) => {
         clearState(chatId);
         await replyMain(ctx, botT(locale, "login_success", { name: profile.name }), locale);
       } else {
-        await ctx.reply(botT(locale, "login_failed") + "\n\n" + botT(locale, "register_offer"), {
-          reply_markup: new InlineKeyboard()
-            .text(botT(locale, "register_yes"), "auth:register_yes")
-            .text(botT(locale, "register_no"), "auth:register_no"),
-        });
+        st.step = "auth:register";
+        await replyKb(ctx, botT(locale, "login_failed") + "\n\n" + botT(locale, "register_offer"), kb([
+          [botT(locale, "register_yes")],
+          [botT(locale, "register_no")],
+        ]));
       }
       return;
     }
@@ -2064,11 +2703,11 @@ bot.on("message:text", async (ctx) => {
       }
       if (!loggedIn) {
         st.data!.email = phoneToEmail(phone);
-        await ctx.reply(botT(locale, "login_failed") + "\n\n" + botT(locale, "register_offer"), {
-          reply_markup: new InlineKeyboard()
-            .text(botT(locale, "register_yes"), "auth:register_yes")
-            .text(botT(locale, "register_no"), "auth:register_no"),
-        });
+        st.step = "auth:register";
+        await replyKb(ctx, botT(locale, "login_failed") + "\n\n" + botT(locale, "register_offer"), kb([
+          [botT(locale, "register_yes")],
+          [botT(locale, "register_no")],
+        ]));
       }
       return;
     }
@@ -2218,7 +2857,7 @@ bot.on("message:text", async (ctx) => {
       st.data!.name = text;
       if (st.data!.kind === "meal") {
         st.step = "sch:type";
-        await ctx.reply(botT(st.locale!, "sch_type_prompt"), { reply_markup: mealTypeKeyboard(st.locale!, "smt:") });
+        await replyKb(ctx, botT(st.locale!, "sch_type_prompt"), mealTypeReplyKb(st.locale!));
       } else {
         st.step = "sch:dosage";
         await replyCancel(ctx, botT(st.locale!, "med_dosage_prompt"), st.locale!);
@@ -2226,7 +2865,7 @@ bot.on("message:text", async (ctx) => {
       return;
     }
     if (st.step === "sch:dosage") {
-      st.data!.dosage = text === "/skip" ? "" : text;
+      if (text !== "/skip") st.data!.dosage = text;
       await promptScheduleTimes(ctx, st);
       return;
     }
@@ -2285,7 +2924,8 @@ bot.on("message:text", async (ctx) => {
       return;
     }
     if (st.step === "med:dosage") {
-      st.data!.dosage = text; st.step = "med:time";
+      if (text !== "/skip") st.data!.dosage = text;
+      st.step = "med:time";
       await replyCancel(ctx, botT(st.locale!, "med_time_prompt"), st.locale!);
       return;
     }
@@ -2415,7 +3055,8 @@ bot.on("message:photo", async (ctx) => {
   // ── Medication photo (during med:name step) ──
   if (st?.step === "med:name") {
     try {
-      await ctx.reply(botT(st.locale!, "med_photo_analyzing"));
+      const analyzing = await ctx.reply(botT(st.locale!, "med_photo_analyzing"));
+      rememberMsg(ctx.chat.id, analyzing.message_id);
       const { buffer, base64 } = await downloadTelegramPhoto(ctx);
       try { await uploadPhotoToStorage(buffer, "medications"); } catch {}
       const aiLang = AI_LANGUAGE[st.locale!] || AI_LANGUAGE.en;
@@ -2426,9 +3067,12 @@ bot.on("message:photo", async (ctx) => {
       );
       st.data!.name = result.name;
       st.data!.dosage = result.dosage || "";
-      st.step = "med:time";
-      await ctx.reply(botT(st.locale!, "med_photo_result", { name: `${result.name} (${result.dosage || ""})` }));
-      await replyCancel(ctx, botT(st.locale!, "med_time_prompt"), st.locale!);
+      st.step = "med:photo_confirm";
+      await replyKb(
+        ctx,
+        botT(st.locale!, "med_photo_result", { name: result.name, dosage: result.dosage || "—" }),
+        confirmEditKeyboard(st.locale!),
+      );
     } catch (e: any) {
       console.error("Med photo error:", e);
       await replyCancel(ctx, `${botT(st.locale!, "error")}\n${aiErrorDetail(e)}\n\n${botT(st.locale!, "med_name_prompt")}`, st.locale!);
@@ -2439,7 +3083,8 @@ bot.on("message:photo", async (ctx) => {
   // ── Medication pack photo while adding a schedule ──
   if (st?.step === "sch:name" && st.data?.kind === "med") {
     try {
-      await ctx.reply(botT(st.locale!, "med_photo_analyzing"));
+      const analyzing = await ctx.reply(botT(st.locale!, "med_photo_analyzing"));
+      rememberMsg(ctx.chat.id, analyzing.message_id);
       const { buffer, base64 } = await downloadTelegramPhoto(ctx);
       try { await uploadPhotoToStorage(buffer, "medications"); } catch {}
       const aiLang = AI_LANGUAGE[st.locale!] || AI_LANGUAGE.en;
@@ -2450,8 +3095,12 @@ bot.on("message:photo", async (ctx) => {
       );
       st.data!.name = result.name;
       st.data!.dosage = result.dosage || "";
-      await ctx.reply(botT(st.locale!, "med_photo_result", { name: `${result.name} (${result.dosage || ""})` }));
-      await promptScheduleTimes(ctx, st);
+      st.step = "sch:photo_confirm";
+      await replyKb(
+        ctx,
+        botT(st.locale!, "med_photo_result", { name: result.name, dosage: result.dosage || "—" }),
+        confirmEditKeyboard(st.locale!),
+      );
     } catch (e: any) {
       console.error("Schedule med photo error:", e);
       await replyCancel(ctx, `${botT(st.locale!, "error")}\n${aiErrorDetail(e)}\n\n${botT(st.locale!, "sch_med_name_prompt")}`, st.locale!);
@@ -2462,7 +3111,8 @@ bot.on("message:photo", async (ctx) => {
   // ── Nutrition label photo ──
   if (st?.step === "meal:label") {
     try {
-      await ctx.reply(botT(st.locale!, "meal_photo_analyzing"));
+      const analyzing = await ctx.reply(botT(st.locale!, "meal_photo_analyzing"));
+      rememberMsg(ctx.chat.id, analyzing.message_id);
       const { buffer, base64 } = await downloadTelegramPhoto(ctx);
       let photoPath: string | null = null;
       try { photoPath = await uploadPhotoToStorage(buffer, "meals"); } catch {}
@@ -2497,7 +3147,8 @@ bot.on("message:photo", async (ctx) => {
   }
 
   try {
-    await ctx.reply(botT(st.locale!, "meal_photo_analyzing"));
+    const analyzing = await ctx.reply(botT(st.locale!, "meal_photo_analyzing"));
+    rememberMsg(ctx.chat.id, analyzing.message_id);
 
     const { buffer, base64 } = await downloadTelegramPhoto(ctx);
 
@@ -2514,16 +3165,13 @@ bot.on("message:photo", async (ctx) => {
 
     st.data!.aiResult = result;
     st.step = "meal:photo_confirm";
-    await ctx.reply(
+    await replyKb(
+      ctx,
       botT(st.locale!, "meal_photo_result", {
         name: result.name, cal: Math.round(result.calories),
         p: Math.round(result.protein || 0), f: Math.round(result.fat || 0), c: Math.round(result.carbs || 0),
       }),
-      {
-        reply_markup: new InlineKeyboard()
-          .text(botT(st.locale!, "confirm"), "meal:confirm")
-          .text(botT(st.locale!, "edit"), "meal:edit"),
-      },
+      confirmEditKeyboard(st.locale!),
     );
   } catch (e: any) {
     console.error("Photo analysis error:", e);
@@ -2533,6 +3181,107 @@ bot.on("message:photo", async (ctx) => {
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
+
+function minutesOfDay(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return -1;
+  return h * 60 + m;
+}
+
+function isDueSlot(slot: string, nowKey: string, windowMin = 5): boolean {
+  const slotM = minutesOfDay(slot);
+  const nowM = minutesOfDay(nowKey);
+  if (slotM < 0 || nowM < 0) return false;
+  let diff = nowM - slotM;
+  if (diff < 0) diff += 24 * 60;
+  return diff >= 0 && diff < windowMin;
+}
+
+function isoWeekdayFromDateKey(dateKey: string): number {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const js = new Date(Date.UTC(y, (m || 1) - 1, d || 1)).getUTCDay();
+  return js === 0 ? 7 : js;
+}
+
+function planDueToday(plan: { recurrence: string; weekdaysJson: string; intervalDays: number; anchorDate: string | null; active: boolean }, dateKey: string): boolean {
+  if (!plan.active) return false;
+  if (plan.anchorDate && dateKey < plan.anchorDate) return false;
+  const rec = plan.recurrence || "daily";
+  if (rec === "weekly") {
+    const days = parseWeekdaysJson(plan.weekdaysJson);
+    return days.includes(isoWeekdayFromDateKey(dateKey));
+  }
+  if (rec === "interval") {
+    const n = Math.max(1, plan.intervalDays || 1);
+    const anchor = plan.anchorDate || dateKey;
+    const a = Date.parse(`${anchor}T00:00:00Z`);
+    const b = Date.parse(`${dateKey}T00:00:00Z`);
+    if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return false;
+    return Math.round((b - a) / 86_400_000) % n === 0;
+  }
+  return true;
+}
+
+async function claimReminder(profileId: string, kind: string, dedupeKey: string): Promise<boolean> {
+  try {
+    await prisma.pushReminderSent.create({ data: { profileId, kind, dedupeKey } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function runBotReminders() {
+  const profiles = await prisma.profile.findMany({
+    where: { telegramChatId: { not: null }, botLoggedOut: false },
+    include: {
+      medicationPlans: { where: { active: true } },
+      mealPlans: { where: { active: true } },
+    },
+  });
+  for (const profile of profiles) {
+    const tz = profile.timezone || "UTC";
+    const dateKey = todayStr(tz);
+    const timeKey = nowTime(tz);
+    const chatId = Number(profile.telegramChatId);
+    if (!Number.isFinite(chatId)) continue;
+
+    for (const plan of profile.medicationPlans) {
+      if (!planDueToday(plan, dateKey)) continue;
+      for (const due of parseTimesJson(plan.timesJson).filter((t) => isDueSlot(t, timeKey))) {
+        const taken = await prisma.medicationIntake.findFirst({
+          where: { profileId: profile.id, planId: plan.id, date: dateKey, scheduledTime: due },
+          select: { id: true },
+        });
+        if (taken) continue;
+        if (!(await claimReminder(profile.id, "medication", `${plan.id}|${dateKey}|${due}`))) continue;
+        const dosage = plan.dosage ? ` (${plan.dosage})` : "";
+        try {
+          await bot.api.sendMessage(chatId, `💊 ${plan.name}${dosage} — ${due}`);
+        } catch (e) {
+          console.error("bot reminder med failed", e);
+        }
+      }
+    }
+
+    for (const plan of profile.mealPlans) {
+      if (!planDueToday(plan, dateKey)) continue;
+      for (const due of parseTimesJson(plan.timesJson).filter((t) => isDueSlot(t, timeKey))) {
+        const logged = await prisma.meal.findFirst({
+          where: { profileId: profile.id, date: dateKey, mealType: plan.mealType },
+          select: { id: true },
+        });
+        if (logged) continue;
+        if (!(await claimReminder(profile.id, "meal", `mealplan|${plan.id}|${dateKey}|${due}`))) continue;
+        try {
+          await bot.api.sendMessage(chatId, `🍽 ${plan.name} — ${due}`);
+        } catch (e) {
+          console.error("bot reminder meal failed", e);
+        }
+      }
+    }
+  }
+}
 
 bot.catch((err) => { console.error("Bot error:", err); });
 
@@ -2555,6 +3304,10 @@ async function main() {
   await bot.api.setChatMenuButton({ menu_button: { type: "commands" } });
 
   console.log("🤖 Healthy Life bot is running...");
+  setInterval(() => {
+    runBotReminders().catch((e) => console.error("reminder tick failed", e));
+  }, 30_000);
+  runBotReminders().catch((e) => console.error("reminder tick failed", e));
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       await bot.start();

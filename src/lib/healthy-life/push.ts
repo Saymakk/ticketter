@@ -31,6 +31,7 @@ function ensureVapid() {
 }
 
 export async function sendPushToProfile(profileId: string, payload: PushPayload) {
+  if (!isHealthyLifePushConfigured()) return { sent: 0, removed: 0 };
   ensureVapid();
   const subs = await prisma.pushSubscription.findMany({ where: { profileId } });
   if (subs.length === 0) return { sent: 0, removed: 0 };
@@ -81,23 +82,26 @@ export async function sendTelegramToProfile(
 
   const profile = await prisma.profile.findUnique({
     where: { id: profileId },
-    select: { telegramChatId: true },
+    select: { telegramChatId: true, botLoggedOut: true },
   });
-  if (!profile?.telegramChatId) return;
+  if (!profile?.telegramChatId || profile.botLoggedOut) return;
 
   const text = `${payload.title}\n${payload.body}`;
   try {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: profile.telegramChatId,
         text,
-        parse_mode: "HTML",
       }),
     });
-  } catch {
-    // best-effort
+    if (!resp.ok) {
+      const err = await resp.text().catch(() => "");
+      console.error("Telegram reminder failed:", resp.status, err.slice(0, 300));
+    }
+  } catch (e) {
+    console.error("Telegram reminder error:", e);
   }
 }
 
