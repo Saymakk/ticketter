@@ -111,13 +111,18 @@ const translations: Record<string, Record<string, string>> = {
     meal_type_prompt: "Выберите тип приёма пищи:",
     breakfast: "🌅 Завтрак", lunch: "☀️ Обед", dinner: "🌙 Ужин", snack: "🍎 Перекус",
     meal_input_prompt: "📷 Отправьте фото еды или напишите название блюда:",
+    meal_label_prompt: "📷 Отправьте фото этикетки с КБЖУ:",
+    meal_label_result: "🏷 Этикетка:\n🔥 {cal} ккал/100г\nБелки: {p}г | Жиры: {f}г | Углеводы: {c}г\n\nВведите вес порции (г):",
     meal_calories_prompt: "Введите калории:", meal_macros_prompt: "Белки/жиры/углеводы через пробел (или /skip):",
+    label: "📋 Этикетка",
     meal_saved: "✅ Приём пищи сохранён!\n🍽 {name}\n🔥 {cal} ккал",
     meal_photo_analyzing: "🔍 Анализирую фото...",
     meal_photo_result: "🤖 AI определил:\n🍽 {name}\n🔥 {cal} ккал\nБелки: {p}г | Жиры: {f}г | Углеводы: {c}г",
     confirm: "✅ Подтвердить", edit: "✏️ Ввести вручную",
     med_prompt: "Выберите лекарство или добавьте новое:", med_custom: "➕ Другое",
-    med_name_prompt: "Название лекарства:", med_dosage_prompt: "Дозировка:",
+    med_name_prompt: "Название лекарства (или отправьте фото упаковки):", med_dosage_prompt: "Дозировка:",
+    med_photo_analyzing: "🔍 Анализирую фото упаковки...",
+    med_photo_result: "🤖 AI определил: {name}\n\nПодтвердить?",
     med_time_prompt: "Время приёма (ЧЧ:ММ) или /skip:", med_saved: "✅ 💊 {name} {dosage} в {time}",
     weight_prompt: "Введите вес (кг):", weight_saved: "✅ Вес: {weight} кг",
     workout_type_prompt: "Тип тренировки:", workout_duration_prompt: "Продолжительность (мин):",
@@ -167,13 +172,24 @@ const translations: Record<string, Record<string, string>> = {
     meal_schedules: "🍽 Расписания еды:", med_schedules: "💊 Расписания лекарств:",
     no_meal_schedules: "Расписаний еды нет.", no_med_schedules: "Расписаний лекарств нет.",
     schedule_daily: "ежедневно", schedule_weekly: "по дням", schedule_interval: "каждые {n} дн.",
-    med_stop: "🛑 Приём окончен", med_stopped: "✅ «{name}» убран из расписания.",
+    taken: "Принял(а)",
+    taken_meal_done: "✅ {name} записан!",
+    taken_med_done: "✅ 💊 {name} принят в {time}!",
+    med_stop: "🛑 Окончен", med_stopped: "✅ «{name}» убран из расписания.",
     med_stop_confirm: "Убрать «{name}» из расписания? Напоминания больше не будут приходить.",
     yes: "Да", no: "Нет",
     settings_logout: "🚪 Выйти из аккаунта",
-    logout_confirm: "Вы уверены, что хотите выйти? Привязка Telegram будет удалена.",
+    logout_confirm: "Вы уверены, что хотите выйти?",
     logout_done: "✅ Вы вышли из аккаунта. Напишите /start чтобы войти снова.",
     kb_cancel: "❌ Отмена", kb_back: "◀️ Назад", kb_history: "📅 История", kb_advice: "💡 Советы",
+    recent_editable: "\n\n✏️ Недавние записи (можно изменить):",
+    edit_meal: "✏️ {name}", delete_entry: "🗑 Удалить",
+    edit_meal_name: "Новое название (или /skip):", edit_meal_cal: "Новые калории (или /skip):",
+    edit_meal_macros: "Б/Ж/У через пробел (или /skip):",
+    edit_med_name: "Новое название (или /skip):", edit_med_dosage: "Новая дозировка (или /skip):",
+    edit_med_time: "Новое время (или /skip):",
+    entry_deleted: "✅ Запись удалена.", entry_updated: "✅ Запись обновлена!",
+    edit_choose: "Что редактировать?",
   },
   en: {
     welcome: "Welcome to Healthy Life! 🌿",
@@ -189,13 +205,18 @@ const translations: Record<string, Record<string, string>> = {
     meal_type_prompt: "Meal type:",
     breakfast: "🌅 Breakfast", lunch: "☀️ Lunch", dinner: "🌙 Dinner", snack: "🍎 Snack",
     meal_input_prompt: "📷 Send a food photo or type dish name:",
+    meal_label_prompt: "📷 Send a photo of the nutrition label:",
+    meal_label_result: "🏷 Label:\n🔥 {cal} kcal/100g\nP: {p}g | F: {f}g | C: {c}g\n\nEnter portion weight (g):",
     meal_calories_prompt: "Enter calories:", meal_macros_prompt: "Protein/fat/carbs (or /skip):",
+    label: "📋 Label",
     meal_saved: "✅ Saved!\n🍽 {name}\n🔥 {cal} kcal",
     meal_photo_analyzing: "🔍 Analyzing photo...",
     meal_photo_result: "🤖 AI detected:\n🍽 {name}\n🔥 {cal} kcal\nP: {p}g | F: {f}g | C: {c}g",
     confirm: "✅ Confirm", edit: "✏️ Edit manually",
     med_prompt: "Choose medication or add new:", med_custom: "➕ Other",
-    med_name_prompt: "Medication name:", med_dosage_prompt: "Dosage:",
+    med_name_prompt: "Medication name (or send pack photo):", med_dosage_prompt: "Dosage:",
+    med_photo_analyzing: "🔍 Analyzing pack photo...",
+    med_photo_result: "🤖 AI detected: {name}\n\nConfirm?",
     med_time_prompt: "Time (HH:MM) or /skip:", med_saved: "✅ 💊 {name} {dosage} at {time}",
     weight_prompt: "Weight (kg):", weight_saved: "✅ Weight: {weight} kg",
     workout_type_prompt: "Workout type:", workout_duration_prompt: "Duration (min):",
@@ -241,13 +262,24 @@ const translations: Record<string, Record<string, string>> = {
     meal_schedules: "🍽 Meal schedules:", med_schedules: "💊 Medication schedules:",
     no_meal_schedules: "No meal schedules.", no_med_schedules: "No medication schedules.",
     schedule_daily: "daily", schedule_weekly: "weekly", schedule_interval: "every {n} days",
-    med_stop: "🛑 Course finished", med_stopped: "✅ «{name}» removed from schedule.",
+    taken: "Taken",
+    taken_meal_done: "✅ {name} logged!",
+    taken_med_done: "✅ 💊 {name} taken at {time}!",
+    med_stop: "🛑 Done", med_stopped: "✅ «{name}» removed from schedule.",
     med_stop_confirm: "Remove «{name}» from schedule? No more reminders will be sent.",
     yes: "Yes", no: "No",
     settings_logout: "🚪 Logout",
-    logout_confirm: "Are you sure? Telegram link will be removed.",
+    logout_confirm: "Are you sure you want to logout?",
     logout_done: "✅ Logged out. Type /start to login again.",
     kb_cancel: "❌ Cancel", kb_back: "◀️ Back", kb_history: "📅 History", kb_advice: "💡 Advice",
+    recent_editable: "\n\n✏️ Recent entries (editable):",
+    edit_meal: "✏️ {name}", delete_entry: "🗑 Delete",
+    edit_meal_name: "New name (or /skip):", edit_meal_cal: "New calories (or /skip):",
+    edit_meal_macros: "P/F/C space-separated (or /skip):",
+    edit_med_name: "New name (or /skip):", edit_med_dosage: "New dosage (or /skip):",
+    edit_med_time: "New time (or /skip):",
+    entry_deleted: "✅ Entry deleted.", entry_updated: "✅ Entry updated!",
+    edit_choose: "What to edit?",
   },
   kk: {
     welcome: "Healthy Life-қа қош келдіңіз! 🌿",
@@ -263,13 +295,18 @@ const translations: Record<string, Record<string, string>> = {
     meal_type_prompt: "Тамақ түрі:",
     breakfast: "🌅 Таңғы ас", lunch: "☀️ Түскі ас", dinner: "🌙 Кешкі ас", snack: "🍎 Тіскебасар",
     meal_input_prompt: "📷 Тамақ суретін жіберіңіз немесе атауын жазыңыз:",
+    meal_label_prompt: "📷 КБЖУ этикеткасының суретін жіберіңіз:",
+    meal_label_result: "🏷 Этикетка:\n🔥 {cal} ккал/100г\nА: {p}г | М: {f}г | К: {c}г\n\nПорция салмағын енгізіңіз (г):",
     meal_calories_prompt: "Калория:", meal_macros_prompt: "Ақуыз/май/көмірсу (немесе /skip):",
+    label: "📋 Этикетка",
     meal_saved: "✅ 🍽 {name}\n🔥 {cal} ккал",
     meal_photo_analyzing: "🔍 Сурет талдануда...",
     meal_photo_result: "🤖 AI:\n🍽 {name}\n🔥 {cal} ккал\nА: {p}г | М: {f}г | К: {c}г",
     confirm: "✅ Растау", edit: "✏️ Қолмен",
     med_prompt: "Дәріні таңдаңыз:", med_custom: "➕ Басқа",
-    med_name_prompt: "Дәрі атауы:", med_dosage_prompt: "Дозасы:",
+    med_name_prompt: "Дәрі атауы (немесе қаптама суреті):", med_dosage_prompt: "Дозасы:",
+    med_photo_analyzing: "🔍 Қаптама суреті талдануда...",
+    med_photo_result: "🤖 AI: {name}\n\nРастайсыз ба?",
     med_time_prompt: "Уақыт (СС:ММ) немесе /skip:", med_saved: "✅ 💊 {name} {dosage} {time}",
     weight_prompt: "Салмақ (кг):", weight_saved: "✅ Салмақ: {weight} кг",
     workout_type_prompt: "Жаттығу түрі:", workout_duration_prompt: "Ұзақтығы (мин):",
@@ -315,13 +352,24 @@ const translations: Record<string, Record<string, string>> = {
     meal_schedules: "🍽 Тамақ кестесі:", med_schedules: "💊 Дәрі кестесі:",
     no_meal_schedules: "Тамақ кестесі жоқ.", no_med_schedules: "Дәрі кестесі жоқ.",
     schedule_daily: "күнделікті", schedule_weekly: "апталық", schedule_interval: "әр {n} күн",
-    med_stop: "🛑 Қабылдау аяқталды", med_stopped: "✅ «{name}» кестеден алынды.",
+    taken: "Қабылдадым",
+    taken_meal_done: "✅ {name} жазылды!",
+    taken_med_done: "✅ 💊 {name} {time} қабылданды!",
+    med_stop: "🛑 Аяқталды", med_stopped: "✅ «{name}» кестеден алынды.",
     med_stop_confirm: "«{name}» кестеден алу? Еске салулар жіберілмейді.",
     yes: "Иә", no: "Жоқ",
     settings_logout: "🚪 Шығу",
-    logout_confirm: "Шығуға сенімдісіз бе? Telegram байланысы жойылады.",
+    logout_confirm: "Шығуға сенімдісіз бе?",
     logout_done: "✅ Шықтыңыз. Қайта кіру үшін /start жазыңыз.",
     kb_cancel: "❌ Болдырмау", kb_back: "◀️ Артқа", kb_history: "📅 Тарих", kb_advice: "💡 Кеңес",
+    recent_editable: "\n\n✏️ Соңғы жазбалар (өзгертуге болады):",
+    edit_meal: "✏️ {name}", delete_entry: "🗑 Жою",
+    edit_meal_name: "Жаңа атау (немесе /skip):", edit_meal_cal: "Жаңа калория (немесе /skip):",
+    edit_meal_macros: "А/М/К бос орын арқылы (немесе /skip):",
+    edit_med_name: "Жаңа атау (немесе /skip):", edit_med_dosage: "Жаңа доза (немесе /skip):",
+    edit_med_time: "Жаңа уақыт (немесе /skip):",
+    entry_deleted: "✅ Жазба жойылды.", entry_updated: "✅ Жазба жаңартылды!",
+    edit_choose: "Нені өзгертесіз?",
   },
 };
 
@@ -404,9 +452,9 @@ async function requireAuth(ctx: Context): Promise<{ profileId: string; locale: s
   const chatId = ctx.chat?.id;
   if (!chatId) return null;
   const profile = await getProfileByChatId(chatId);
-  if (!profile) {
+  if (!profile || profile.botLoggedOut) {
     const st = getState(chatId);
-    const locale = st?.locale || "ru";
+    const locale = st?.locale || profile?.preferredLocale || "ru";
     await ctx.reply(botT(locale, "not_linked"), {
       reply_markup: new InlineKeyboard()
         .text(botT(locale, "login_email"), "auth:email")
@@ -455,7 +503,7 @@ async function trySignUp(email: string, password: string) {
 
 async function linkProfile(userId: string, chatId: number, phone?: string) {
   let profile = await prisma.profile.findUnique({ where: { userId } });
-  const updateData: any = { telegramChatId: String(chatId) };
+  const updateData: any = { telegramChatId: String(chatId), botLoggedOut: false };
   if (phone) updateData.phone = phone;
   if (profile) {
     profile = await prisma.profile.update({ where: { id: profile.id }, data: updateData });
@@ -476,7 +524,8 @@ async function startMealFlow(ctx: Context) {
       .text(botT(auth.locale, "breakfast"), "meal_type:breakfast")
       .text(botT(auth.locale, "lunch"), "meal_type:lunch").row()
       .text(botT(auth.locale, "dinner"), "meal_type:dinner")
-      .text(botT(auth.locale, "snack"), "meal_type:snack"),
+      .text(botT(auth.locale, "snack"), "meal_type:snack").row()
+      .text(botT(auth.locale, "label"), "meal_type:label"),
   });
 }
 
@@ -532,37 +581,55 @@ const MONTHS_KK = ["Қаңтар", "Ақпан", "Наурыз", "Сәуір", "
 function getMonths(locale: string) { return locale === "ru" ? MONTHS_RU : locale === "kk" ? MONTHS_KK : MONTHS_EN; }
 function getWeekdays(locale: string) { return locale === "ru" ? WEEKDAYS_RU : locale === "kk" ? WEEKDAYS_KK : WEEKDAYS_EN; }
 
-function buildCalendarKeyboard(year: number, month: number, locale: string, prefix: string): InlineKeyboard {
+function buildCalendarKeyboard(year: number, month: number, locale: string, prefix: string, activeDays?: Set<string>): InlineKeyboard {
   const kb = new InlineKeyboard();
   const months = getMonths(locale);
   const wd = getWeekdays(locale);
 
-  // Header: < Month Year >
-  kb.text(botT(locale, "cal_prev"), `${prefix}nav:${year}-${String(month).padStart(2, "0")}:-1`)
+  // month is 0-based here; store 1-based in callback for nav
+  const m1 = month + 1;
+  kb.text("◀️", `${prefix}nav:${year}-${m1}:-1`)
     .text(`${months[month]} ${year}`, "noop")
-    .text(botT(locale, "cal_next"), `${prefix}nav:${year}-${String(month).padStart(2, "0")}:1`);
+    .text("▶️", `${prefix}nav:${year}-${m1}:1`);
   kb.row();
 
-  // Weekday headers
   for (const d of wd) kb.text(d, "noop");
   kb.row();
 
-  // Days
-  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
-  const offset = firstDay === 0 ? 6 : firstDay - 1; // Mon-based offset
+  const firstDay = new Date(year, month, 1).getDay();
+  const off = firstDay === 0 ? 6 : firstDay - 1;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   let col = 0;
-  for (let i = 0; i < offset; i++) { kb.text(" ", "noop"); col++; }
+  for (let i = 0; i < off; i++) { kb.text(" ", "noop"); col++; }
   for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    kb.text(String(d), `${prefix}pick:${dateStr}`);
+    const dateStr = `${year}-${String(m1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const label = activeDays?.has(dateStr) ? `[${d}]` : String(d);
+    kb.text(label, `${prefix}pick:${dateStr}`);
     col++;
     if (col === 7) { kb.row(); col = 0; }
   }
   if (col > 0) kb.row();
 
   return kb;
+}
+
+async function getActiveDays(profileId: string, year: number, month0: number): Promise<Set<string>> {
+  const m1 = month0 + 1;
+  const prefix = `${year}-${String(m1).padStart(2, "0")}`;
+  const daysInMonth = new Date(year, month0 + 1, 0).getDate();
+  const dates = Array.from({ length: daysInMonth }, (_, i) => `${prefix}-${String(i + 1).padStart(2, "0")}`);
+
+  const [meals, intakes, workouts, weights] = await Promise.all([
+    prisma.meal.findMany({ where: { profileId, date: { in: dates } }, select: { date: true } }),
+    prisma.medicationIntake.findMany({ where: { profileId, date: { in: dates } }, select: { date: true } }),
+    prisma.workout.findMany({ where: { profileId, date: { in: dates } }, select: { date: true } }),
+    prisma.weightEntry.findMany({ where: { profileId, date: { in: dates } }, select: { date: true } }),
+  ]);
+
+  const set = new Set<string>();
+  for (const r of [...meals, ...intakes, ...workouts, ...weights]) set.add(r.date);
+  return set;
 }
 
 async function sendRangeSummary(ctx: Context, profileId: string, locale: string, timezone: string, from: string, to: string) {
@@ -663,14 +730,36 @@ async function sendDaySummary(ctx: Context, profileId: string, locale: string, t
 
   text += weight ? botT(locale, "today_weight", { weight: weight.weightKg }) : botT(locale, "today_no_weight");
 
-  await replyMain(ctx, text, locale);
+  // Collect recent entries (< 1 hour) for edit buttons
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const recentMeals = meals.filter(m => m.createdAt >= oneHourAgo);
+  const recentIntakes = intakes.filter(i => i.createdAt >= oneHourAgo);
+  const recentWorkouts = workouts.filter(w => w.createdAt >= oneHourAgo);
 
-  // Send photos for meals that have them
+  const hasRecent = recentMeals.length > 0 || recentIntakes.length > 0 || recentWorkouts.length > 0;
+
+  if (hasRecent) {
+    text += botT(locale, "recent_editable");
+    const kb = new InlineKeyboard();
+    for (const m of recentMeals) {
+      kb.text(`🍽 ${m.name}`, `edit:meal:${m.id}`).text(botT(locale, "delete_entry"), `del:meal:${m.id}`).row();
+    }
+    for (const i of recentIntakes) {
+      kb.text(`💊 ${i.name}`, `edit:med:${i.id}`).text(botT(locale, "delete_entry"), `del:med:${i.id}`).row();
+    }
+    for (const w of recentWorkouts) {
+      kb.text(`🏋️ ${botT(locale, w.type)}`, `edit:workout:${w.id}`).text(botT(locale, "delete_entry"), `del:workout:${w.id}`).row();
+    }
+    await ctx.reply(text, { reply_markup: kb });
+  } else {
+    await replyMain(ctx, text, locale);
+  }
+
   for (const m of meals) {
     if (m.photoPath) {
       try {
         await ctx.replyWithPhoto(m.photoPath, { caption: `🍽 ${m.name} — ${Math.round(m.calories)} ккал` });
-      } catch { /* photo may be unavailable */ }
+      } catch {}
     }
   }
 }
@@ -682,7 +771,8 @@ async function showHistory(ctx: Context) {
   const year = now.getFullYear();
   const month = now.getMonth();
   setState(ctx.chat!.id, { step: "history:cal", profileId: auth.profileId, locale: auth.locale, data: { timezone: auth.timezone } });
-  const kb = buildCalendarKeyboard(year, month, auth.locale, "hcal_");
+  const activeDays = await getActiveDays(auth.profileId, year, month);
+  const kb = buildCalendarKeyboard(year, month, auth.locale, "hcal_", activeDays);
   await ctx.reply(botT(auth.locale, "history_pick_start"), { reply_markup: kb });
 }
 
@@ -726,9 +816,8 @@ async function sendAdvicePage(ctx: Context, chatId: number, period: string, offs
   if (kb.inline_keyboard.length > 0 && kb.inline_keyboard[0].length > 0) {
     await ctx.reply(text, { reply_markup: kb });
   } else {
-    await ctx.reply(text);
+    await replyMain(ctx, text, l);
   }
-  await replyMain(ctx, "👆", l);
 }
 
 async function showSchedules(ctx: Context) {
@@ -764,13 +853,23 @@ async function showSchedules(ctx: Context) {
 
   await replyMain(ctx, text, l);
 
-  // Inline buttons to stop each medication plan
+  // Meal plan "taken" buttons
+  if (mealPlans.length > 0) {
+    const kb = new InlineKeyboard();
+    for (const p of mealPlans) {
+      kb.text(`✅ ${botT(l, "taken")} — ${p.name}`, `taken_meal:${p.id}`).row();
+    }
+    await ctx.reply(botT(l, "meal_schedules"), { reply_markup: kb });
+  }
+
+  // Med plan "taken" + "stop" buttons
   if (medPlans.length > 0) {
     const kb = new InlineKeyboard();
     for (const p of medPlans) {
-      kb.text(`${botT(l, "med_stop")} — ${p.name}`, `med_stop:${p.id}`).row();
+      kb.text(`✅ ${botT(l, "taken")} — ${p.name}`, `taken_med:${p.id}`)
+        .text(`${botT(l, "med_stop")}`, `med_stop:${p.id}`).row();
     }
-    await ctx.reply("👆", { reply_markup: kb });
+    await ctx.reply(botT(l, "med_schedules"), { reply_markup: kb });
   }
 }
 
@@ -794,7 +893,7 @@ bot.command("start", async (ctx) => {
   const chatId = ctx.chat.id;
   clearState(chatId);
   const profile = await getProfileByChatId(chatId);
-  if (profile) {
+  if (profile && !profile.botLoggedOut) {
     const l = profile.preferredLocale;
     await replyMain(ctx, botT(l, "welcome") + "\n" + botT(l, "main_menu"), l);
   } else {
@@ -897,9 +996,16 @@ bot.on("callback_query:data", async (ctx) => {
     if (data.startsWith("meal_type:")) {
       const st = getState(chatId);
       if (!st) return;
-      st.data!.mealType = data.split(":")[1];
-      st.step = "meal:input";
-      await replyCancel(ctx, botT(st.locale!, "meal_input_prompt"), st.locale!);
+      const type = data.split(":")[1];
+      if (type === "label") {
+        st.data!.mealType = "snack";
+        st.step = "meal:label";
+        await replyCancel(ctx, botT(st.locale!, "meal_label_prompt"), st.locale!);
+      } else {
+        st.data!.mealType = type;
+        st.step = "meal:input";
+        await replyCancel(ctx, botT(st.locale!, "meal_input_prompt"), st.locale!);
+      }
       return;
     }
 
@@ -971,19 +1077,20 @@ bot.on("callback_query:data", async (ctx) => {
       return;
     }
 
-    // Calendar navigation: hcal_nav:2026-08:-1 or hcal_nav:2026-08:1
+    // Calendar navigation: hcal_nav:2026-8:-1  (month is 1-based)
     if (data.startsWith("hcal_nav:")) {
       const st = getState(chatId);
       if (!st) return;
       const parts = data.replace("hcal_nav:", "").split(":");
       const [ym, dir] = [parts[0], parseInt(parts[1], 10)];
-      const [y, m] = ym.split("-").map(Number);
-      let newMonth = m - 1 + dir; // m is 1-based from callback
+      const [y, m1] = ym.split("-").map(Number);
+      let newMonth0 = m1 - 1 + dir; // convert to 0-based then shift
       let newYear = y;
-      if (newMonth < 0) { newMonth = 11; newYear--; }
-      if (newMonth > 11) { newMonth = 0; newYear++; }
+      if (newMonth0 < 0) { newMonth0 = 11; newYear--; }
+      if (newMonth0 > 11) { newMonth0 = 0; newYear++; }
       const phase = st.data?.startDate ? "history_pick_end" : "history_pick_start";
-      const kb = buildCalendarKeyboard(newYear, newMonth, st.locale!, "hcal_");
+      const activeDays = await getActiveDays(st.profileId!, newYear, newMonth0);
+      const kb = buildCalendarKeyboard(newYear, newMonth0, st.locale!, "hcal_", activeDays);
       try {
         await ctx.editMessageText(botT(st.locale!, phase), { reply_markup: kb });
       } catch {
@@ -1018,8 +1125,79 @@ bot.on("callback_query:data", async (ctx) => {
       return;
     }
 
+    // ── Delete entries ──
+    if (data.startsWith("del:")) {
+      const [, type, id] = data.split(":");
+      const profile = await getProfileByChatId(chatId);
+      const l = profile?.preferredLocale || "ru";
+      try {
+        if (type === "meal") await prisma.meal.delete({ where: { id } });
+        else if (type === "med") await prisma.medicationIntake.delete({ where: { id } });
+        else if (type === "workout") await prisma.workout.delete({ where: { id } });
+        await ctx.editMessageText(botT(l, "entry_deleted"));
+      } catch { await ctx.reply(botT(l, "error")); }
+      return;
+    }
+
+    // ── Edit entries ──
+    if (data.startsWith("edit:")) {
+      const [, type, id] = data.split(":");
+      const profile = await getProfileByChatId(chatId);
+      if (!profile) return;
+      const l = profile.preferredLocale;
+      if (type === "meal") {
+        setState(chatId, { step: "edit_meal:name", profileId: profile.id, locale: l, data: { entryId: id } });
+        await replyCancel(ctx, botT(l, "edit_meal_name"), l);
+      } else if (type === "med") {
+        setState(chatId, { step: "edit_med:name", profileId: profile.id, locale: l, data: { entryId: id } });
+        await replyCancel(ctx, botT(l, "edit_med_name"), l);
+      } else if (type === "workout") {
+        setState(chatId, { step: "edit_workout:duration", profileId: profile.id, locale: l, data: { entryId: id } });
+        await replyCancel(ctx, botT(l, "workout_duration_prompt"), l);
+      }
+      return;
+    }
+
     // noop (calendar headers etc.)
     if (data === "noop") return;
+
+    // ── Quick "taken" from schedules ──
+    if (data.startsWith("taken_meal:")) {
+      const planId = data.split(":")[1];
+      const plan = await prisma.mealPlan.findUnique({ where: { id: planId } });
+      if (!plan) return;
+      const profile = await getProfileByChatId(chatId);
+      if (!profile) return;
+      const l = profile.preferredLocale;
+      const today = todayStr(profile.timezone);
+      await prisma.meal.create({
+        data: {
+          profileId: profile.id, date: today,
+          mealType: plan.mealType, name: plan.name,
+          calories: 0, protein: null, fat: null, carbs: null,
+        },
+      });
+      try { await ctx.editMessageText(botT(l, "taken_meal_done", { name: plan.name })); } catch {}
+      return;
+    }
+    if (data.startsWith("taken_med:")) {
+      const planId = data.split(":")[1];
+      const plan = await prisma.medicationPlan.findUnique({ where: { id: planId } });
+      if (!plan) return;
+      const profile = await getProfileByChatId(chatId);
+      if (!profile) return;
+      const l = profile.preferredLocale;
+      const today = todayStr(profile.timezone);
+      const time = nowTime(profile.timezone);
+      await prisma.medicationIntake.create({
+        data: {
+          profileId: profile.id, planId: plan.id,
+          date: today, name: plan.name, dosage: plan.dosage || null, takenTime: time,
+        },
+      });
+      try { await ctx.editMessageText(botT(l, "taken_med_done", { name: plan.name, time })); } catch {}
+      return;
+    }
 
     // Stop medication plan (confirm)
     if (data.startsWith("med_stop:")) {
@@ -1126,7 +1304,7 @@ bot.on("callback_query:data", async (ctx) => {
       const profile = await getProfileByChatId(chatId);
       const l = profile?.preferredLocale || "ru";
       if (profile) {
-        await prisma.profile.update({ where: { id: profile.id }, data: { telegramChatId: null } });
+        await prisma.profile.update({ where: { id: profile.id }, data: { botLoggedOut: true } });
       }
       clearState(chatId);
       await ctx.reply(botT(l, "logout_done"), { reply_markup: { remove_keyboard: true } });
@@ -1311,6 +1489,105 @@ bot.on("message:text", async (ctx) => {
       return;
     }
 
+    // ── Edit meal ──
+    if (st.step === "edit_meal:name") {
+      if (text !== "/skip") st.data!.newName = text;
+      st.step = "edit_meal:cal";
+      await replyCancel(ctx, botT(st.locale!, "edit_meal_cal"), st.locale!);
+      return;
+    }
+    if (st.step === "edit_meal:cal") {
+      if (text !== "/skip") {
+        const cal = parseFloat(text);
+        if (!isNaN(cal) && cal > 0) st.data!.newCal = cal;
+      }
+      st.step = "edit_meal:macros";
+      await replyCancel(ctx, botT(st.locale!, "edit_meal_macros"), st.locale!);
+      return;
+    }
+    if (st.step === "edit_meal:macros") {
+      const upd: any = {};
+      if (st.data!.newName) upd.name = st.data!.newName;
+      if (st.data!.newCal) upd.calories = st.data!.newCal;
+      if (text !== "/skip") {
+        const parts = text.split(/[\s,/]+/).map(Number);
+        if (parts.length >= 3 && parts.every(n => !isNaN(n))) {
+          [upd.protein, upd.fat, upd.carbs] = parts;
+        }
+      }
+      if (Object.keys(upd).length > 0) {
+        await prisma.meal.update({ where: { id: st.data!.entryId }, data: upd });
+      }
+      clearState(chatId);
+      await replyMain(ctx, botT(st.locale!, "entry_updated"), st.locale!);
+      return;
+    }
+
+    // ── Edit med ──
+    if (st.step === "edit_med:name") {
+      if (text !== "/skip") st.data!.newName = text;
+      st.step = "edit_med:dosage";
+      await replyCancel(ctx, botT(st.locale!, "edit_med_dosage"), st.locale!);
+      return;
+    }
+    if (st.step === "edit_med:dosage") {
+      if (text !== "/skip") st.data!.newDosage = text;
+      st.step = "edit_med:time";
+      await replyCancel(ctx, botT(st.locale!, "edit_med_time"), st.locale!);
+      return;
+    }
+    if (st.step === "edit_med:time") {
+      const upd: any = {};
+      if (st.data!.newName) upd.name = st.data!.newName;
+      if (st.data!.newDosage) upd.dosage = st.data!.newDosage;
+      if (text !== "/skip") upd.takenTime = text.replace(".", ":");
+      if (Object.keys(upd).length > 0) {
+        await prisma.medicationIntake.update({ where: { id: st.data!.entryId }, data: upd });
+      }
+      clearState(chatId);
+      await replyMain(ctx, botT(st.locale!, "entry_updated"), st.locale!);
+      return;
+    }
+
+    // ── Edit workout ──
+    if (st.step === "edit_workout:duration") {
+      const upd: any = {};
+      if (text !== "/skip") {
+        const dur = parseFloat(text);
+        if (!isNaN(dur) && dur > 0) upd.quantity = dur;
+      }
+      if (Object.keys(upd).length > 0) {
+        await prisma.workout.update({ where: { id: st.data!.entryId }, data: upd });
+      }
+      clearState(chatId);
+      await replyMain(ctx, botT(st.locale!, "entry_updated"), st.locale!);
+      return;
+    }
+
+    // ── Label weight ──
+    if (st.step === "meal:label_weight") {
+      const grams = parseFloat(text.replace(",", "."));
+      if (isNaN(grams) || grams <= 0) { await ctx.reply(botT(st.locale!, "meal_label_result", { cal: 0, p: 0, f: 0, c: 0 })); return; }
+      const lbl = st.data!.labelPer100;
+      const factor = grams / 100;
+      const profile = await prisma.profile.findUnique({ where: { id: st.profileId } });
+      await prisma.meal.create({
+        data: {
+          profileId: st.profileId!, date: todayStr(profile?.timezone),
+          mealType: st.data!.mealType || "snack", name: st.data!.name,
+          calories: Math.round(lbl.calories * factor),
+          protein: Math.round((lbl.protein || 0) * factor),
+          fat: Math.round((lbl.fat || 0) * factor),
+          carbs: Math.round((lbl.carbs || 0) * factor),
+          photoPath: st.data!.photoPath || null,
+        },
+      });
+      const cal = Math.round(lbl.calories * factor);
+      clearState(chatId);
+      await replyMain(ctx, botT(st.locale!, "meal_saved", { name: st.data!.name, cal }), st.locale!);
+      return;
+    }
+
     // ── Med flow ──
     if (st.step === "med:name") {
       st.data!.name = text; st.step = "med:dosage";
@@ -1445,7 +1722,80 @@ bot.on("message:photo", async (ctx) => {
   const chatId = ctx.chat.id;
   let st = getState(chatId);
 
-  // If no active meal flow, auto-start one (convenient: just send a photo anytime)
+  // ── Medication photo (during med:name step) ──
+  if (st?.step === "med:name") {
+    try {
+      await ctx.reply(botT(st.locale!, "med_photo_analyzing"));
+      const { buffer, base64 } = await downloadTelegramPhoto(ctx);
+      try { await uploadPhotoToStorage(buffer, "medications"); } catch {}
+      const aiLang = AI_LANGUAGE[st.locale!] || AI_LANGUAGE.en;
+      const response = await openai.chat.completions.create({
+        model: OPENAI_MODEL, temperature: 0.2,
+        messages: [
+          { role: "system", content: `You are a pharmacist assistant. Identify the medication in the photo of its packaging. Return ONLY valid JSON: {"name": string, "dosage": string}. Name and dosage should be in ${aiLang}.` },
+          { role: "user", content: [
+            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}` } },
+            { type: "text", text: "What medication is this?" },
+          ] },
+        ],
+        max_tokens: 200,
+      });
+      const raw = response.choices[0]?.message?.content || "";
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No JSON");
+      const result = JSON.parse(jsonMatch[0]);
+      st.data!.name = result.name;
+      st.data!.dosage = result.dosage || "";
+      st.step = "med:time";
+      await ctx.reply(botT(st.locale!, "med_photo_result", { name: `${result.name} (${result.dosage || ""})` }));
+      await replyCancel(ctx, botT(st.locale!, "med_time_prompt"), st.locale!);
+    } catch (e: any) {
+      console.error("Med photo error:", e);
+      await replyCancel(ctx, botT(st.locale!, "error") + "\n" + botT(st.locale!, "med_name_prompt"), st.locale!);
+    }
+    return;
+  }
+
+  // ── Nutrition label photo ──
+  if (st?.step === "meal:label") {
+    try {
+      await ctx.reply(botT(st.locale!, "meal_photo_analyzing"));
+      const { buffer, base64 } = await downloadTelegramPhoto(ctx);
+      let photoPath: string | null = null;
+      try { photoPath = await uploadPhotoToStorage(buffer, "meals"); } catch {}
+      st.data!.photoPath = photoPath;
+      const aiLang = AI_LANGUAGE[st.locale!] || AI_LANGUAGE.en;
+      const response = await openai.chat.completions.create({
+        model: OPENAI_MODEL, temperature: 0.2,
+        messages: [
+          { role: "system", content: `You read nutrition labels. Extract values PER 100g. Return ONLY valid JSON: {"calories": number, "protein": number, "fat": number, "carbs": number, "name": string}. Name in ${aiLang}.` },
+          { role: "user", content: [
+            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}` } },
+            { type: "text", text: "Read this nutrition label." },
+          ] },
+        ],
+        max_tokens: 300,
+      });
+      const raw = response.choices[0]?.message?.content || "";
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No JSON");
+      const result = JSON.parse(jsonMatch[0]);
+      st.data!.labelPer100 = result;
+      st.data!.name = result.name || "—";
+      st.step = "meal:label_weight";
+      await replyCancel(ctx, botT(st.locale!, "meal_label_result", {
+        cal: Math.round(result.calories), p: Math.round(result.protein || 0),
+        f: Math.round(result.fat || 0), c: Math.round(result.carbs || 0),
+      }), st.locale!);
+    } catch (e: any) {
+      console.error("Label photo error:", e);
+      st.step = "meal:text_name";
+      await replyCancel(ctx, botT(st.locale!, "error") + "\n" + botT(st.locale!, "meal_input_prompt"), st.locale!);
+    }
+    return;
+  }
+
+  // ── Food photo (default) ──
   if (!st || (st.step !== "meal:input" && st.step !== "meal:text_name")) {
     const auth = await requireAuth(ctx);
     if (!auth) return;
@@ -1458,28 +1808,20 @@ bot.on("message:photo", async (ctx) => {
 
     const { buffer, base64 } = await downloadTelegramPhoto(ctx);
 
-    // Upload to Supabase Storage
     let photoPath: string | null = null;
     try { photoPath = await uploadPhotoToStorage(buffer, "meals"); } catch (e) { console.error("Photo upload error:", e); }
     st.data!.photoPath = photoPath;
 
-    // Analyze with AI
     const aiLang = AI_LANGUAGE[st.locale!] || AI_LANGUAGE.en;
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       temperature: 0.2,
       messages: [
-        {
-          role: "system",
-          content: `You are a nutrition analyst. Analyze the food in the image. Return ONLY valid JSON: {"name": string, "calories": number, "protein": number, "fat": number, "carbs": number}. Name should be in ${aiLang}. Estimate reasonable values.`,
-        },
-        {
-          role: "user",
-          content: [
-            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}` } },
-            { type: "text", text: "What food is this? Estimate nutrition." },
-          ],
-        },
+        { role: "system", content: `You are a nutrition analyst. Analyze the food in the image. Return ONLY valid JSON: {"name": string, "calories": number, "protein": number, "fat": number, "carbs": number}. Name should be in ${aiLang}. Estimate reasonable values.` },
+        { role: "user", content: [
+          { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}` } },
+          { type: "text", text: "What food is this? Estimate nutrition." },
+        ] },
       ],
       max_tokens: 300,
     });
