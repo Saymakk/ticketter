@@ -876,9 +876,10 @@ bot.on("callback_query:data", async (ctx) => {
       return;
     }
     if (data === "auth:register_no") {
-      clearState(chatId);
       const st = getState(chatId);
-      await replyMain(ctx, botT(st?.locale || "ru", "cancelled"), st?.locale || "ru");
+      const locale = st?.locale || "ru";
+      clearState(chatId);
+      await replyMain(ctx, botT(locale, "cancelled"), locale);
       return;
     }
 
