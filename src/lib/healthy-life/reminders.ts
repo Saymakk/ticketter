@@ -1,4 +1,8 @@
 import { parsePlanTimes, isPlanScheduledOnDate, normalizeTime } from "@/lib/healthy-life/medications";
+import { completedPeriodRange } from "@/lib/healthy-life/dates";
+import { generateAdvice, describeAiFailure } from "@/lib/healthy-life/ai";
+import { saveAiRecord, linkAiRecordToAdvice } from "@/lib/healthy-life/ai-records";
+import { HL_LOCALE_META, isHlLocale } from "@/lib/healthy-life/i18n/locales";
 import { prisma } from "@/lib/healthy-life/prisma";
 import { claimReminderSlot, sendPushToProfile, sendTelegramToProfile } from "@/lib/healthy-life/push";
 
@@ -74,6 +78,7 @@ function pushCopy(locale: string) {
       mealBody: (name: string, time: string) => `${name} — ${time}`,
       mealBodyEmpty: "Не забудьте записать приёмы пищи сегодня",
       mealBodyNext: "Пора записать следующий приём пищи",
+      adviceTitle: "Совет",
     };
   }
   return {
@@ -86,6 +91,7 @@ function pushCopy(locale: string) {
     mealBody: (name: string, time: string) => `${name} — ${time}`,
     mealBodyEmpty: "Don't forget to log your meals today",
     mealBodyNext: "Time for your next meal log",
+    adviceTitle: "Advice",
   };
 }
 
@@ -94,6 +100,7 @@ export type ReminderRunResult = {
   medication: number;
   weight: number;
   meal: number;
+  advice: number;
   errors: number;
 };
 
@@ -107,6 +114,7 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
     medication: 0,
     weight: 0,
     meal: 0,
+    advice: 0,
     errors: 0,
   };
 
@@ -267,6 +275,131 @@ export async function runHealthyLifeReminders(now = new Date()): Promise<Reminde
             sendTelegramToProfile(profile.id, legacyMealPayload),
           ]);
           result.meal += 1;
+        }
+      }
+      // ── Auto-advice at midnight (00:00) ─────────────────────────────────
+      if (zoned.timeKey === "00:00") {
+        const locale = isHlLocale(profile.preferredLocale) ? profile.preferredLocale : "en";
+        const aiLanguage = HL_LOCALE_META[locale].aiLanguage;
+        const periods: Array<"day" | "week" | "month"> = ["day"];
+        // Week: Monday 00:00 means the previous week just ended
+        const dow = new Date(now).getDay(); // 0=Sun
+        const isoWeekday = dow === 0 ? 7 : dow;
+        if (isoWeekday === 1) periods.push("week");
+        // Month: 1st of month 00:00 means previous month ended
+        const dayOfMonth = parseInt(zoned.dateKey.slice(8, 10), 10);
+        if (dayOfMonth === 1) periods.push("month");
+
+        for (const period of periods) {
+          const dedupeKey = `advice|${period}|${zoned.dateKey}`;
+          const claimed = await claimReminderSlot({
+            profileId: profile.id,
+            kind: "advice",
+            dedupeKey,
+          });
+          if (!claimed) continue;
+
+          try {
+            const completed = completedPeriodRange(period, now);
+            const { start, end, periodKeyBase, label: periodLabel } = completed;
+            const periodKey = `${periodKeyBase}__${locale}`;
+
+            const meals = await prisma.meal.findMany({
+              where: { profileId: profile.id, date: { gte: start, lte: end } },
+              orderBy: { date: "asc" },
+            });
+            const weights = await prisma.weightEntry.findMany({
+              where: { profileId: profile.id, date: { gte: start, lte: end } },
+              orderBy: { date: "asc" },
+            });
+            const workouts = await prisma.workout.findMany({
+              where: { profileId: profile.id, date: { gte: start, lte: end } },
+              orderBy: { date: "asc" },
+            });
+
+            const totalCalories = meals.reduce((s, m) => s + m.calories, 0);
+            const dayCount = Math.max(new Set(meals.map((m) => m.date)).size, 1);
+            const hasData = totalCalories > 0 || workouts.length > 0 || weights.length > 0;
+            if (!hasData) continue;
+
+            const workoutByType = new Map<string, { count: number; quantity: number }>();
+            for (const w of workouts) {
+              const cur = workoutByType.get(w.type) || { count: 0, quantity: 0 };
+              cur.count += 1;
+              cur.quantity += w.quantity;
+              workoutByType.set(w.type, cur);
+            }
+            const workoutSummary = workouts.length === 0
+              ? "no workouts"
+              : [...workoutByType.entries()].map(([t, s]) => `${t}: ${s.count}x, vol ${s.quantity}`).join("; ");
+
+            let advicePayload;
+            let usedFallback = false;
+            let fallbackReason: string | null = null;
+            try {
+              advicePayload = await generateAdvice({
+                period,
+                periodLabel,
+                calorieGoal: profile.dailyCalorieGoal,
+                totalCalories,
+                mealCount: meals.length,
+                avgCaloriesPerDay: totalCalories / dayCount,
+                weightStart: weights[0]?.weightKg ?? null,
+                weightEnd: weights[weights.length - 1]?.weightKg ?? null,
+                targetWeight: profile.targetWeightKg,
+                recentMeals: meals.map((m) => `${m.name} (${Math.round(m.calories)} kcal)`),
+                workoutSummary,
+                language: aiLanguage,
+              });
+            } catch (aiErr) {
+              usedFallback = true;
+              fallbackReason = describeAiFailure(aiErr);
+              advicePayload = {
+                title: period === "day" ? "Yesterday" : period === "week" ? "Last week" : "Last month",
+                summary: `AI unavailable: ${fallbackReason}`,
+                content: `${Math.round(totalCalories)} kcal, ${meals.length} meals, ${workouts.length} workouts. Avg ${Math.round(totalCalories / dayCount)} kcal/day vs goal ${profile.dailyCalorieGoal}.`,
+              };
+            }
+
+            const aiRecord = await saveAiRecord({
+              profileId: profile.id,
+              kind: "advice",
+              locale,
+              inputSummary: JSON.stringify({ period, periodKeyBase }),
+              output: advicePayload,
+              usedFallback,
+              fallbackReason,
+            });
+
+            const advice = await prisma.advice.upsert({
+              where: { profileId_period_periodKey: { profileId: profile.id, period, periodKey } },
+              create: {
+                profileId: profile.id, period, periodKey,
+                title: advicePayload.title, content: advicePayload.content,
+                summary: advicePayload.summary, locale, usedFallback, aiRecordId: aiRecord.id,
+              },
+              update: {
+                title: advicePayload.title, content: advicePayload.content,
+                summary: advicePayload.summary, locale, usedFallback, aiRecordId: aiRecord.id,
+              },
+            });
+            await linkAiRecordToAdvice(aiRecord.id, advice.id);
+
+            const advPayload = {
+              title: copy.adviceTitle ?? advicePayload.title,
+              body: advicePayload.summary || advicePayload.content.slice(0, 200),
+              url: "/advice",
+              tag: `advice-${period}-${zoned.dateKey}`,
+              kind: "meal" as const,
+            };
+            await Promise.all([
+              sendPushToProfile(profile.id, advPayload),
+              sendTelegramToProfile(profile.id, advPayload),
+            ]);
+            result.advice += 1;
+          } catch {
+            result.errors += 1;
+          }
         }
       }
     } catch {

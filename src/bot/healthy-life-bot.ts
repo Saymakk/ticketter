@@ -160,6 +160,13 @@ const translations: Record<string, Record<string, string>> = {
     phone_invalid: "❌ Неверный формат телефона.",
     open_app: "🌐 Открыть приложение",
     open_app_hint: "Открыть полную веб-версию приложения прямо в Telegram",
+    kb_meal: "🍽 Еда",
+    kb_med: "💊 Лекарство",
+    kb_weight: "⚖️ Вес",
+    kb_workout: "🏋️ Тренировка",
+    kb_today: "📊 Сегодня",
+    kb_settings: "⚙️ Настройки",
+    choose_language: "Выберите язык / Choose language:",
   },
   en: {
     welcome: "Welcome to Healthy Life! 🌿",
@@ -231,6 +238,13 @@ const translations: Record<string, Record<string, string>> = {
     phone_invalid: "❌ Invalid phone number format.",
     open_app: "🌐 Open app",
     open_app_hint: "Open the full web app inside Telegram",
+    kb_meal: "🍽 Meal",
+    kb_med: "💊 Medication",
+    kb_weight: "⚖️ Weight",
+    kb_workout: "🏋️ Workout",
+    kb_today: "📊 Today",
+    kb_settings: "⚙️ Settings",
+    choose_language: "Choose language / Выберите язык:",
   },
   kk: {
     welcome: "Healthy Life-қа қош келдіңіз! 🌿",
@@ -302,6 +316,13 @@ const translations: Record<string, Record<string, string>> = {
     phone_invalid: "❌ Телефон нөмірі қате форматта.",
     open_app: "🌐 Ашу",
     open_app_hint: "Толық веб-қосымшаны Telegram ішінде ашу",
+    kb_meal: "🍽 Тамақ",
+    kb_med: "💊 Дәрі",
+    kb_weight: "⚖️ Салмақ",
+    kb_workout: "🏋️ Жаттығу",
+    kb_today: "📊 Бүгін",
+    kb_settings: "⚙️ Баптаулар",
+    choose_language: "Тілді таңдаңыз / Choose language:",
   },
 };
 
@@ -365,14 +386,22 @@ async function getProfileByChatId(chatId: number) {
   return prisma.profile.findUnique({ where: { telegramChatId: String(chatId) } });
 }
 
-// No persistent reply keyboard — users interact via commands and inline buttons only.
+function mainKeyboard(locale = "ru"): Keyboard {
+  return new Keyboard()
+    .text(botT(locale, "kb_meal")).text(botT(locale, "kb_med")).row()
+    .text(botT(locale, "kb_weight")).text(botT(locale, "kb_workout")).row()
+    .text(botT(locale, "kb_today")).text(botT(locale, "kb_settings")).row()
+    .webApp(botT(locale, "open_app"), WEB_APP_URL)
+    .resized().persistent();
+}
 
 async function requireAuth(ctx: Context): Promise<{ profileId: string; locale: string; timezone: string } | null> {
   const chatId = ctx.chat?.id;
   if (!chatId) return null;
   const profile = await getProfileByChatId(chatId);
   if (!profile) {
-    const locale = "ru";
+    const st = getState(chatId);
+    const locale = st?.locale || "ru";
     await ctx.reply(botT(locale, "not_linked"), {
       reply_markup: new InlineKeyboard()
         .text(botT(locale, "login_email"), "auth:email")
@@ -421,13 +450,17 @@ bot.command("start", async (ctx) => {
   const profile = await getProfileByChatId(chatId);
   if (profile) {
     const l = profile.preferredLocale;
-    await ctx.reply(botT(l, "welcome") + "\n" + botT(l, "main_menu"));
+    await ctx.reply(botT(l, "welcome") + "\n" + botT(l, "main_menu"), { reply_markup: mainKeyboard(l) });
   } else {
-    await ctx.reply(botT("ru", "welcome") + "\n" + botT("ru", "not_linked"), {
-      reply_markup: new InlineKeyboard()
-        .text(botT("ru", "login_email"), "auth:email")
-        .text(botT("ru", "login_phone"), "auth:phone"),
-    });
+    // New user — show language selection first
+    const kb = new InlineKeyboard();
+    const entries = Object.entries(LOCALES_META);
+    for (let i = 0; i < entries.length; i++) {
+      const [code, name] = entries[i];
+      kb.text(name, `start_lang:${code}`);
+      if ((i + 1) % 3 === 0) kb.row();
+    }
+    await ctx.reply("🌿 Healthy Life\n\n" + botT("en", "choose_language"), { reply_markup: kb });
   }
 });
 
@@ -579,35 +612,56 @@ bot.on("callback_query:data", async (ctx) => {
   await ctx.answerCallbackQuery();
 
   try {
+    // Language selection on first start
+    if (data.startsWith("start_lang:")) {
+      const locale = data.split(":")[1];
+      setState(chatId, { step: "awaiting_auth", locale, data: {} });
+      await ctx.reply(botT(locale, "welcome") + "\n\n" + botT(locale, "not_linked"), {
+        reply_markup: new InlineKeyboard()
+          .text(botT(locale, "login_email"), "auth:email")
+          .text(botT(locale, "login_phone"), "auth:phone"),
+      });
+      return;
+    }
+
     // Auth callbacks
     if (data === "auth:email") {
-      setState(chatId, { step: "auth:email", locale: "ru", data: {} });
-      await ctx.reply(botT("ru", "enter_email"));
+      const st = getState(chatId);
+      const locale = st?.locale || "ru";
+      setState(chatId, { step: "auth:email", locale, data: {} });
+      await ctx.reply(botT(locale, "enter_email"));
       return;
     }
     if (data === "auth:phone") {
-      setState(chatId, { step: "auth:phone", locale: "ru", data: {} });
-      const kb = new Keyboard().requestContact(botT("ru", "share_contact")).resized().oneTime();
-      await ctx.reply(botT("ru", "enter_phone"), { reply_markup: kb });
+      const st = getState(chatId);
+      const locale = st?.locale || "ru";
+      setState(chatId, { step: "auth:phone", locale, data: {} });
+      const kb = new Keyboard().requestContact(botT(locale, "share_contact")).resized().oneTime();
+      await ctx.reply(botT(locale, "enter_phone"), { reply_markup: kb });
       return;
     }
     if (data === "auth:register_yes") {
       const st = getState(chatId);
       if (!st?.data?.email || !st?.data?.password) return;
+      const locale = st.locale || "ru";
       const { user, error } = await trySignUp(st.data.email, st.data.password);
       if (error || !user) {
-        await ctx.reply(botT("ru", "register_failed", { error: error?.message || "unknown" }));
+        await ctx.reply(botT(locale, "register_failed", { error: error?.message || "unknown" }));
         clearState(chatId);
         return;
       }
       const profile = await linkProfile(user.id, chatId, st.data.phone);
+      if (locale !== profile.preferredLocale) {
+        await prisma.profile.update({ where: { id: profile.id }, data: { preferredLocale: locale } });
+      }
       clearState(chatId);
-      await ctx.reply(botT(profile.preferredLocale, "register_success"));
+      await ctx.reply(botT(locale, "register_success"), { reply_markup: mainKeyboard(locale) });
       return;
     }
     if (data === "auth:register_no") {
+      const st = getState(chatId);
       clearState(chatId);
-      await ctx.reply(botT("ru", "cancelled"));
+      await ctx.reply(botT(st?.locale || "ru", "cancelled"));
       return;
     }
 
@@ -774,9 +828,25 @@ bot.on("message:contact", async (ctx) => {
 
 // ─── Text message handler ─────────────────────────────────────────────────────
 
+// Build a set of all possible keyboard labels → action mappings
+const KB_ACTIONS: Record<string, (ctx: Context) => Promise<void>> = {};
+for (const locale of Object.keys(translations)) {
+  const t = translations[locale];
+  if (t.kb_meal) KB_ACTIONS[t.kb_meal] = startMealFlow;
+  if (t.kb_med) KB_ACTIONS[t.kb_med] = startMedFlow;
+  if (t.kb_weight) KB_ACTIONS[t.kb_weight] = startWeightFlow;
+  if (t.kb_workout) KB_ACTIONS[t.kb_workout] = startWorkoutFlow;
+  if (t.kb_today) KB_ACTIONS[t.kb_today] = showToday;
+  if (t.kb_settings) KB_ACTIONS[t.kb_settings] = showSettings;
+}
+
 bot.on("message:text", async (ctx) => {
   const chatId = ctx.chat.id;
   const text = ctx.message.text.trim();
+
+  // Handle reply keyboard buttons
+  const action = KB_ACTIONS[text];
+  if (action) return action(ctx);
 
   const st = getState(chatId);
   if (!st) return;
@@ -792,17 +862,21 @@ bot.on("message:text", async (ctx) => {
     if (st.step === "auth:email_password") {
       const email = st.data!.email;
       const password = text;
+      const locale = st.locale || "ru";
       st.data!.password = password;
       const { user, error } = await trySignIn(email, password);
       if (user) {
         const profile = await linkProfile(user.id, chatId);
+        if (locale !== profile.preferredLocale) {
+          await prisma.profile.update({ where: { id: profile.id }, data: { preferredLocale: locale } });
+        }
         clearState(chatId);
-        await ctx.reply(botT(profile.preferredLocale, "login_success", { name: profile.name }));
+        await ctx.reply(botT(locale, "login_success", { name: profile.name }), { reply_markup: mainKeyboard(locale) });
       } else {
-        await ctx.reply(botT("ru", "login_failed") + "\n\n" + botT("ru", "register_offer"), {
+        await ctx.reply(botT(locale, "login_failed") + "\n\n" + botT(locale, "register_offer"), {
           reply_markup: new InlineKeyboard()
-            .text(botT("ru", "register_yes"), "auth:register_yes")
-            .text(botT("ru", "register_no"), "auth:register_no"),
+            .text(botT(locale, "register_yes"), "auth:register_yes")
+            .text(botT(locale, "register_no"), "auth:register_no"),
         });
       }
       return;
@@ -810,19 +884,21 @@ bot.on("message:text", async (ctx) => {
 
     // Auth: phone flow
     if (st.step === "auth:phone") {
+      const locale = st.locale || "ru";
       try {
         const normalized = normalizePhone(text);
         st.data!.phone = normalized;
         st.step = "auth:phone_password";
-        await ctx.reply(botT("ru", "enter_password"));
+        await ctx.reply(botT(locale, "enter_password"));
       } catch {
-        await ctx.reply(botT("ru", "phone_invalid"));
+        await ctx.reply(botT(locale, "phone_invalid"));
       }
       return;
     }
     if (st.step === "auth:phone_password") {
       const phone = st.data!.phone;
       const password = text;
+      const locale = st.locale || "ru";
       st.data!.password = password;
       const candidates = phoneAuthEmailCandidates(phone);
       let loggedIn = false;
@@ -830,18 +906,21 @@ bot.on("message:text", async (ctx) => {
         const { user } = await trySignIn(email, password);
         if (user) {
           const profile = await linkProfile(user.id, chatId, phone);
+          if (locale !== profile.preferredLocale) {
+            await prisma.profile.update({ where: { id: profile.id }, data: { preferredLocale: locale } });
+          }
           clearState(chatId);
-          await ctx.reply(botT(profile.preferredLocale, "login_success", { name: profile.name }));
+          await ctx.reply(botT(locale, "login_success", { name: profile.name }), { reply_markup: mainKeyboard(locale) });
           loggedIn = true;
           break;
         }
       }
       if (!loggedIn) {
         st.data!.email = phoneToEmail(phone);
-        await ctx.reply(botT("ru", "login_failed") + "\n\n" + botT("ru", "register_offer"), {
+        await ctx.reply(botT(locale, "login_failed") + "\n\n" + botT(locale, "register_offer"), {
           reply_markup: new InlineKeyboard()
-            .text(botT("ru", "register_yes"), "auth:register_yes")
-            .text(botT("ru", "register_no"), "auth:register_no"),
+            .text(botT(locale, "register_yes"), "auth:register_yes")
+            .text(botT(locale, "register_no"), "auth:register_no"),
         });
       }
       return;
