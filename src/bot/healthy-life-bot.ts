@@ -395,6 +395,11 @@ function mainKeyboard(locale = "ru"): Keyboard {
     .resized().persistent();
 }
 
+/** Reply with persistent keyboard always visible. */
+async function replyWithKb(ctx: Context, text: string, locale = "ru") {
+  await ctx.reply(text, { reply_markup: mainKeyboard(locale) });
+}
+
 async function requireAuth(ctx: Context): Promise<{ profileId: string; locale: string; timezone: string } | null> {
   const chatId = ctx.chat?.id;
   if (!chatId) return null;
@@ -466,13 +471,15 @@ bot.command("start", async (ctx) => {
 
 bot.command("help", async (ctx) => {
   const profile = await getProfileByChatId(ctx.chat.id);
-  await ctx.reply(botT(profile?.preferredLocale || "ru", "help"));
+  const l = profile?.preferredLocale || "ru";
+  await replyWithKb(ctx, botT(l, "help"), l);
 });
 
 bot.command("cancel", async (ctx) => {
   clearState(ctx.chat.id);
   const profile = await getProfileByChatId(ctx.chat.id);
-  await ctx.reply(botT(profile?.preferredLocale || "ru", "cancelled"));
+  const l = profile?.preferredLocale || "ru";
+  await replyWithKb(ctx, botT(l, "cancelled"), l);
 });
 
 async function startMealFlow(ctx: Context) {
@@ -579,7 +586,7 @@ async function showToday(ctx: Context) {
     text += botT(locale, "today_no_weight");
   }
 
-  await ctx.reply(text);
+  await replyWithKb(ctx, text, locale);
 }
 
 async function showSettings(ctx: Context) {
@@ -661,7 +668,7 @@ bot.on("callback_query:data", async (ctx) => {
     if (data === "auth:register_no") {
       const st = getState(chatId);
       clearState(chatId);
-      await ctx.reply(botT(st?.locale || "ru", "cancelled"));
+      await replyWithKb(ctx, botT(st?.locale || "ru", "cancelled"), st?.locale || "ru");
       return;
     }
 
@@ -698,7 +705,7 @@ bot.on("callback_query:data", async (ctx) => {
         },
       });
       clearState(chatId);
-      await ctx.reply(botT(st.locale!, "meal_saved", { name: aiResult.name, cal: Math.round(aiResult.calories) }));
+      await replyWithKb(ctx, botT(st.locale!, "meal_saved", { name: aiResult.name, cal: Math.round(aiResult.calories) }), st.locale!);
       return;
     }
     if (data === "meal:edit") {
@@ -760,7 +767,7 @@ bot.on("callback_query:data", async (ctx) => {
       if (profile) {
         await prisma.profile.update({ where: { id: profile.id }, data: { preferredLocale: locale } });
       }
-      await ctx.reply(botT(locale, "language_saved", { lang: LOCALES_META[locale] || locale }));
+      await replyWithKb(ctx, botT(locale, "language_saved", { lang: LOCALES_META[locale] || locale }), locale);
       return;
     }
     if (data === "settings:profile") {
@@ -818,7 +825,7 @@ bot.on("message:contact", async (ctx) => {
       const normalized = normalizePhone(phone);
       await prisma.profile.update({ where: { id: st.profileId }, data: { phone: normalized } });
       clearState(chatId);
-      await ctx.reply(botT(st.locale!, "phone_saved", { phone: normalized }));
+      await replyWithKb(ctx, botT(st.locale!, "phone_saved", { phone: normalized }), st.locale!);
     } catch {
       await ctx.reply(botT(st.locale || "ru", "phone_invalid"));
     }
@@ -964,7 +971,7 @@ bot.on("message:text", async (ctx) => {
           protein, fat, carbs,
         },
       });
-      await ctx.reply(botT(st.locale!, "meal_saved", { name: st.data!.name, cal: Math.round(st.data!.calories) }));
+      await replyWithKb(ctx, botT(st.locale!, "meal_saved", { name: st.data!.name, cal: Math.round(st.data!.calories) }), st.locale!);
       clearState(chatId);
       return;
     }
@@ -997,7 +1004,7 @@ bot.on("message:text", async (ctx) => {
           takenTime: time,
         },
       });
-      await ctx.reply(botT(st.locale!, "med_saved", { name: st.data!.name, dosage: st.data!.dosage || "", time }));
+      await replyWithKb(ctx, botT(st.locale!, "med_saved", { name: st.data!.name, dosage: st.data!.dosage || "", time }), st.locale!);
       clearState(chatId);
       return;
     }
@@ -1016,7 +1023,7 @@ bot.on("message:text", async (ctx) => {
         create: { profileId: st.profileId!, date: today, weightKg: w },
         update: { weightKg: w },
       });
-      await ctx.reply(botT(st.locale!, "weight_saved", { weight: w }));
+      await replyWithKb(ctx, botT(st.locale!, "weight_saved", { weight: w }), st.locale!);
       clearState(chatId);
       return;
     }
@@ -1047,9 +1054,7 @@ bot.on("message:text", async (ctx) => {
           name,
         },
       });
-      await ctx.reply(
-        botT(st.locale!, "workout_saved", { type: botT(st.locale!, st.data!.type), duration: st.data!.duration }),
-      );
+      await replyWithKb(ctx, botT(st.locale!, "workout_saved", { type: botT(st.locale!, st.data!.type), duration: st.data!.duration }), st.locale!);
       clearState(chatId);
       return;
     }
@@ -1071,7 +1076,7 @@ bot.on("message:text", async (ctx) => {
         }
       }
       clearState(chatId);
-      await ctx.reply(botT(st.locale!, "profile_saved"));
+      await replyWithKb(ctx, botT(st.locale!, "profile_saved"), st.locale!);
       return;
     }
 
@@ -1081,7 +1086,7 @@ bot.on("message:text", async (ctx) => {
         const normalized = normalizePhone(text);
         await prisma.profile.update({ where: { id: st.profileId }, data: { phone: normalized } });
         clearState(chatId);
-        await ctx.reply(botT(st.locale!, "phone_saved", { phone: normalized }));
+        await replyWithKb(ctx, botT(st.locale!, "phone_saved", { phone: normalized }), st.locale!);
       } catch {
         await ctx.reply(botT(st.locale || "ru", "phone_invalid"));
       }
