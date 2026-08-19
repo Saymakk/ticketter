@@ -1176,15 +1176,23 @@ async function main() {
   ]);
 
   await bot.api.setChatMenuButton({
-    menu_button: {
-      type: "web_app",
-      text: "Healthy Life",
-      web_app: { url: WEB_APP_URL },
-    },
+    menu_button: { type: "commands" },
   });
 
   console.log("🤖 Healthy Life bot is running...");
-  bot.start();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await bot.start();
+      break;
+    } catch (e: any) {
+      if (e?.error_code === 409 && attempt < 4) {
+        console.warn(`409 conflict, retrying in ${10 * (attempt + 1)}s...`);
+        await new Promise((r) => setTimeout(r, 10_000 * (attempt + 1)));
+        continue;
+      }
+      throw e;
+    }
+  }
 }
 
 main().catch(console.error);
