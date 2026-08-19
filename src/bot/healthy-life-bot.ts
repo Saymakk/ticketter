@@ -1,12 +1,11 @@
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
+import { randomUUID } from "crypto";
 
-// Workaround for TLS certificate issues on Windows
 if (process.platform === "win32") {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 }
 
-// Load .env.local if available (local dev); on server env vars come from Docker
 const envPath = resolve(__dirname, "../../.env.local");
 if (existsSync(envPath)) {
   for (const line of readFileSync(envPath, "utf-8").split("\n")) {
@@ -37,6 +36,7 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_HEALTHY_LIFE_SUPABASE_ANON_KEY
 const SUPABASE_SERVICE_KEY = process.env.HEALTHY_LIFE_SUPABASE_SERVICE_ROLE_KEY!;
 const OPENAI_API_KEY = process.env.HEALTHY_LIFE_OPENAI_API_KEY!;
 const OPENAI_MODEL = process.env.HEALTHY_LIFE_OPENAI_MODEL || "gpt-4o-mini";
+const PHOTOS_BUCKET = process.env.HEALTHY_LIFE_SUPABASE_MEAL_PHOTOS_BUCKET || "meal-photos";
 
 const prisma = new PrismaClient();
 const supabaseAdmin: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -44,7 +44,7 @@ const supabaseAnon: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KE
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 const bot = new Bot(BOT_TOKEN);
 
-// ─── Phone helpers (copied from src/lib/auth/phone.ts) ───────────────────────
+// ─── Phone helpers ────────────────────────────────────────────────────────────
 
 function normalizePhone(input: string): string {
   let digits = input.replace(/\D/g, "");
@@ -52,7 +52,7 @@ function normalizePhone(input: string): string {
   if (digits.length === 11 && digits.startsWith("8")) digits = `7${digits.slice(1)}`;
   if (digits.length === 10) digits = `7${digits}`;
   if (digits.length === 11 && digits.startsWith("7")) return digits;
-  throw new Error("Неверный формат телефона");
+  throw new Error("Invalid phone format");
 }
 
 function phoneToEmail(phone: string): string {
@@ -89,246 +89,212 @@ const LOCALES_META: Record<string, string> = {
   uz: "Oʻzbekcha", ko: "한국어", ja: "日本語",
 };
 
+const AI_LANGUAGE: Record<string, string> = {
+  ru: "Russian", en: "English", kk: "Kazakh", ar: "Arabic", zh: "Chinese",
+  fr: "French", es: "Spanish", ky: "Kyrgyz", uz: "Uzbek", ko: "Korean", ja: "Japanese",
+};
+
 const translations: Record<string, Record<string, string>> = {
   ru: {
     welcome: "Добро пожаловать в Healthy Life! 🌿",
     not_linked: "Ваш Telegram не привязан к аккаунту. Выберите способ входа:",
-    login_email: "Войти по почте",
-    login_phone: "Войти по телефону",
-    enter_email: "Введите ваш email:",
-    enter_password: "Введите пароль:",
+    login_email: "📧 Войти по почте", login_phone: "📱 Войти по телефону",
+    enter_email: "Введите ваш email:", enter_password: "Введите пароль:",
     enter_phone: "Отправьте контакт кнопкой ниже или введите номер телефона:",
     share_contact: "📱 Отправить контакт",
     login_success: "✅ Вход выполнен! Добро пожаловать, {name}!",
     login_failed: "❌ Неверный email или пароль.",
-    register_offer: "Аккаунт не найден. Хотите зарегистрироваться с этими данными?",
-    register_yes: "Да, зарегистрироваться",
-    register_no: "Нет",
-    register_success: "✅ Регистрация успешна! Добро пожаловать!",
-    register_failed: "❌ Ошибка регистрации: {error}",
-    main_menu: "Главное меню",
+    register_offer: "Аккаунт не найден. Хотите зарегистрироваться?",
+    register_yes: "Да, зарегистрироваться", register_no: "Нет",
+    register_success: "✅ Регистрация успешна!", register_failed: "❌ Ошибка: {error}",
+    main_menu: "Выберите действие:",
     meal_type_prompt: "Выберите тип приёма пищи:",
-    breakfast: "Завтрак", lunch: "Обед", dinner: "Ужин", snack: "Перекус",
-    meal_input_prompt: "Отправьте фото еды или напишите название блюда:",
-    meal_calories_prompt: "Введите калории:",
-    meal_macros_prompt: "Введите белки/жиры/углеводы через пробел (или /skip):",
+    breakfast: "🌅 Завтрак", lunch: "☀️ Обед", dinner: "🌙 Ужин", snack: "🍎 Перекус",
+    meal_input_prompt: "📷 Отправьте фото еды или напишите название блюда:",
+    meal_calories_prompt: "Введите калории:", meal_macros_prompt: "Белки/жиры/углеводы через пробел (или /skip):",
     meal_saved: "✅ Приём пищи сохранён!\n🍽 {name}\n🔥 {cal} ккал",
-    meal_photo_result: "🤖 AI определил:\n🍽 {name}\n🔥 {cal} ккал\nБелки: {p}г | Жиры: {f}г | Углеводы: {c}г\n\nПодтвердить?",
-    confirm: "✅ Подтвердить",
-    edit: "✏️ Изменить",
-    med_prompt: "Выберите лекарство или добавьте новое:",
-    med_custom: "Другое (без расписания)",
-    med_name_prompt: "Введите название лекарства:",
-    med_dosage_prompt: "Введите дозировку:",
-    med_time_prompt: "Введите время приёма (ЧЧ:ММ) или /skip для текущего:",
-    med_saved: "✅ Приём лекарства записан!\n💊 {name} {dosage} в {time}",
-    weight_prompt: "Введите ваш вес в кг:",
-    weight_saved: "✅ Вес записан: {weight} кг",
-    workout_type_prompt: "Выберите тип тренировки:",
-    workout_duration_prompt: "Введите продолжительность (минуты):",
-    workout_name_prompt: "Введите название (или /skip):",
-    workout_saved: "✅ Тренировка записана!\n🏋️ {type} — {duration} мин",
+    meal_photo_analyzing: "🔍 Анализирую фото...",
+    meal_photo_result: "🤖 AI определил:\n🍽 {name}\n🔥 {cal} ккал\nБелки: {p}г | Жиры: {f}г | Углеводы: {c}г",
+    confirm: "✅ Подтвердить", edit: "✏️ Ввести вручную",
+    med_prompt: "Выберите лекарство или добавьте новое:", med_custom: "➕ Другое",
+    med_name_prompt: "Название лекарства:", med_dosage_prompt: "Дозировка:",
+    med_time_prompt: "Время приёма (ЧЧ:ММ) или /skip:", med_saved: "✅ 💊 {name} {dosage} в {time}",
+    weight_prompt: "Введите вес (кг):", weight_saved: "✅ Вес: {weight} кг",
+    workout_type_prompt: "Тип тренировки:", workout_duration_prompt: "Продолжительность (мин):",
+    workout_name_prompt: "Название (или /skip):", workout_saved: "✅ 🏋️ {type} — {duration} мин",
     today_title: "📊 Сводка за сегодня",
-    today_calories: "🔥 Калории: {eaten}/{goal} (осталось: {remaining})",
-    today_meals: "🍽 Приёмы пищи:",
-    today_no_meals: "Приёмы пищи не записаны",
-    today_meds: "💊 Лекарства:",
-    today_no_meds: "Лекарства не записаны",
-    today_workouts: "🏋️ Тренировки:",
-    today_no_workouts: "Тренировок нет",
-    today_weight: "⚖️ Вес: {weight} кг",
-    today_no_weight: "Вес не записан",
+    today_calories: "🔥 {eaten}/{goal} ккал (осталось: {remaining})",
+    today_meals: "\n🍽 Приёмы пищи:", today_no_meals: "\n🍽 Приёмы пищи не записаны",
+    today_meds: "\n💊 Лекарства:", today_no_meds: "\n💊 Лекарства не записаны",
+    today_workouts: "\n🏋️ Тренировки:", today_no_workouts: "\n🏋️ Тренировок нет",
+    today_weight: "\n⚖️ Вес: {weight} кг", today_no_weight: "\n⚖️ Вес не записан",
     settings_title: "⚙️ Настройки",
-    settings_language: "🌐 Язык",
-    settings_phone: "📱 Привязать телефон",
-    settings_email: "📧 Моя почта",
-    settings_profile: "👤 Профиль",
-    language_prompt: "Выберите язык:",
-    language_saved: "✅ Язык изменён на {lang}",
-    profile_info: "👤 Профиль\nИмя: {name}\nЦель калорий: {goal} ккал",
-    profile_name_prompt: "Введите новое имя (или /skip):",
-    profile_goal_prompt: "Введите цель калорий (или /skip):",
+    settings_language: "🌐 Язык", settings_phone: "📱 Привязать телефон",
+    settings_email: "📧 Моя почта", settings_profile: "👤 Профиль", settings_timezone: "🕐 Часовой пояс",
+    language_prompt: "Выберите язык:", language_saved: "✅ Язык: {lang}",
+    profile_info: "👤 {name}\n🔥 Цель: {goal} ккал\n⚖️ Целевой вес: {target}\n📏 Рост: {height}",
+    profile_name_prompt: "Новое имя (или /skip):", profile_goal_prompt: "Цель ккал (или /skip):",
+    profile_target_prompt: "Целевой вес кг (или /skip):", profile_height_prompt: "Рост см (или /skip):",
     profile_saved: "✅ Профиль обновлён!",
-    phone_saved: "✅ Телефон привязан: {phone}",
-    email_info: "📧 Ваш email: {email}",
-    error: "❌ Произошла ошибка. Попробуйте ещё раз.",
-    help: "📖 Команды:\n/start — Главное меню\n/meal — Записать приём пищи\n/med — Записать лекарство\n/weight — Записать вес\n/workout — Записать тренировку\n/today — Сводка за сегодня\n/settings — Настройки\n/help — Помощь",
+    phone_saved: "✅ Телефон: {phone}", email_info: "📧 {email}",
+    timezone_prompt: "Введите часовой пояс (например Asia/Almaty):", timezone_saved: "✅ Часовой пояс: {tz}",
+    error: "❌ Ошибка. Попробуйте ещё раз.",
+    help: "📖 Команды:\n/meal — Еда\n/med — Лекарство\n/weight — Вес\n/workout — Тренировка\n/today — Сводка\n/history — История\n/advice — Советы\n/schedules — Расписания\n/settings — Настройки\n/cancel — Отмена",
     running: "Бег", walking: "Ходьба", cycling: "Велосипед", strength: "Силовая",
     yoga: "Йога", swimming: "Плавание", hiit: "HIIT", sports: "Спорт", other: "Другое",
-    cancel: "Отмена",
-    cancelled: "Действие отменено.",
+    cancel: "❌ Отмена", cancelled: "Действие отменено.",
     phone_invalid: "❌ Неверный формат телефона.",
-    open_app: "🌐 Открыть приложение",
-    open_app_hint: "Открыть полную веб-версию приложения прямо в Telegram",
-    kb_meal: "🍽 Еда",
-    kb_med: "💊 Лекарство",
-    kb_weight: "⚖️ Вес",
-    kb_workout: "🏋️ Тренировка",
-    kb_today: "📊 Сегодня",
-    kb_settings: "⚙️ Настройки",
-    choose_language: "Выберите язык / Choose language:",
+    open_app: "🌐 Открыть", choose_language: "Выберите язык / Choose language:",
+    kb_meal: "🍽 Еда", kb_med: "💊 Лекарство", kb_weight: "⚖️ Вес",
+    kb_workout: "🏋️ Тренировка", kb_today: "📊 Сегодня", kb_settings: "⚙️ Настройки",
+    // History
+    history_prompt: "📅 История за какой день?\nВведите дату (ДД.ММ.ГГГГ) или /skip для сегодня:",
+    history_title: "📅 История за {date}",
+    history_no_data: "Нет записей за этот день.",
+    // Advice
+    advice_prompt: "Выберите период:",
+    advice_day: "📊 День", advice_week: "📊 Неделя", advice_month: "📊 Месяц",
+    advice_none: "Советов пока нет. Они генерируются автоматически после 00:00.",
+    advice_title: "💡 Совет ({period})",
+    // Schedules
+    schedules_title: "📋 Расписания",
+    meal_schedules: "🍽 Расписания еды:", med_schedules: "💊 Расписания лекарств:",
+    no_meal_schedules: "Расписаний еды нет.", no_med_schedules: "Расписаний лекарств нет.",
+    schedule_daily: "ежедневно", schedule_weekly: "по дням", schedule_interval: "каждые {n} дн.",
+    // Dynamic keyboard labels
+    kb_cancel: "❌ Отмена", kb_back: "◀️ Назад", kb_history: "📅 История", kb_advice: "💡 Советы",
   },
   en: {
     welcome: "Welcome to Healthy Life! 🌿",
-    not_linked: "Your Telegram is not linked to an account. Choose login method:",
-    login_email: "Login with email",
-    login_phone: "Login with phone",
-    enter_email: "Enter your email:",
-    enter_password: "Enter your password:",
-    enter_phone: "Send your contact using the button below or type your phone number:",
-    share_contact: "📱 Share contact",
-    login_success: "✅ Login successful! Welcome, {name}!",
-    login_failed: "❌ Wrong email or password.",
-    register_offer: "Account not found. Would you like to register with these credentials?",
-    register_yes: "Yes, register",
-    register_no: "No",
-    register_success: "✅ Registration successful! Welcome!",
-    register_failed: "❌ Registration failed: {error}",
-    main_menu: "Main menu",
-    meal_type_prompt: "Choose meal type:",
-    breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack",
-    meal_input_prompt: "Send a photo of your food or type the dish name:",
-    meal_calories_prompt: "Enter calories:",
-    meal_macros_prompt: "Enter protein/fat/carbs separated by spaces (or /skip):",
-    meal_saved: "✅ Meal saved!\n🍽 {name}\n🔥 {cal} kcal",
-    meal_photo_result: "🤖 AI detected:\n🍽 {name}\n🔥 {cal} kcal\nProtein: {p}g | Fat: {f}g | Carbs: {c}g\n\nConfirm?",
-    confirm: "✅ Confirm",
-    edit: "✏️ Edit",
-    med_prompt: "Choose a medication or add new:",
-    med_custom: "Other (no schedule)",
-    med_name_prompt: "Enter medication name:",
-    med_dosage_prompt: "Enter dosage:",
-    med_time_prompt: "Enter time taken (HH:MM) or /skip for now:",
-    med_saved: "✅ Medication intake logged!\n💊 {name} {dosage} at {time}",
-    weight_prompt: "Enter your weight in kg:",
-    weight_saved: "✅ Weight logged: {weight} kg",
-    workout_type_prompt: "Choose workout type:",
-    workout_duration_prompt: "Enter duration (minutes):",
-    workout_name_prompt: "Enter name (or /skip):",
-    workout_saved: "✅ Workout logged!\n🏋️ {type} — {duration} min",
+    not_linked: "Your Telegram is not linked. Choose login method:",
+    login_email: "📧 Email login", login_phone: "📱 Phone login",
+    enter_email: "Enter your email:", enter_password: "Enter password:",
+    enter_phone: "Send contact or type your phone:", share_contact: "📱 Share contact",
+    login_success: "✅ Welcome, {name}!", login_failed: "❌ Wrong email/password.",
+    register_offer: "Account not found. Register?",
+    register_yes: "Yes, register", register_no: "No",
+    register_success: "✅ Registered!", register_failed: "❌ Error: {error}",
+    main_menu: "Choose an action:",
+    meal_type_prompt: "Meal type:",
+    breakfast: "🌅 Breakfast", lunch: "☀️ Lunch", dinner: "🌙 Dinner", snack: "🍎 Snack",
+    meal_input_prompt: "📷 Send a food photo or type dish name:",
+    meal_calories_prompt: "Enter calories:", meal_macros_prompt: "Protein/fat/carbs (or /skip):",
+    meal_saved: "✅ Saved!\n🍽 {name}\n🔥 {cal} kcal",
+    meal_photo_analyzing: "🔍 Analyzing photo...",
+    meal_photo_result: "🤖 AI detected:\n🍽 {name}\n🔥 {cal} kcal\nP: {p}g | F: {f}g | C: {c}g",
+    confirm: "✅ Confirm", edit: "✏️ Edit manually",
+    med_prompt: "Choose medication or add new:", med_custom: "➕ Other",
+    med_name_prompt: "Medication name:", med_dosage_prompt: "Dosage:",
+    med_time_prompt: "Time (HH:MM) or /skip:", med_saved: "✅ 💊 {name} {dosage} at {time}",
+    weight_prompt: "Weight (kg):", weight_saved: "✅ Weight: {weight} kg",
+    workout_type_prompt: "Workout type:", workout_duration_prompt: "Duration (min):",
+    workout_name_prompt: "Name (or /skip):", workout_saved: "✅ 🏋️ {type} — {duration} min",
     today_title: "📊 Today's summary",
-    today_calories: "🔥 Calories: {eaten}/{goal} (remaining: {remaining})",
-    today_meals: "🍽 Meals:",
-    today_no_meals: "No meals logged",
-    today_meds: "💊 Medications:",
-    today_no_meds: "No medications logged",
-    today_workouts: "🏋️ Workouts:",
-    today_no_workouts: "No workouts",
-    today_weight: "⚖️ Weight: {weight} kg",
-    today_no_weight: "Weight not logged",
+    today_calories: "🔥 {eaten}/{goal} kcal (remaining: {remaining})",
+    today_meals: "\n🍽 Meals:", today_no_meals: "\n🍽 No meals",
+    today_meds: "\n💊 Medications:", today_no_meds: "\n💊 No medications",
+    today_workouts: "\n🏋️ Workouts:", today_no_workouts: "\n🏋️ No workouts",
+    today_weight: "\n⚖️ Weight: {weight} kg", today_no_weight: "\n⚖️ Weight not logged",
     settings_title: "⚙️ Settings",
-    settings_language: "🌐 Language",
-    settings_phone: "📱 Link phone",
-    settings_email: "📧 My email",
-    settings_profile: "👤 Profile",
-    language_prompt: "Choose language:",
-    language_saved: "✅ Language changed to {lang}",
-    profile_info: "👤 Profile\nName: {name}\nCalorie goal: {goal} kcal",
-    profile_name_prompt: "Enter new name (or /skip):",
-    profile_goal_prompt: "Enter calorie goal (or /skip):",
+    settings_language: "🌐 Language", settings_phone: "📱 Link phone",
+    settings_email: "📧 My email", settings_profile: "👤 Profile", settings_timezone: "🕐 Timezone",
+    language_prompt: "Choose language:", language_saved: "✅ Language: {lang}",
+    profile_info: "👤 {name}\n🔥 Goal: {goal} kcal\n⚖️ Target: {target}\n📏 Height: {height}",
+    profile_name_prompt: "New name (or /skip):", profile_goal_prompt: "Calorie goal (or /skip):",
+    profile_target_prompt: "Target weight kg (or /skip):", profile_height_prompt: "Height cm (or /skip):",
     profile_saved: "✅ Profile updated!",
-    phone_saved: "✅ Phone linked: {phone}",
-    email_info: "📧 Your email: {email}",
-    error: "❌ An error occurred. Please try again.",
-    help: "📖 Commands:\n/start — Main menu\n/meal — Log a meal\n/med — Log medication\n/weight — Log weight\n/workout — Log workout\n/today — Today's summary\n/settings — Settings\n/help — Help",
+    phone_saved: "✅ Phone: {phone}", email_info: "📧 {email}",
+    timezone_prompt: "Enter timezone (e.g. Asia/Almaty):", timezone_saved: "✅ Timezone: {tz}",
+    error: "❌ Error. Try again.",
+    help: "📖 Commands:\n/meal — Meal\n/med — Medication\n/weight — Weight\n/workout — Workout\n/today — Summary\n/history — History\n/advice — Advice\n/schedules — Schedules\n/settings — Settings\n/cancel — Cancel",
     running: "Running", walking: "Walking", cycling: "Cycling", strength: "Strength",
     yoga: "Yoga", swimming: "Swimming", hiit: "HIIT", sports: "Sports", other: "Other",
-    cancel: "Cancel",
-    cancelled: "Action cancelled.",
-    phone_invalid: "❌ Invalid phone number format.",
-    open_app: "🌐 Open app",
-    open_app_hint: "Open the full web app inside Telegram",
-    kb_meal: "🍽 Meal",
-    kb_med: "💊 Medication",
-    kb_weight: "⚖️ Weight",
-    kb_workout: "🏋️ Workout",
-    kb_today: "📊 Today",
-    kb_settings: "⚙️ Settings",
-    choose_language: "Choose language / Выберите язык:",
+    cancel: "❌ Cancel", cancelled: "Action cancelled.",
+    phone_invalid: "❌ Invalid phone.",
+    open_app: "🌐 Open", choose_language: "Choose language / Выберите язык:",
+    kb_meal: "🍽 Meal", kb_med: "💊 Medication", kb_weight: "⚖️ Weight",
+    kb_workout: "🏋️ Workout", kb_today: "📊 Today", kb_settings: "⚙️ Settings",
+    history_prompt: "📅 Which date?\nEnter date (DD.MM.YYYY) or /skip for today:",
+    history_title: "📅 History for {date}",
+    history_no_data: "No records for this day.",
+    advice_prompt: "Choose period:",
+    advice_day: "📊 Day", advice_week: "📊 Week", advice_month: "📊 Month",
+    advice_none: "No advice yet. Generated automatically after 00:00.",
+    advice_title: "💡 Advice ({period})",
+    schedules_title: "📋 Schedules",
+    meal_schedules: "🍽 Meal schedules:", med_schedules: "💊 Medication schedules:",
+    no_meal_schedules: "No meal schedules.", no_med_schedules: "No medication schedules.",
+    schedule_daily: "daily", schedule_weekly: "weekly", schedule_interval: "every {n} days",
+    kb_cancel: "❌ Cancel", kb_back: "◀️ Back", kb_history: "📅 History", kb_advice: "💡 Advice",
   },
   kk: {
     welcome: "Healthy Life-қа қош келдіңіз! 🌿",
-    not_linked: "Telegram аккаунтқа байланыспаған. Кіру әдісін таңдаңыз:",
-    login_email: "Email арқылы кіру",
-    login_phone: "Телефон арқылы кіру",
-    enter_email: "Email-ді енгізіңіз:",
-    enter_password: "Құпия сөзді енгізіңіз:",
-    enter_phone: "Контактты жіберіңіз немесе телефон нөмірін жазыңыз:",
-    share_contact: "📱 Контакт жіберу",
-    login_success: "✅ Сәтті кірдіңіз! Қош келдіңіз, {name}!",
-    login_failed: "❌ Қате email немесе құпия сөз.",
-    register_offer: "Аккаунт табылмады. Тіркелгіңіз келе ме?",
-    register_yes: "Иә, тіркелу",
-    register_no: "Жоқ",
-    register_success: "✅ Тіркелу сәтті! Қош келдіңіз!",
-    register_failed: "❌ Тіркелу қатесі: {error}",
-    main_menu: "Басты мәзір",
-    meal_type_prompt: "Тамақ түрін таңдаңыз:",
-    breakfast: "Таңғы ас", lunch: "Түскі ас", dinner: "Кешкі ас", snack: "Тіскебасар",
-    meal_input_prompt: "Тамақ суретін жіберіңіз немесе атауын жазыңыз:",
-    meal_calories_prompt: "Калорияны енгізіңіз:",
-    meal_macros_prompt: "Ақуыз/май/көмірсулар бос орынмен (немесе /skip):",
-    meal_saved: "✅ Тамақ сақталды!\n🍽 {name}\n🔥 {cal} ккал",
-    meal_photo_result: "🤖 AI анықтады:\n🍽 {name}\n🔥 {cal} ккал\nАқуыз: {p}г | Май: {f}г | Көмірсулар: {c}г\n\nРастайсыз ба?",
-    confirm: "✅ Растау",
-    edit: "✏️ Өзгерту",
-    med_prompt: "Дәріні таңдаңыз немесе жаңа қосыңыз:",
-    med_custom: "Басқа (кестесіз)",
-    med_name_prompt: "Дәрі атауын енгізіңіз:",
-    med_dosage_prompt: "Дозасын енгізіңіз:",
-    med_time_prompt: "Қабылдау уақытын енгізіңіз (СС:ММ) немесе /skip:",
-    med_saved: "✅ Дәрі қабылдау жазылды!\n💊 {name} {dosage} {time}",
-    weight_prompt: "Салмақты кг-мен енгізіңіз:",
-    weight_saved: "✅ Салмақ жазылды: {weight} кг",
-    workout_type_prompt: "Жаттығу түрін таңдаңыз:",
-    workout_duration_prompt: "Ұзақтығын енгізіңіз (минут):",
-    workout_name_prompt: "Атауын енгізіңіз (немесе /skip):",
-    workout_saved: "✅ Жаттығу жазылды!\n🏋️ {type} — {duration} мин",
-    today_title: "📊 Бүгінгі қорытынды",
-    today_calories: "🔥 Калория: {eaten}/{goal} (қалды: {remaining})",
-    today_meals: "🍽 Тамақтану:",
-    today_no_meals: "Тамақтану жазылмаған",
-    today_meds: "💊 Дәрілер:",
-    today_no_meds: "Дәрілер жазылмаған",
-    today_workouts: "🏋️ Жаттығулар:",
-    today_no_workouts: "Жаттығулар жоқ",
-    today_weight: "⚖️ Салмақ: {weight} кг",
-    today_no_weight: "Салмақ жазылмаған",
+    not_linked: "Telegram байланыспаған. Кіру әдісін таңдаңыз:",
+    login_email: "📧 Email", login_phone: "📱 Телефон",
+    enter_email: "Email:", enter_password: "Құпия сөз:",
+    enter_phone: "Контакт жіберіңіз немесе нөмір жазыңыз:", share_contact: "📱 Контакт жіберу",
+    login_success: "✅ Қош келдіңіз, {name}!", login_failed: "❌ Қате email/құпия сөз.",
+    register_offer: "Аккаунт жоқ. Тіркелу?",
+    register_yes: "Иә", register_no: "Жоқ",
+    register_success: "✅ Тіркелу сәтті!", register_failed: "❌ Қате: {error}",
+    main_menu: "Әрекетті таңдаңыз:",
+    meal_type_prompt: "Тамақ түрі:",
+    breakfast: "🌅 Таңғы ас", lunch: "☀️ Түскі ас", dinner: "🌙 Кешкі ас", snack: "🍎 Тіскебасар",
+    meal_input_prompt: "📷 Тамақ суретін жіберіңіз немесе атауын жазыңыз:",
+    meal_calories_prompt: "Калория:", meal_macros_prompt: "Ақуыз/май/көмірсу (немесе /skip):",
+    meal_saved: "✅ 🍽 {name}\n🔥 {cal} ккал",
+    meal_photo_analyzing: "🔍 Сурет талдануда...",
+    meal_photo_result: "🤖 AI:\n🍽 {name}\n🔥 {cal} ккал\nА: {p}г | М: {f}г | К: {c}г",
+    confirm: "✅ Растау", edit: "✏️ Қолмен",
+    med_prompt: "Дәріні таңдаңыз:", med_custom: "➕ Басқа",
+    med_name_prompt: "Дәрі атауы:", med_dosage_prompt: "Дозасы:",
+    med_time_prompt: "Уақыт (СС:ММ) немесе /skip:", med_saved: "✅ 💊 {name} {dosage} {time}",
+    weight_prompt: "Салмақ (кг):", weight_saved: "✅ Салмақ: {weight} кг",
+    workout_type_prompt: "Жаттығу түрі:", workout_duration_prompt: "Ұзақтығы (мин):",
+    workout_name_prompt: "Атауы (немесе /skip):", workout_saved: "✅ 🏋️ {type} — {duration} мин",
+    today_title: "📊 Бүгін",
+    today_calories: "🔥 {eaten}/{goal} ккал (қалды: {remaining})",
+    today_meals: "\n🍽 Тамақтану:", today_no_meals: "\n🍽 Тамақ жоқ",
+    today_meds: "\n💊 Дәрілер:", today_no_meds: "\n💊 Дәрі жоқ",
+    today_workouts: "\n🏋️ Жаттығулар:", today_no_workouts: "\n🏋️ Жаттығу жоқ",
+    today_weight: "\n⚖️ Салмақ: {weight} кг", today_no_weight: "\n⚖️ Салмақ жазылмаған",
     settings_title: "⚙️ Баптаулар",
-    settings_language: "🌐 Тіл",
-    settings_phone: "📱 Телефон байлау",
-    settings_email: "📧 Менің email",
-    settings_profile: "👤 Профиль",
-    language_prompt: "Тілді таңдаңыз:",
-    language_saved: "✅ Тіл {lang} болып өзгертілді",
-    profile_info: "👤 Профиль\nАты: {name}\nКалория мақсаты: {goal} ккал",
-    profile_name_prompt: "Жаңа атын енгізіңіз (немесе /skip):",
-    profile_goal_prompt: "Калория мақсатын енгізіңіз (немесе /skip):",
+    settings_language: "🌐 Тіл", settings_phone: "📱 Телефон", settings_email: "📧 Email",
+    settings_profile: "👤 Профиль", settings_timezone: "🕐 Уақыт белдеуі",
+    language_prompt: "Тілді таңдаңыз:", language_saved: "✅ Тіл: {lang}",
+    profile_info: "👤 {name}\n🔥 Мақсат: {goal} ккал\n⚖️ Мақсат салмақ: {target}\n📏 Бой: {height}",
+    profile_name_prompt: "Жаңа ат (немесе /skip):", profile_goal_prompt: "Ккал мақсаты (немесе /skip):",
+    profile_target_prompt: "Мақсат салмақ кг (немесе /skip):", profile_height_prompt: "Бой см (немесе /skip):",
     profile_saved: "✅ Профиль жаңартылды!",
-    phone_saved: "✅ Телефон байланды: {phone}",
-    email_info: "📧 Сіздің email: {email}",
-    error: "❌ Қате орын алды. Қайталап көріңіз.",
-    help: "📖 Командалар:\n/start — Басты мәзір\n/meal — Тамақ жазу\n/med — Дәрі жазу\n/weight — Салмақ жазу\n/workout — Жаттығу жазу\n/today — Бүгінгі қорытынды\n/settings — Баптаулар\n/help — Көмек",
+    phone_saved: "✅ Телефон: {phone}", email_info: "📧 {email}",
+    timezone_prompt: "Уақыт белдеуі (мыс. Asia/Almaty):", timezone_saved: "✅ Уақыт белдеуі: {tz}",
+    error: "❌ Қате. Қайталаңыз.",
+    help: "📖 /meal — Тамақ\n/med — Дәрі\n/weight — Салмақ\n/workout — Жаттығу\n/today — Бүгін\n/history — Тарих\n/advice — Кеңес\n/schedules — Кесте\n/settings — Баптаулар\n/cancel — Болдырмау",
     running: "Жүгіру", walking: "Жүру", cycling: "Велосипед", strength: "Күшті",
     yoga: "Йога", swimming: "Жүзу", hiit: "HIIT", sports: "Спорт", other: "Басқа",
-    cancel: "Болдырмау",
-    cancelled: "Әрекет тоқтатылды.",
-    phone_invalid: "❌ Телефон нөмірі қате форматта.",
-    open_app: "🌐 Ашу",
-    open_app_hint: "Толық веб-қосымшаны Telegram ішінде ашу",
-    kb_meal: "🍽 Тамақ",
-    kb_med: "💊 Дәрі",
-    kb_weight: "⚖️ Салмақ",
-    kb_workout: "🏋️ Жаттығу",
-    kb_today: "📊 Бүгін",
-    kb_settings: "⚙️ Баптаулар",
-    choose_language: "Тілді таңдаңыз / Choose language:",
+    cancel: "❌ Болдырмау", cancelled: "Тоқтатылды.",
+    phone_invalid: "❌ Телефон қате.",
+    open_app: "🌐 Ашу", choose_language: "Тілді таңдаңыз / Choose language:",
+    kb_meal: "🍽 Тамақ", kb_med: "💊 Дәрі", kb_weight: "⚖️ Салмақ",
+    kb_workout: "🏋️ Жаттығу", kb_today: "📊 Бүгін", kb_settings: "⚙️ Баптаулар",
+    history_prompt: "📅 Қай күн?\nКүн (КК.АА.ЖЖЖЖ) немесе /skip:",
+    history_title: "📅 {date} тарихы",
+    history_no_data: "Бұл күнге жазба жоқ.",
+    advice_prompt: "Кезеңді таңдаңыз:",
+    advice_day: "📊 Күн", advice_week: "📊 Апта", advice_month: "📊 Ай",
+    advice_none: "Кеңес жоқ. 00:00-ден кейін автоматты жасалады.",
+    advice_title: "💡 Кеңес ({period})",
+    schedules_title: "📋 Кестелер",
+    meal_schedules: "🍽 Тамақ кестесі:", med_schedules: "💊 Дәрі кестесі:",
+    no_meal_schedules: "Тамақ кестесі жоқ.", no_med_schedules: "Дәрі кестесі жоқ.",
+    schedule_daily: "күнделікті", schedule_weekly: "апталық", schedule_interval: "әр {n} күн",
+    kb_cancel: "❌ Болдырмау", kb_back: "◀️ Артқа", kb_history: "📅 Тарих", kb_advice: "💡 Кеңес",
   },
 };
 
 function botT(locale: Locale, key: string, vars?: Record<string, string | number>): string {
   const lang = translations[locale] ? locale : translations[locale?.slice(0, 2)] ? locale.slice(0, 2) : "en";
-  let text = translations[lang]?.[key] ?? translations.en[key] ?? key;
+  let text = translations[lang]?.[key] ?? translations.en?.[key] ?? key;
   if (vars) {
     for (const [k, v] of Object.entries(vars)) {
       text = text.replaceAll(`{${k}}`, String(v));
@@ -347,57 +313,58 @@ interface UserState {
 }
 
 const states = new Map<number, UserState>();
-
-function getState(chatId: number): UserState | undefined {
-  return states.get(chatId);
-}
-function setState(chatId: number, state: UserState) {
-  states.set(chatId, state);
-}
-function clearState(chatId: number) {
-  states.delete(chatId);
-}
+function getState(chatId: number) { return states.get(chatId); }
+function setState(chatId: number, state: UserState) { states.set(chatId, state); }
+function clearState(chatId: number) { states.delete(chatId); }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function todayStr(timezone = "UTC"): string {
   try {
-    const d = new Date();
-    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(d);
-    const y = parts.find(p => p.type === "year")!.value;
-    const m = parts.find(p => p.type === "month")!.value;
-    const dd = parts.find(p => p.type === "day")!.value;
-    return `${y}-${m}-${dd}`;
-  } catch {
-    return new Date().toISOString().slice(0, 10);
-  }
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+    return `${parts.find(p => p.type === "year")!.value}-${parts.find(p => p.type === "month")!.value}-${parts.find(p => p.type === "day")!.value}`;
+  } catch { return new Date().toISOString().slice(0, 10); }
 }
 
 function nowTime(timezone = "UTC"): string {
-  try {
-    const d = new Date();
-    return d.toLocaleTimeString("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false });
-  } catch {
-    return new Date().toISOString().slice(11, 16);
-  }
+  try { return new Date().toLocaleTimeString("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false }); }
+  catch { return new Date().toISOString().slice(11, 16); }
+}
+
+function parseDateInput(input: string): string | null {
+  const m = input.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+  if (!m) return null;
+  return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
 }
 
 async function getProfileByChatId(chatId: number) {
   return prisma.profile.findUnique({ where: { telegramChatId: String(chatId) } });
 }
 
+// ─── Dynamic keyboards ───────────────────────────────────────────────────────
+
 function mainKeyboard(locale = "ru"): Keyboard {
   return new Keyboard()
     .text(botT(locale, "kb_meal")).text(botT(locale, "kb_med")).row()
     .text(botT(locale, "kb_weight")).text(botT(locale, "kb_workout")).row()
-    .text(botT(locale, "kb_today")).text(botT(locale, "kb_settings")).row()
+    .text(botT(locale, "kb_today")).text(botT(locale, "kb_history")).row()
+    .text(botT(locale, "kb_advice")).text(botT(locale, "kb_settings")).row()
     .webApp(botT(locale, "open_app"), WEB_APP_URL)
     .resized().persistent();
 }
 
-/** Reply with persistent keyboard always visible. */
-async function replyWithKb(ctx: Context, text: string, locale = "ru") {
+function cancelKeyboard(locale = "ru"): Keyboard {
+  return new Keyboard()
+    .text(botT(locale, "kb_cancel"))
+    .resized().persistent();
+}
+
+async function replyMain(ctx: Context, text: string, locale = "ru") {
   await ctx.reply(text, { reply_markup: mainKeyboard(locale) });
+}
+
+async function replyCancel(ctx: Context, text: string, locale = "ru") {
+  await ctx.reply(text, { reply_markup: cancelKeyboard(locale) });
 }
 
 async function requireAuth(ctx: Context): Promise<{ profileId: string; locale: string; timezone: string } | null> {
@@ -417,7 +384,31 @@ async function requireAuth(ctx: Context): Promise<{ profileId: string; locale: s
   return { profileId: profile.id, locale: profile.preferredLocale, timezone: profile.timezone };
 }
 
-// ─── Auth flows ───────────────────────────────────────────────────────────────
+// ─── Photo upload to Supabase ─────────────────────────────────────────────────
+
+async function uploadPhotoToStorage(buffer: Buffer, folder: "meals" | "medications"): Promise<string> {
+  const objectPath = `${folder}/${new Date().toISOString().slice(0, 10)}/${Date.now()}-${randomUUID()}.jpg`;
+  const { error } = await supabaseAdmin.storage.from(PHOTOS_BUCKET).upload(objectPath, buffer, {
+    contentType: "image/jpeg",
+    upsert: false,
+    cacheControl: "31536000",
+  });
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+  const { data } = supabaseAdmin.storage.from(PHOTOS_BUCKET).getPublicUrl(objectPath);
+  return data.publicUrl;
+}
+
+async function downloadTelegramPhoto(ctx: Context): Promise<{ buffer: Buffer; base64: string }> {
+  const photo = ctx.message!.photo!;
+  const fileId = photo[photo.length - 1].file_id;
+  const file = await ctx.api.getFile(fileId);
+  const url = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
+  const resp = await fetch(url);
+  const buffer = Buffer.from(await resp.arrayBuffer());
+  return { buffer, base64: buffer.toString("base64") };
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 
 async function trySignIn(email: string, password: string) {
   const { data, error } = await supabaseAnon.auth.signInWithPassword({ email, password });
@@ -425,29 +416,195 @@ async function trySignIn(email: string, password: string) {
 }
 
 async function trySignUp(email: string, password: string) {
-  const { data, error } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-  });
+  const { data, error } = await supabaseAdmin.auth.admin.createUser({ email, password, email_confirm: true });
   return { user: data?.user, error };
 }
 
 async function linkProfile(userId: string, chatId: number, phone?: string) {
   let profile = await prisma.profile.findUnique({ where: { userId } });
+  const updateData: any = { telegramChatId: String(chatId) };
+  if (phone) updateData.phone = phone;
   if (profile) {
-    const updateData: any = { telegramChatId: String(chatId) };
-    if (phone) updateData.phone = phone;
     profile = await prisma.profile.update({ where: { id: profile.id }, data: updateData });
   } else {
-    profile = await prisma.profile.create({
-      data: { userId, telegramChatId: String(chatId), ...(phone ? { phone } : {}) },
-    });
+    profile = await prisma.profile.create({ data: { userId, ...updateData } });
   }
   return profile;
 }
 
-// ─── Command handlers ─────────────────────────────────────────────────────────
+// ─── Feature flows ────────────────────────────────────────────────────────────
+
+async function startMealFlow(ctx: Context) {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  setState(ctx.chat!.id, { step: "meal:type", profileId: auth.profileId, locale: auth.locale, data: {} });
+  await ctx.reply(botT(auth.locale, "meal_type_prompt"), {
+    reply_markup: new InlineKeyboard()
+      .text(botT(auth.locale, "breakfast"), "meal_type:breakfast")
+      .text(botT(auth.locale, "lunch"), "meal_type:lunch").row()
+      .text(botT(auth.locale, "dinner"), "meal_type:dinner")
+      .text(botT(auth.locale, "snack"), "meal_type:snack"),
+  });
+}
+
+async function startMedFlow(ctx: Context) {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  const plans = await prisma.medicationPlan.findMany({ where: { profileId: auth.profileId, active: true } });
+  const kb = new InlineKeyboard();
+  for (const plan of plans) {
+    kb.text(`💊 ${plan.name}${plan.dosage ? ` (${plan.dosage})` : ""}`, `med_plan:${plan.id}`).row();
+  }
+  kb.text(botT(auth.locale, "med_custom"), "med_plan:custom");
+  setState(ctx.chat!.id, { step: "med:choose", profileId: auth.profileId, locale: auth.locale, data: {} });
+  await ctx.reply(botT(auth.locale, "med_prompt"), { reply_markup: kb });
+}
+
+async function startWeightFlow(ctx: Context) {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  setState(ctx.chat!.id, { step: "weight:input", profileId: auth.profileId, locale: auth.locale, data: {} });
+  await replyCancel(ctx, botT(auth.locale, "weight_prompt"), auth.locale);
+}
+
+async function startWorkoutFlow(ctx: Context) {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  const types = ["running", "walking", "cycling", "strength", "yoga", "swimming", "hiit", "sports", "other"];
+  const kb = new InlineKeyboard();
+  for (let i = 0; i < types.length; i++) {
+    kb.text(botT(auth.locale, types[i]), `workout_type:${types[i]}`);
+    if ((i + 1) % 3 === 0) kb.row();
+  }
+  setState(ctx.chat!.id, { step: "workout:type", profileId: auth.profileId, locale: auth.locale, data: {} });
+  await ctx.reply(botT(auth.locale, "workout_type_prompt"), { reply_markup: kb });
+}
+
+async function showToday(ctx: Context) {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  const today = todayStr(auth.timezone);
+  await sendDaySummary(ctx, auth.profileId, auth.locale, auth.timezone, today);
+}
+
+async function sendDaySummary(ctx: Context, profileId: string, locale: string, timezone: string, date: string) {
+  const profile = await prisma.profile.findUnique({ where: { id: profileId } });
+  const meals = await prisma.meal.findMany({ where: { profileId, date }, orderBy: { createdAt: "asc" } });
+  const intakes = await prisma.medicationIntake.findMany({ where: { profileId, date }, orderBy: { createdAt: "asc" } });
+  const workouts = await prisma.workout.findMany({ where: { profileId, date }, orderBy: { createdAt: "asc" } });
+  const weight = await prisma.weightEntry.findUnique({ where: { profileId_date: { profileId, date } } });
+
+  const goal = profile?.dailyCalorieGoal || 2000;
+  const eaten = meals.reduce((s, m) => s + m.calories, 0);
+
+  let text = botT(locale, "today_title") + " (" + date + ")\n";
+  text += botT(locale, "today_calories", { eaten: Math.round(eaten), goal, remaining: Math.max(0, Math.round(goal - eaten)) });
+
+  if (meals.length > 0) {
+    text += botT(locale, "today_meals");
+    for (const m of meals) {
+      const type = botT(locale, m.mealType);
+      text += `\n  • ${type}: ${m.name} — ${Math.round(m.calories)} ккал`;
+      if (m.photoPath) text += " 📷";
+    }
+  } else {
+    text += botT(locale, "today_no_meals");
+  }
+
+  if (intakes.length > 0) {
+    text += botT(locale, "today_meds");
+    for (const i of intakes) text += `\n  • ${i.name}${i.dosage ? ` (${i.dosage})` : ""} — ${i.takenTime}`;
+  } else {
+    text += botT(locale, "today_no_meds");
+  }
+
+  if (workouts.length > 0) {
+    text += botT(locale, "today_workouts");
+    for (const w of workouts) text += `\n  • ${botT(locale, w.type)} — ${w.quantity} ${w.unit}`;
+  } else {
+    text += botT(locale, "today_no_workouts");
+  }
+
+  text += weight ? botT(locale, "today_weight", { weight: weight.weightKg }) : botT(locale, "today_no_weight");
+
+  await replyMain(ctx, text, locale);
+
+  // Send photos for meals that have them
+  for (const m of meals) {
+    if (m.photoPath) {
+      try {
+        await ctx.replyWithPhoto(m.photoPath, { caption: `🍽 ${m.name} — ${Math.round(m.calories)} ккал` });
+      } catch { /* photo may be unavailable */ }
+    }
+  }
+}
+
+async function showHistory(ctx: Context) {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  setState(ctx.chat!.id, { step: "history:date", profileId: auth.profileId, locale: auth.locale, data: { timezone: auth.timezone } });
+  await replyCancel(ctx, botT(auth.locale, "history_prompt"), auth.locale);
+}
+
+async function showAdvice(ctx: Context) {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  await ctx.reply(botT(auth.locale, "advice_prompt"), {
+    reply_markup: new InlineKeyboard()
+      .text(botT(auth.locale, "advice_day"), "advice:day")
+      .text(botT(auth.locale, "advice_week"), "advice:week")
+      .text(botT(auth.locale, "advice_month"), "advice:month"),
+  });
+}
+
+async function showSchedules(ctx: Context) {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  const mealPlans = await prisma.mealPlan.findMany({ where: { profileId: auth.profileId, active: true }, orderBy: { createdAt: "asc" } });
+  const medPlans = await prisma.medicationPlan.findMany({ where: { profileId: auth.profileId, active: true }, orderBy: { createdAt: "asc" } });
+  const l = auth.locale;
+
+  let text = botT(l, "schedules_title") + "\n";
+
+  if (mealPlans.length > 0) {
+    text += "\n" + botT(l, "meal_schedules");
+    for (const p of mealPlans) {
+      const times = JSON.parse(p.timesJson || "[]");
+      const rec = p.recurrence === "interval" ? botT(l, "schedule_interval", { n: p.intervalDays }) : botT(l, p.recurrence === "weekly" ? "schedule_weekly" : "schedule_daily");
+      text += `\n  • ${p.name} (${botT(l, p.mealType)}) — ${times.join(", ")} [${rec}]`;
+    }
+  } else {
+    text += "\n" + botT(l, "no_meal_schedules");
+  }
+
+  if (medPlans.length > 0) {
+    text += "\n\n" + botT(l, "med_schedules");
+    for (const p of medPlans) {
+      const times = JSON.parse(p.timesJson || "[]");
+      const rec = p.recurrence === "interval" ? botT(l, "schedule_interval", { n: p.intervalDays }) : botT(l, p.recurrence === "weekly" ? "schedule_weekly" : "schedule_daily");
+      text += `\n  • 💊 ${p.name}${p.dosage ? ` (${p.dosage})` : ""} — ${times.join(", ")} [${rec}]`;
+    }
+  } else {
+    text += "\n\n" + botT(l, "no_med_schedules");
+  }
+
+  await replyMain(ctx, text, l);
+}
+
+async function showSettings(ctx: Context) {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  const profile = await prisma.profile.findUnique({ where: { id: auth.profileId } });
+  const kb = new InlineKeyboard()
+    .text(botT(auth.locale, "settings_language"), "settings:language").row()
+    .text(botT(auth.locale, "settings_profile"), "settings:profile").row()
+    .text(botT(auth.locale, "settings_timezone"), "settings:timezone").row()
+    .text(botT(auth.locale, "settings_email"), "settings:email").row();
+  if (!profile?.phone) kb.text(botT(auth.locale, "settings_phone"), "settings:phone").row();
+  await ctx.reply(botT(auth.locale, "settings_title"), { reply_markup: kb });
+}
+
+// ─── Commands ─────────────────────────────────────────────────────────────────
 
 bot.command("start", async (ctx) => {
   const chatId = ctx.chat.id;
@@ -455,9 +612,8 @@ bot.command("start", async (ctx) => {
   const profile = await getProfileByChatId(chatId);
   if (profile) {
     const l = profile.preferredLocale;
-    await ctx.reply(botT(l, "welcome") + "\n" + botT(l, "main_menu"), { reply_markup: mainKeyboard(l) });
+    await replyMain(ctx, botT(l, "welcome") + "\n" + botT(l, "main_menu"), l);
   } else {
-    // New user — show language selection first
     const kb = new InlineKeyboard();
     const entries = Object.entries(LOCALES_META);
     for (let i = 0; i < entries.length; i++) {
@@ -472,143 +628,24 @@ bot.command("start", async (ctx) => {
 bot.command("help", async (ctx) => {
   const profile = await getProfileByChatId(ctx.chat.id);
   const l = profile?.preferredLocale || "ru";
-  await replyWithKb(ctx, botT(l, "help"), l);
+  await replyMain(ctx, botT(l, "help"), l);
 });
 
 bot.command("cancel", async (ctx) => {
   clearState(ctx.chat.id);
   const profile = await getProfileByChatId(ctx.chat.id);
   const l = profile?.preferredLocale || "ru";
-  await replyWithKb(ctx, botT(l, "cancelled"), l);
+  await replyMain(ctx, botT(l, "cancelled"), l);
 });
-
-async function startMealFlow(ctx: Context) {
-  const auth = await requireAuth(ctx);
-  if (!auth) return;
-  const { profileId, locale } = auth;
-  setState(ctx.chat!.id, { step: "meal:type", profileId, locale, data: {} });
-  await ctx.reply(botT(locale, "meal_type_prompt"), {
-    reply_markup: new InlineKeyboard()
-      .text(botT(locale, "breakfast"), "meal_type:breakfast")
-      .text(botT(locale, "lunch"), "meal_type:lunch").row()
-      .text(botT(locale, "dinner"), "meal_type:dinner")
-      .text(botT(locale, "snack"), "meal_type:snack"),
-  });
-}
-
-async function startMedFlow(ctx: Context) {
-  const auth = await requireAuth(ctx);
-  if (!auth) return;
-  const { profileId, locale } = auth;
-  const plans = await prisma.medicationPlan.findMany({ where: { profileId, active: true } });
-  const kb = new InlineKeyboard();
-  for (const plan of plans) {
-    kb.text(`${plan.name}${plan.dosage ? ` (${plan.dosage})` : ""}`, `med_plan:${plan.id}`).row();
-  }
-  kb.text(botT(locale, "med_custom"), "med_plan:custom");
-  setState(ctx.chat!.id, { step: "med:choose", profileId, locale, data: {} });
-  await ctx.reply(botT(locale, "med_prompt"), { reply_markup: kb });
-}
-
-async function startWeightFlow(ctx: Context) {
-  const auth = await requireAuth(ctx);
-  if (!auth) return;
-  const { profileId, locale } = auth;
-  setState(ctx.chat!.id, { step: "weight:input", profileId, locale, data: {} });
-  await ctx.reply(botT(locale, "weight_prompt"));
-}
-
-async function startWorkoutFlow(ctx: Context) {
-  const auth = await requireAuth(ctx);
-  if (!auth) return;
-  const { profileId, locale } = auth;
-  const types = ["running", "walking", "cycling", "strength", "yoga", "swimming", "hiit", "sports", "other"];
-  const kb = new InlineKeyboard();
-  for (let i = 0; i < types.length; i++) {
-    kb.text(botT(locale, types[i]), `workout_type:${types[i]}`);
-    if ((i + 1) % 3 === 0) kb.row();
-  }
-  setState(ctx.chat!.id, { step: "workout:type", profileId, locale, data: {} });
-  await ctx.reply(botT(locale, "workout_type_prompt"), { reply_markup: kb });
-}
-
-async function showToday(ctx: Context) {
-  const auth = await requireAuth(ctx);
-  if (!auth) return;
-  const { profileId, locale, timezone } = auth;
-  const today = todayStr(timezone);
-  const profile = await prisma.profile.findUnique({ where: { id: profileId } });
-  const meals = await prisma.meal.findMany({ where: { profileId, date: today }, orderBy: { createdAt: "asc" } });
-  const intakes = await prisma.medicationIntake.findMany({ where: { profileId, date: today }, orderBy: { createdAt: "asc" } });
-  const workouts = await prisma.workout.findMany({ where: { profileId, date: today }, orderBy: { createdAt: "asc" } });
-  const weight = await prisma.weightEntry.findUnique({ where: { profileId_date: { profileId, date: today } } });
-
-  const goal = profile?.dailyCalorieGoal || 2000;
-  const eaten = meals.reduce((s, m) => s + m.calories, 0);
-  const remaining = Math.max(0, goal - eaten);
-
-  let text = botT(locale, "today_title") + "\n\n";
-  text += botT(locale, "today_calories", { eaten: Math.round(eaten), goal, remaining: Math.round(remaining) }) + "\n\n";
-
-  if (meals.length > 0) {
-    text += botT(locale, "today_meals") + "\n";
-    for (const m of meals) {
-      text += `  • ${m.name} — ${Math.round(m.calories)} kcal\n`;
-    }
-  } else {
-    text += botT(locale, "today_no_meals") + "\n";
-  }
-  text += "\n";
-
-  if (intakes.length > 0) {
-    text += botT(locale, "today_meds") + "\n";
-    for (const i of intakes) {
-      text += `  • ${i.name}${i.dosage ? ` (${i.dosage})` : ""} — ${i.takenTime}\n`;
-    }
-  } else {
-    text += botT(locale, "today_no_meds") + "\n";
-  }
-  text += "\n";
-
-  if (workouts.length > 0) {
-    text += botT(locale, "today_workouts") + "\n";
-    for (const w of workouts) {
-      text += `  • ${botT(locale, w.type)} — ${w.quantity} ${w.unit}\n`;
-    }
-  } else {
-    text += botT(locale, "today_no_workouts") + "\n";
-  }
-  text += "\n";
-
-  if (weight) {
-    text += botT(locale, "today_weight", { weight: weight.weightKg });
-  } else {
-    text += botT(locale, "today_no_weight");
-  }
-
-  await replyWithKb(ctx, text, locale);
-}
-
-async function showSettings(ctx: Context) {
-  const auth = await requireAuth(ctx);
-  if (!auth) return;
-  const { profileId, locale } = auth;
-  const profile = await prisma.profile.findUnique({ where: { id: profileId } });
-  const kb = new InlineKeyboard()
-    .text(botT(locale, "settings_language"), "settings:language").row()
-    .text(botT(locale, "settings_profile"), "settings:profile").row()
-    .text(botT(locale, "settings_email"), "settings:email").row();
-  if (!profile?.phone) {
-    kb.text(botT(locale, "settings_phone"), "settings:phone").row();
-  }
-  await ctx.reply(botT(locale, "settings_title"), { reply_markup: kb });
-}
 
 bot.command("meal", startMealFlow);
 bot.command("med", startMedFlow);
 bot.command("weight", startWeightFlow);
 bot.command("workout", startWorkoutFlow);
 bot.command("today", showToday);
+bot.command("history", showHistory);
+bot.command("advice", showAdvice);
+bot.command("schedules", showSchedules);
 bot.command("settings", showSettings);
 
 // ─── Callback queries ─────────────────────────────────────────────────────────
@@ -619,7 +656,7 @@ bot.on("callback_query:data", async (ctx) => {
   await ctx.answerCallbackQuery();
 
   try {
-    // Language selection on first start
+    // Language on first start
     if (data.startsWith("start_lang:")) {
       const locale = data.split(":")[1];
       setState(chatId, { step: "awaiting_auth", locale, data: {} });
@@ -631,12 +668,11 @@ bot.on("callback_query:data", async (ctx) => {
       return;
     }
 
-    // Auth callbacks
     if (data === "auth:email") {
       const st = getState(chatId);
       const locale = st?.locale || "ru";
       setState(chatId, { step: "auth:email", locale, data: {} });
-      await ctx.reply(botT(locale, "enter_email"));
+      await replyCancel(ctx, botT(locale, "enter_email"), locale);
       return;
     }
     if (data === "auth:phone") {
@@ -662,24 +698,23 @@ bot.on("callback_query:data", async (ctx) => {
         await prisma.profile.update({ where: { id: profile.id }, data: { preferredLocale: locale } });
       }
       clearState(chatId);
-      await ctx.reply(botT(locale, "register_success"), { reply_markup: mainKeyboard(locale) });
+      await replyMain(ctx, botT(locale, "register_success"), locale);
       return;
     }
     if (data === "auth:register_no") {
-      const st = getState(chatId);
       clearState(chatId);
-      await replyWithKb(ctx, botT(st?.locale || "ru", "cancelled"), st?.locale || "ru");
+      const st = getState(chatId);
+      await replyMain(ctx, botT(st?.locale || "ru", "cancelled"), st?.locale || "ru");
       return;
     }
 
     // Meal type
     if (data.startsWith("meal_type:")) {
-      const mealType = data.split(":")[1];
       const st = getState(chatId);
       if (!st) return;
-      st.data!.mealType = mealType;
+      st.data!.mealType = data.split(":")[1];
       st.step = "meal:input";
-      await ctx.reply(botT(st.locale!, "meal_input_prompt"));
+      await replyCancel(ctx, botT(st.locale!, "meal_input_prompt"), st.locale!);
       return;
     }
 
@@ -687,25 +722,20 @@ bot.on("callback_query:data", async (ctx) => {
     if (data === "meal:confirm") {
       const st = getState(chatId);
       if (!st?.data?.aiResult) return;
-      const { aiResult, mealType } = st.data;
+      const { aiResult, mealType, photoPath } = st.data;
       const profile = await prisma.profile.findUnique({ where: { id: st.profileId } });
       const today = todayStr(profile?.timezone);
       await prisma.meal.create({
         data: {
-          profileId: st.profileId!,
-          date: today,
-          mealType: mealType || "snack",
-          name: aiResult.name,
-          calories: aiResult.calories,
-          protein: aiResult.protein,
-          carbs: aiResult.carbs,
-          fat: aiResult.fat,
-          aiDetectedName: aiResult.name,
-          aiCalories: aiResult.calories,
+          profileId: st.profileId!, date: today, mealType: mealType || "snack",
+          name: aiResult.name, calories: aiResult.calories,
+          protein: aiResult.protein, carbs: aiResult.carbs, fat: aiResult.fat,
+          aiDetectedName: aiResult.name, aiCalories: aiResult.calories,
+          photoPath: photoPath || null,
         },
       });
       clearState(chatId);
-      await replyWithKb(ctx, botT(st.locale!, "meal_saved", { name: aiResult.name, cal: Math.round(aiResult.calories) }), st.locale!);
+      await replyMain(ctx, botT(st.locale!, "meal_saved", { name: aiResult.name, cal: Math.round(aiResult.calories) }), st.locale!);
       return;
     }
     if (data === "meal:edit") {
@@ -713,18 +743,18 @@ bot.on("callback_query:data", async (ctx) => {
       if (!st) return;
       st.step = "meal:text_name";
       st.data!.aiResult = undefined;
-      await ctx.reply(botT(st.locale!, "meal_input_prompt"));
+      await replyCancel(ctx, botT(st.locale!, "meal_input_prompt"), st.locale!);
       return;
     }
 
-    // Med plan selection
+    // Med plan
     if (data.startsWith("med_plan:")) {
       const st = getState(chatId);
       if (!st) return;
       const planId = data.split(":")[1];
       if (planId === "custom") {
         st.step = "med:name";
-        await ctx.reply(botT(st.locale!, "med_name_prompt"));
+        await replyCancel(ctx, botT(st.locale!, "med_name_prompt"), st.locale!);
       } else {
         const plan = await prisma.medicationPlan.findUnique({ where: { id: planId } });
         if (!plan) return;
@@ -732,7 +762,7 @@ bot.on("callback_query:data", async (ctx) => {
         st.data!.name = plan.name;
         st.data!.dosage = plan.dosage || "";
         st.step = "med:time";
-        await ctx.reply(botT(st.locale!, "med_time_prompt"));
+        await replyCancel(ctx, botT(st.locale!, "med_time_prompt"), st.locale!);
       }
       return;
     }
@@ -743,7 +773,34 @@ bot.on("callback_query:data", async (ctx) => {
       if (!st) return;
       st.data!.type = data.split(":")[1];
       st.step = "workout:duration";
-      await ctx.reply(botT(st.locale!, "workout_duration_prompt"));
+      await replyCancel(ctx, botT(st.locale!, "workout_duration_prompt"), st.locale!);
+      return;
+    }
+
+    // Advice periods
+    if (data.startsWith("advice:")) {
+      const period = data.split(":")[1]; // day | week | month
+      const profile = await getProfileByChatId(chatId);
+      if (!profile) return;
+      const l = profile.preferredLocale;
+      const advices = await prisma.advice.findMany({
+        where: { profileId: profile.id, period },
+        orderBy: { createdAt: "desc" },
+        take: 3,
+      });
+      if (advices.length === 0) {
+        await replyMain(ctx, botT(l, "advice_none"), l);
+        return;
+      }
+      for (const adv of advices) {
+        const periodLabel = period === "day" ? adv.periodKey.split("__")[0] : adv.periodKey.split("__")[0];
+        let text = botT(l, "advice_title", { period: periodLabel }) + "\n\n";
+        text += `📌 ${adv.title}\n\n`;
+        if (adv.summary) text += `${adv.summary}\n\n`;
+        text += adv.content;
+        await ctx.reply(text);
+      }
+      await replyMain(ctx, "👆", l);
       return;
     }
 
@@ -764,19 +821,23 @@ bot.on("callback_query:data", async (ctx) => {
     if (data.startsWith("lang:")) {
       const locale = data.split(":")[1];
       const profile = await getProfileByChatId(chatId);
-      if (profile) {
-        await prisma.profile.update({ where: { id: profile.id }, data: { preferredLocale: locale } });
-      }
-      await replyWithKb(ctx, botT(locale, "language_saved", { lang: LOCALES_META[locale] || locale }), locale);
+      if (profile) await prisma.profile.update({ where: { id: profile.id }, data: { preferredLocale: locale } });
+      await replyMain(ctx, botT(locale, "language_saved", { lang: LOCALES_META[locale] || locale }), locale);
       return;
     }
     if (data === "settings:profile") {
       const profile = await getProfileByChatId(chatId);
       if (!profile) return;
       const l = profile.preferredLocale;
-      await ctx.reply(botT(l, "profile_info", { name: profile.name, goal: profile.dailyCalorieGoal }));
+      const info = botT(l, "profile_info", {
+        name: profile.name,
+        goal: profile.dailyCalorieGoal,
+        target: profile.targetWeightKg ? `${profile.targetWeightKg} кг` : "—",
+        height: profile.heightCm ? `${profile.heightCm} см` : "—",
+      });
+      await ctx.reply(info);
       setState(chatId, { step: "settings:name", profileId: profile.id, locale: l, data: {} });
-      await ctx.reply(botT(l, "profile_name_prompt"));
+      await replyCancel(ctx, botT(l, "profile_name_prompt"), l);
       return;
     }
     if (data === "settings:email") {
@@ -784,7 +845,7 @@ bot.on("callback_query:data", async (ctx) => {
       if (!profile?.userId) return;
       const { data: userData } = await supabaseAdmin.auth.admin.getUserById(profile.userId);
       const email = userData?.user?.email || "—";
-      await ctx.reply(botT(profile.preferredLocale, "email_info", { email }));
+      await replyMain(ctx, botT(profile.preferredLocale, "email_info", { email }), profile.preferredLocale);
       return;
     }
     if (data === "settings:phone") {
@@ -793,6 +854,13 @@ bot.on("callback_query:data", async (ctx) => {
       setState(chatId, { step: "settings:phone", profileId: profile.id, locale: profile.preferredLocale, data: {} });
       const kb = new Keyboard().requestContact(botT(profile.preferredLocale, "share_contact")).resized().oneTime();
       await ctx.reply(botT(profile.preferredLocale, "enter_phone"), { reply_markup: kb });
+      return;
+    }
+    if (data === "settings:timezone") {
+      const profile = await getProfileByChatId(chatId);
+      if (!profile) return;
+      setState(chatId, { step: "settings:timezone", profileId: profile.id, locale: profile.preferredLocale, data: {} });
+      await replyCancel(ctx, botT(profile.preferredLocale, "timezone_prompt"), profile.preferredLocale);
       return;
     }
   } catch (e: any) {
@@ -813,10 +881,8 @@ bot.on("message:contact", async (ctx) => {
       const normalized = normalizePhone(phone);
       st.data!.phone = normalized;
       st.step = "auth:phone_password";
-      await ctx.reply(botT("ru", "enter_password"));
-    } catch {
-      await ctx.reply(botT("ru", "phone_invalid"));
-    }
+      await replyCancel(ctx, botT(st.locale || "ru", "enter_password"), st.locale || "ru");
+    } catch { await ctx.reply(botT(st.locale || "ru", "phone_invalid")); }
     return;
   }
 
@@ -825,17 +891,14 @@ bot.on("message:contact", async (ctx) => {
       const normalized = normalizePhone(phone);
       await prisma.profile.update({ where: { id: st.profileId }, data: { phone: normalized } });
       clearState(chatId);
-      await replyWithKb(ctx, botT(st.locale!, "phone_saved", { phone: normalized }), st.locale!);
-    } catch {
-      await ctx.reply(botT(st.locale || "ru", "phone_invalid"));
-    }
+      await replyMain(ctx, botT(st.locale!, "phone_saved", { phone: normalized }), st.locale!);
+    } catch { await ctx.reply(botT(st.locale || "ru", "phone_invalid")); }
     return;
   }
 });
 
-// ─── Text message handler ─────────────────────────────────────────────────────
+// ─── Keyboard action mapping ──────────────────────────────────────────────────
 
-// Build a set of all possible keyboard labels → action mappings
 const KB_ACTIONS: Record<string, (ctx: Context) => Promise<void>> = {};
 for (const locale of Object.keys(translations)) {
   const t = translations[locale];
@@ -845,13 +908,22 @@ for (const locale of Object.keys(translations)) {
   if (t.kb_workout) KB_ACTIONS[t.kb_workout] = startWorkoutFlow;
   if (t.kb_today) KB_ACTIONS[t.kb_today] = showToday;
   if (t.kb_settings) KB_ACTIONS[t.kb_settings] = showSettings;
+  if (t.kb_history) KB_ACTIONS[t.kb_history] = showHistory;
+  if (t.kb_advice) KB_ACTIONS[t.kb_advice] = showAdvice;
+  if (t.kb_cancel) KB_ACTIONS[t.kb_cancel] = async (ctx) => {
+    clearState(ctx.chat!.id);
+    const profile = await getProfileByChatId(ctx.chat!.id);
+    const l = profile?.preferredLocale || "ru";
+    await replyMain(ctx, botT(l, "cancelled"), l);
+  };
 }
+
+// ─── Text handler ─────────────────────────────────────────────────────────────
 
 bot.on("message:text", async (ctx) => {
   const chatId = ctx.chat.id;
   const text = ctx.message.text.trim();
 
-  // Handle reply keyboard buttons
   const action = KB_ACTIONS[text];
   if (action) return action(ctx);
 
@@ -859,26 +931,23 @@ bot.on("message:text", async (ctx) => {
   if (!st) return;
 
   try {
-    // Auth: email flow
+    // ── Auth flows ──
     if (st.step === "auth:email") {
       st.data!.email = text;
       st.step = "auth:email_password";
-      await ctx.reply(botT("ru", "enter_password"));
+      await replyCancel(ctx, botT(st.locale || "ru", "enter_password"), st.locale || "ru");
       return;
     }
     if (st.step === "auth:email_password") {
       const email = st.data!.email;
-      const password = text;
       const locale = st.locale || "ru";
-      st.data!.password = password;
-      const { user, error } = await trySignIn(email, password);
+      st.data!.password = text;
+      const { user } = await trySignIn(email, text);
       if (user) {
         const profile = await linkProfile(user.id, chatId);
-        if (locale !== profile.preferredLocale) {
-          await prisma.profile.update({ where: { id: profile.id }, data: { preferredLocale: locale } });
-        }
+        if (locale !== profile.preferredLocale) await prisma.profile.update({ where: { id: profile.id }, data: { preferredLocale: locale } });
         clearState(chatId);
-        await ctx.reply(botT(locale, "login_success", { name: profile.name }), { reply_markup: mainKeyboard(locale) });
+        await replyMain(ctx, botT(locale, "login_success", { name: profile.name }), locale);
       } else {
         await ctx.reply(botT(locale, "login_failed") + "\n\n" + botT(locale, "register_offer"), {
           reply_markup: new InlineKeyboard()
@@ -888,36 +957,28 @@ bot.on("message:text", async (ctx) => {
       }
       return;
     }
-
-    // Auth: phone flow
     if (st.step === "auth:phone") {
-      const locale = st.locale || "ru";
       try {
         const normalized = normalizePhone(text);
         st.data!.phone = normalized;
         st.step = "auth:phone_password";
-        await ctx.reply(botT(locale, "enter_password"));
-      } catch {
-        await ctx.reply(botT(locale, "phone_invalid"));
-      }
+        await replyCancel(ctx, botT(st.locale || "ru", "enter_password"), st.locale || "ru");
+      } catch { await ctx.reply(botT(st.locale || "ru", "phone_invalid")); }
       return;
     }
     if (st.step === "auth:phone_password") {
       const phone = st.data!.phone;
-      const password = text;
       const locale = st.locale || "ru";
-      st.data!.password = password;
+      st.data!.password = text;
       const candidates = phoneAuthEmailCandidates(phone);
       let loggedIn = false;
       for (const email of candidates) {
-        const { user } = await trySignIn(email, password);
+        const { user } = await trySignIn(email, text);
         if (user) {
           const profile = await linkProfile(user.id, chatId, phone);
-          if (locale !== profile.preferredLocale) {
-            await prisma.profile.update({ where: { id: profile.id }, data: { preferredLocale: locale } });
-          }
+          if (locale !== profile.preferredLocale) await prisma.profile.update({ where: { id: profile.id }, data: { preferredLocale: locale } });
           clearState(chatId);
-          await ctx.reply(botT(locale, "login_success", { name: profile.name }), { reply_markup: mainKeyboard(locale) });
+          await replyMain(ctx, botT(locale, "login_success", { name: profile.name }), locale);
           loggedIn = true;
           break;
         }
@@ -933,89 +994,71 @@ bot.on("message:text", async (ctx) => {
       return;
     }
 
-    // Meal: text name
+    // ── Meal text flow ──
     if (st.step === "meal:input" || st.step === "meal:text_name") {
       st.data!.name = text;
       st.step = "meal:calories";
-      await ctx.reply(botT(st.locale!, "meal_calories_prompt"));
+      await replyCancel(ctx, botT(st.locale!, "meal_calories_prompt"), st.locale!);
       return;
     }
     if (st.step === "meal:calories") {
       const cal = parseFloat(text);
-      if (isNaN(cal) || cal <= 0) {
-        await ctx.reply(botT(st.locale!, "meal_calories_prompt"));
-        return;
-      }
+      if (isNaN(cal) || cal <= 0) { await ctx.reply(botT(st.locale!, "meal_calories_prompt")); return; }
       st.data!.calories = cal;
       st.step = "meal:macros";
-      await ctx.reply(botT(st.locale!, "meal_macros_prompt"));
+      await replyCancel(ctx, botT(st.locale!, "meal_macros_prompt"), st.locale!);
       return;
     }
     if (st.step === "meal:macros") {
       let protein: number | undefined, fat: number | undefined, carbs: number | undefined;
       if (text !== "/skip") {
         const parts = text.split(/[\s,/]+/).map(Number);
-        if (parts.length >= 3 && parts.every(n => !isNaN(n))) {
-          [protein, fat, carbs] = parts;
-        }
+        if (parts.length >= 3 && parts.every(n => !isNaN(n))) [protein, fat, carbs] = parts;
       }
       const profile = await prisma.profile.findUnique({ where: { id: st.profileId } });
-      const today = todayStr(profile?.timezone);
       await prisma.meal.create({
         data: {
-          profileId: st.profileId!,
-          date: today,
-          mealType: st.data!.mealType || "snack",
-          name: st.data!.name,
-          calories: st.data!.calories,
-          protein, fat, carbs,
+          profileId: st.profileId!, date: todayStr(profile?.timezone),
+          mealType: st.data!.mealType || "snack", name: st.data!.name,
+          calories: st.data!.calories, protein, fat, carbs,
+          photoPath: st.data!.photoPath || null,
         },
       });
-      await replyWithKb(ctx, botT(st.locale!, "meal_saved", { name: st.data!.name, cal: Math.round(st.data!.calories) }), st.locale!);
       clearState(chatId);
+      await replyMain(ctx, botT(st.locale!, "meal_saved", { name: st.data!.name, cal: Math.round(st.data!.calories) }), st.locale!);
       return;
     }
 
-    // Med flow
+    // ── Med flow ──
     if (st.step === "med:name") {
-      st.data!.name = text;
-      st.step = "med:dosage";
-      await ctx.reply(botT(st.locale!, "med_dosage_prompt"));
+      st.data!.name = text; st.step = "med:dosage";
+      await replyCancel(ctx, botT(st.locale!, "med_dosage_prompt"), st.locale!);
       return;
     }
     if (st.step === "med:dosage") {
-      st.data!.dosage = text;
-      st.step = "med:time";
-      await ctx.reply(botT(st.locale!, "med_time_prompt"));
+      st.data!.dosage = text; st.step = "med:time";
+      await replyCancel(ctx, botT(st.locale!, "med_time_prompt"), st.locale!);
       return;
     }
     if (st.step === "med:time") {
       const profile = await prisma.profile.findUnique({ where: { id: st.profileId } });
       const tz = profile?.timezone || "UTC";
-      const today = todayStr(tz);
       const time = text === "/skip" ? nowTime(tz) : text;
       await prisma.medicationIntake.create({
         data: {
-          profileId: st.profileId!,
-          planId: st.data!.planId || null,
-          date: today,
-          name: st.data!.name,
-          dosage: st.data!.dosage || null,
-          takenTime: time,
+          profileId: st.profileId!, planId: st.data!.planId || null,
+          date: todayStr(tz), name: st.data!.name, dosage: st.data!.dosage || null, takenTime: time,
         },
       });
-      await replyWithKb(ctx, botT(st.locale!, "med_saved", { name: st.data!.name, dosage: st.data!.dosage || "", time }), st.locale!);
       clearState(chatId);
+      await replyMain(ctx, botT(st.locale!, "med_saved", { name: st.data!.name, dosage: st.data!.dosage || "", time }), st.locale!);
       return;
     }
 
-    // Weight flow
+    // ── Weight ──
     if (st.step === "weight:input") {
       const w = parseFloat(text.replace(",", "."));
-      if (isNaN(w) || w <= 0) {
-        await ctx.reply(botT(st.locale!, "weight_prompt"));
-        return;
-      }
+      if (isNaN(w) || w <= 0) { await ctx.reply(botT(st.locale!, "weight_prompt")); return; }
       const profile = await prisma.profile.findUnique({ where: { id: st.profileId } });
       const today = todayStr(profile?.timezone);
       await prisma.weightEntry.upsert({
@@ -1023,72 +1066,97 @@ bot.on("message:text", async (ctx) => {
         create: { profileId: st.profileId!, date: today, weightKg: w },
         update: { weightKg: w },
       });
-      await replyWithKb(ctx, botT(st.locale!, "weight_saved", { weight: w }), st.locale!);
       clearState(chatId);
+      await replyMain(ctx, botT(st.locale!, "weight_saved", { weight: w }), st.locale!);
       return;
     }
 
-    // Workout flow
+    // ── Workout ──
     if (st.step === "workout:duration") {
       const dur = parseFloat(text);
-      if (isNaN(dur) || dur <= 0) {
-        await ctx.reply(botT(st.locale!, "workout_duration_prompt"));
-        return;
-      }
-      st.data!.duration = dur;
-      st.step = "workout:name";
-      await ctx.reply(botT(st.locale!, "workout_name_prompt"));
+      if (isNaN(dur) || dur <= 0) { await ctx.reply(botT(st.locale!, "workout_duration_prompt")); return; }
+      st.data!.duration = dur; st.step = "workout:name";
+      await replyCancel(ctx, botT(st.locale!, "workout_name_prompt"), st.locale!);
       return;
     }
     if (st.step === "workout:name") {
       const name = text === "/skip" ? null : text;
       const profile = await prisma.profile.findUnique({ where: { id: st.profileId } });
-      const today = todayStr(profile?.timezone);
       await prisma.workout.create({
         data: {
-          profileId: st.profileId!,
-          date: today,
-          type: st.data!.type,
-          quantity: st.data!.duration,
-          unit: "minutes",
-          name,
+          profileId: st.profileId!, date: todayStr(profile?.timezone),
+          type: st.data!.type, quantity: st.data!.duration, unit: "minutes", name,
         },
       });
-      await replyWithKb(ctx, botT(st.locale!, "workout_saved", { type: botT(st.locale!, st.data!.type), duration: st.data!.duration }), st.locale!);
       clearState(chatId);
+      await replyMain(ctx, botT(st.locale!, "workout_saved", { type: botT(st.locale!, st.data!.type), duration: st.data!.duration }), st.locale!);
       return;
     }
 
-    // Settings: profile name/goal
+    // ── History ──
+    if (st.step === "history:date") {
+      const date = text === "/skip" ? todayStr(st.data!.timezone) : parseDateInput(text);
+      if (!date) { await ctx.reply(botT(st.locale!, "history_prompt")); return; }
+      clearState(chatId);
+      await sendDaySummary(ctx, st.profileId!, st.locale!, st.data!.timezone, date);
+      return;
+    }
+
+    // ── Settings: profile ──
     if (st.step === "settings:name") {
-      if (text !== "/skip") {
-        await prisma.profile.update({ where: { id: st.profileId }, data: { name: text } });
-      }
+      if (text !== "/skip") await prisma.profile.update({ where: { id: st.profileId }, data: { name: text } });
       st.step = "settings:goal";
-      await ctx.reply(botT(st.locale!, "profile_goal_prompt"));
+      await replyCancel(ctx, botT(st.locale!, "profile_goal_prompt"), st.locale!);
       return;
     }
     if (st.step === "settings:goal") {
       if (text !== "/skip") {
         const goal = parseInt(text, 10);
-        if (!isNaN(goal) && goal > 0) {
-          await prisma.profile.update({ where: { id: st.profileId }, data: { dailyCalorieGoal: goal } });
-        }
+        if (!isNaN(goal) && goal > 0) await prisma.profile.update({ where: { id: st.profileId }, data: { dailyCalorieGoal: goal } });
+      }
+      st.step = "settings:target_weight";
+      await replyCancel(ctx, botT(st.locale!, "profile_target_prompt"), st.locale!);
+      return;
+    }
+    if (st.step === "settings:target_weight") {
+      if (text !== "/skip") {
+        const tw = parseFloat(text.replace(",", "."));
+        if (!isNaN(tw) && tw > 0) await prisma.profile.update({ where: { id: st.profileId }, data: { targetWeightKg: tw } });
+      }
+      st.step = "settings:height";
+      await replyCancel(ctx, botT(st.locale!, "profile_height_prompt"), st.locale!);
+      return;
+    }
+    if (st.step === "settings:height") {
+      if (text !== "/skip") {
+        const h = parseFloat(text.replace(",", "."));
+        if (!isNaN(h) && h > 0) await prisma.profile.update({ where: { id: st.profileId }, data: { heightCm: h } });
       }
       clearState(chatId);
-      await replyWithKb(ctx, botT(st.locale!, "profile_saved"), st.locale!);
+      await replyMain(ctx, botT(st.locale!, "profile_saved"), st.locale!);
       return;
     }
 
-    // Settings: phone (typed manually)
+    // ── Settings: phone ──
     if (st.step === "settings:phone") {
       try {
         const normalized = normalizePhone(text);
         await prisma.profile.update({ where: { id: st.profileId }, data: { phone: normalized } });
         clearState(chatId);
-        await replyWithKb(ctx, botT(st.locale!, "phone_saved", { phone: normalized }), st.locale!);
+        await replyMain(ctx, botT(st.locale!, "phone_saved", { phone: normalized }), st.locale!);
+      } catch { await ctx.reply(botT(st.locale || "ru", "phone_invalid")); }
+      return;
+    }
+
+    // ── Settings: timezone ──
+    if (st.step === "settings:timezone") {
+      try {
+        new Intl.DateTimeFormat("en", { timeZone: text });
+        await prisma.profile.update({ where: { id: st.profileId }, data: { timezone: text } });
+        clearState(chatId);
+        await replyMain(ctx, botT(st.locale!, "timezone_saved", { tz: text }), st.locale!);
       } catch {
-        await ctx.reply(botT(st.locale || "ru", "phone_invalid"));
+        await ctx.reply(botT(st.locale!, "timezone_prompt"));
       }
       return;
     }
@@ -1098,30 +1166,44 @@ bot.on("message:text", async (ctx) => {
   }
 });
 
-// ─── Photo handler (meal) ─────────────────────────────────────────────────────
+// ─── Photo handler ────────────────────────────────────────────────────────────
 
 bot.on("message:photo", async (ctx) => {
   const chatId = ctx.chat.id;
-  const st = getState(chatId);
-  if (!st || st.step !== "meal:input") return;
+  let st = getState(chatId);
+
+  // If no active meal flow, auto-start one (convenient: just send a photo anytime)
+  if (!st || (st.step !== "meal:input" && st.step !== "meal:text_name")) {
+    const auth = await requireAuth(ctx);
+    if (!auth) return;
+    setState(chatId, { step: "meal:input", profileId: auth.profileId, locale: auth.locale, data: { mealType: "snack" } });
+    st = getState(chatId)!;
+  }
 
   try {
-    const photo = ctx.message.photo;
-    const fileId = photo[photo.length - 1].file_id;
-    const file = await ctx.api.getFile(fileId);
-    const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
+    await ctx.reply(botT(st.locale!, "meal_photo_analyzing"));
 
+    const { buffer, base64 } = await downloadTelegramPhoto(ctx);
+
+    // Upload to Supabase Storage
+    let photoPath: string | null = null;
+    try { photoPath = await uploadPhotoToStorage(buffer, "meals"); } catch (e) { console.error("Photo upload error:", e); }
+    st.data!.photoPath = photoPath;
+
+    // Analyze with AI
+    const aiLang = AI_LANGUAGE[st.locale!] || AI_LANGUAGE.en;
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
+      temperature: 0.2,
       messages: [
         {
           role: "system",
-          content: "You are a nutrition analyst. Analyze the food in the image. Return ONLY valid JSON: {\"name\": string, \"calories\": number, \"protein\": number, \"fat\": number, \"carbs\": number}. Estimate reasonable values. Name should be in Russian.",
+          content: `You are a nutrition analyst. Analyze the food in the image. Return ONLY valid JSON: {"name": string, "calories": number, "protein": number, "fat": number, "carbs": number}. Name should be in ${aiLang}. Estimate reasonable values.`,
         },
         {
           role: "user",
           content: [
-            { type: "image_url", image_url: { url: fileUrl } },
+            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}` } },
             { type: "text", text: "What food is this? Estimate nutrition." },
           ],
         },
@@ -1138,11 +1220,8 @@ bot.on("message:photo", async (ctx) => {
     st.step = "meal:photo_confirm";
     await ctx.reply(
       botT(st.locale!, "meal_photo_result", {
-        name: result.name,
-        cal: Math.round(result.calories),
-        p: Math.round(result.protein || 0),
-        f: Math.round(result.fat || 0),
-        c: Math.round(result.carbs || 0),
+        name: result.name, cal: Math.round(result.calories),
+        p: Math.round(result.protein || 0), f: Math.round(result.fat || 0), c: Math.round(result.carbs || 0),
       }),
       {
         reply_markup: new InlineKeyboard()
@@ -1153,31 +1232,31 @@ bot.on("message:photo", async (ctx) => {
   } catch (e: any) {
     console.error("Photo analysis error:", e);
     st.step = "meal:text_name";
-    await ctx.reply(botT(st.locale!, "error") + "\n" + botT(st.locale!, "meal_input_prompt"));
+    await replyCancel(ctx, botT(st.locale!, "error") + "\n" + botT(st.locale!, "meal_input_prompt"), st.locale!);
   }
 });
 
-// ─── Register commands & start ────────────────────────────────────────────────
+// ─── Start ────────────────────────────────────────────────────────────────────
 
-bot.catch((err) => {
-  console.error("Bot error:", err);
-});
+bot.catch((err) => { console.error("Bot error:", err); });
 
 async function main() {
   await bot.api.setMyCommands([
-    { command: "start", description: "Start / Main menu" },
-    { command: "meal", description: "Log a meal" },
-    { command: "med", description: "Log medication" },
-    { command: "weight", description: "Log weight" },
-    { command: "workout", description: "Log workout" },
-    { command: "today", description: "Today's summary" },
-    { command: "settings", description: "Settings" },
-    { command: "help", description: "Help" },
+    { command: "start", description: "Главное меню" },
+    { command: "meal", description: "Записать еду" },
+    { command: "med", description: "Записать лекарство" },
+    { command: "weight", description: "Записать вес" },
+    { command: "workout", description: "Записать тренировку" },
+    { command: "today", description: "Сводка за сегодня" },
+    { command: "history", description: "История за дату" },
+    { command: "advice", description: "Советы" },
+    { command: "schedules", description: "Расписания" },
+    { command: "settings", description: "Настройки" },
+    { command: "cancel", description: "Отмена" },
+    { command: "help", description: "Помощь" },
   ]);
 
-  await bot.api.setChatMenuButton({
-    menu_button: { type: "commands" },
-  });
+  await bot.api.setChatMenuButton({ menu_button: { type: "commands" } });
 
   console.log("🤖 Healthy Life bot is running...");
   for (let attempt = 0; attempt < 5; attempt++) {
