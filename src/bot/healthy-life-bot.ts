@@ -161,7 +161,9 @@ const translations: Record<string, Record<string, string>> = {
     meal_schedules: "🍽 Расписания еды:", med_schedules: "💊 Расписания лекарств:",
     no_meal_schedules: "Расписаний еды нет.", no_med_schedules: "Расписаний лекарств нет.",
     schedule_daily: "ежедневно", schedule_weekly: "по дням", schedule_interval: "каждые {n} дн.",
-    // Dynamic keyboard labels
+    med_stop: "🛑 Приём окончен", med_stopped: "✅ «{name}» убран из расписания.",
+    med_stop_confirm: "Убрать «{name}» из расписания? Напоминания больше не будут приходить.",
+    yes: "Да", no: "Нет",
     kb_cancel: "❌ Отмена", kb_back: "◀️ Назад", kb_history: "📅 История", kb_advice: "💡 Советы",
   },
   en: {
@@ -225,6 +227,9 @@ const translations: Record<string, Record<string, string>> = {
     meal_schedules: "🍽 Meal schedules:", med_schedules: "💊 Medication schedules:",
     no_meal_schedules: "No meal schedules.", no_med_schedules: "No medication schedules.",
     schedule_daily: "daily", schedule_weekly: "weekly", schedule_interval: "every {n} days",
+    med_stop: "🛑 Course finished", med_stopped: "✅ «{name}» removed from schedule.",
+    med_stop_confirm: "Remove «{name}» from schedule? No more reminders will be sent.",
+    yes: "Yes", no: "No",
     kb_cancel: "❌ Cancel", kb_back: "◀️ Back", kb_history: "📅 History", kb_advice: "💡 Advice",
   },
   kk: {
@@ -288,6 +293,9 @@ const translations: Record<string, Record<string, string>> = {
     meal_schedules: "🍽 Тамақ кестесі:", med_schedules: "💊 Дәрі кестесі:",
     no_meal_schedules: "Тамақ кестесі жоқ.", no_med_schedules: "Дәрі кестесі жоқ.",
     schedule_daily: "күнделікті", schedule_weekly: "апталық", schedule_interval: "әр {n} күн",
+    med_stop: "🛑 Қабылдау аяқталды", med_stopped: "✅ «{name}» кестеден алынды.",
+    med_stop_confirm: "«{name}» кестеден алу? Еске салулар жіберілмейді.",
+    yes: "Иә", no: "Жоқ",
     kb_cancel: "❌ Болдырмау", kb_back: "◀️ Артқа", kb_history: "📅 Тарих", kb_advice: "💡 Кеңес",
   },
 };
@@ -589,6 +597,15 @@ async function showSchedules(ctx: Context) {
   }
 
   await replyMain(ctx, text, l);
+
+  // Inline buttons to stop each medication plan
+  if (medPlans.length > 0) {
+    const kb = new InlineKeyboard();
+    for (const p of medPlans) {
+      kb.text(`${botT(l, "med_stop")} — ${p.name}`, `med_stop:${p.id}`).row();
+    }
+    await ctx.reply("👆", { reply_markup: kb });
+  }
 }
 
 async function showSettings(ctx: Context) {
@@ -801,6 +818,37 @@ bot.on("callback_query:data", async (ctx) => {
         await ctx.reply(text);
       }
       await replyMain(ctx, "👆", l);
+      return;
+    }
+
+    // Stop medication plan (confirm)
+    if (data.startsWith("med_stop:")) {
+      const planId = data.split(":")[1];
+      const plan = await prisma.medicationPlan.findUnique({ where: { id: planId } });
+      if (!plan) return;
+      const profile = await getProfileByChatId(chatId);
+      const l = profile?.preferredLocale || "ru";
+      await ctx.reply(botT(l, "med_stop_confirm", { name: plan.name }), {
+        reply_markup: new InlineKeyboard()
+          .text(botT(l, "yes"), `med_stop_yes:${planId}`)
+          .text(botT(l, "no"), `med_stop_no`),
+      });
+      return;
+    }
+    if (data.startsWith("med_stop_yes:")) {
+      const planId = data.split(":")[1];
+      const plan = await prisma.medicationPlan.findUnique({ where: { id: planId } });
+      if (!plan) return;
+      await prisma.medicationPlan.update({ where: { id: planId }, data: { active: false } });
+      const profile = await getProfileByChatId(chatId);
+      const l = profile?.preferredLocale || "ru";
+      await replyMain(ctx, botT(l, "med_stopped", { name: plan.name }), l);
+      return;
+    }
+    if (data === "med_stop_no") {
+      const profile = await getProfileByChatId(chatId);
+      const l = profile?.preferredLocale || "ru";
+      await replyMain(ctx, botT(l, "cancelled"), l);
       return;
     }
 
