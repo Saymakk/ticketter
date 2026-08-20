@@ -8,6 +8,8 @@ import {
   listRecentActivity,
   listUserMeals,
   listUserMedIntakes,
+  parsePhotoCallbackData,
+  resolveStoredPhotoUrl,
   searchBotAdminUsers,
   setUserAdminNote,
   setUserBotLoggedOut,
@@ -283,22 +285,6 @@ async function showUserMedsPage(
   await hooks.replyInline(ctx, text, ik);
 }
 
-async function resolveAdminPhoto(
-  hooks: AdminPanelHooks,
-  kind: string,
-  id: string,
-): Promise<string | null> {
-  if (kind === "meal") {
-    const m = await hooks.prisma.meal.findUnique({ where: { id } });
-    return m?.photoPath ?? null;
-  }
-  if (kind === "med-intake") {
-    const i = await hooks.prisma.medicationIntake.findUnique({ where: { id } });
-    return i?.photoPath ?? null;
-  }
-  return null;
-}
-
 export async function handleAdminCallback(ctx: Context, data: string, hooks: AdminPanelHooks): Promise<boolean> {
   const chatId = ctx.chat!.id;
   const st = hooks.getState(chatId);
@@ -402,11 +388,19 @@ export async function handleAdminCallback(ctx: Context, data: string, hooks: Adm
     return true;
   }
   if (data.startsWith("adm:photo:")) {
-    const [, kind, id] = data.split(":");
-    const url = await resolveAdminPhoto(hooks, kind, id);
+    const parsed = parsePhotoCallbackData(data);
+    if (!parsed) {
+      await ctx.answerCallbackQuery({ text: "Фото не найдено", show_alert: true }).catch(() => {});
+      return true;
+    }
+    const url = await resolveStoredPhotoUrl(hooks.prisma, parsed.kind, parsed.id);
     if (url) {
       await ctx.answerCallbackQuery().catch(() => {});
-      await ctx.replyWithPhoto(url);
+      try {
+        await ctx.replyWithPhoto(url);
+      } catch {
+        await ctx.reply(url);
+      }
     } else {
       await ctx.answerCallbackQuery({ text: "Фото не найдено", show_alert: true }).catch(() => {});
     }

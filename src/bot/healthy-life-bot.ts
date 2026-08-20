@@ -29,6 +29,7 @@ import OpenAI from "openai";
 import { normalizePhone, phoneToEmail, phoneAuthEmailCandidates } from "../lib/auth/phone";
 import { isValidPassword } from "../lib/auth/password";
 import { weekKey, monthKey } from "../lib/healthy-life/dates";
+import { parsePhotoCallbackData, resolveStoredPhotoUrl } from "../lib/healthy-life/bot-admin";
 import {
   adminCanAccess,
   adminT,
@@ -1459,24 +1460,7 @@ async function sendPhotoButtons(ctx: Context, locale: string, items: PhotoButton
 }
 
 async function resolvePhotoUrl(kind: string, id: string): Promise<string | null> {
-  if (kind === "meal") {
-    const m = await prisma.meal.findUnique({ where: { id } });
-    return m?.photoPath ?? null;
-  }
-  if (kind === "med-intake") {
-    const intake = await prisma.medicationIntake.findUnique({ where: { id } });
-    if (intake?.photoPath) return intake.photoPath;
-    if (intake?.planId) {
-      const plan = await prisma.medicationPlan.findUnique({ where: { id: intake.planId } });
-      return plan?.photoPath ?? null;
-    }
-    return null;
-  }
-  if (kind === "med-plan") {
-    const plan = await prisma.medicationPlan.findUnique({ where: { id } });
-    return plan?.photoPath ?? null;
-  }
-  return null;
+  return resolveStoredPhotoUrl(prisma, kind, id);
 }
 
 async function advicePeriodKeyForDate(period: string, dateStr: string, locale: string): Promise<string> {
@@ -2577,13 +2561,17 @@ bot.on("callback_query:data", async (ctx) => {
     }
 
     if (data.startsWith("photo:")) {
-      const [, kind, id] = data.split(":");
+      const parsed = parsePhotoCallbackData(data);
       const profile = await getProfileByChatId(chatId);
       const l = profile?.preferredLocale || "ru";
-      const url = await resolvePhotoUrl(kind, id);
+      const url = parsed ? await resolvePhotoUrl(parsed.kind, parsed.id) : null;
       if (url) {
         await ctx.answerCallbackQuery();
-        await ctx.replyWithPhoto(url);
+        try {
+          await ctx.replyWithPhoto(url);
+        } catch {
+          await ctx.reply(url);
+        }
       } else {
         await ctx.answerCallbackQuery({ text: botT(l, "photo_none"), show_alert: true });
       }

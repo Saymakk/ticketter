@@ -313,3 +313,43 @@ export async function setUserAdminNote(prisma: PrismaClient, profileId: string, 
     data: { adminNote: note?.trim() || null },
   });
 }
+
+/** Parse `photo:meal:id` or `adm:photo:meal:id` callback payloads. */
+export function parsePhotoCallbackData(data: string): { kind: string; id: string } | null {
+  let rest: string | null = null;
+  if (data.startsWith("adm:photo:")) rest = data.slice("adm:photo:".length);
+  else if (data.startsWith("photo:")) rest = data.slice("photo:".length);
+  else return null;
+
+  const sep = rest.indexOf(":");
+  if (sep <= 0) return null;
+  const kind = rest.slice(0, sep);
+  const id = rest.slice(sep + 1);
+  if (!kind || !id) return null;
+  return { kind, id };
+}
+
+export async function resolveStoredPhotoUrl(
+  prisma: PrismaClient,
+  kind: string,
+  id: string,
+): Promise<string | null> {
+  if (kind === "meal") {
+    const m = await prisma.meal.findUnique({ where: { id } });
+    return m?.photoPath ?? null;
+  }
+  if (kind === "med-intake") {
+    const intake = await prisma.medicationIntake.findUnique({ where: { id } });
+    if (intake?.photoPath) return intake.photoPath;
+    if (intake?.planId) {
+      const plan = await prisma.medicationPlan.findUnique({ where: { id: intake.planId } });
+      return plan?.photoPath ?? null;
+    }
+    return null;
+  }
+  if (kind === "med-plan") {
+    const plan = await prisma.medicationPlan.findUnique({ where: { id } });
+    return plan?.photoPath ?? null;
+  }
+  return null;
+}
