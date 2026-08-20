@@ -29,6 +29,14 @@ import OpenAI from "openai";
 import { normalizePhone, phoneToEmail, phoneAuthEmailCandidates } from "../lib/auth/phone";
 import { isValidPassword } from "../lib/auth/password";
 import { weekKey, monthKey } from "../lib/healthy-life/dates";
+import {
+  adminCanAccess,
+  adminT,
+  handleAdminCallback,
+  handleAdminText,
+  showAdminMenu,
+  type AdminPanelHooks,
+} from "./admin-panel";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -175,6 +183,7 @@ const translations: Record<string, Record<string, string>> = {
     med_stop_confirm: "Убрать «{name}» из расписания? Напоминания больше не будут приходить.",
     yes: "Да", no: "Нет",
     settings_logout: "🚪 Выйти из аккаунта",
+    access_denied: "🚫 Доступ к приложению отключён. Свяжитесь с администратором.",
     logout_confirm: "Вы уверены, что хотите выйти?",
     logout_done: "✅ Вы вышли из аккаунта. Telegram и номер остаются привязаны — войдите снова когда нужно.",
     kb_cancel: "❌ Отмена", kb_back: "◀️ Назад", kb_history: "📅 История", kb_advice: "💡 Советы",
@@ -350,6 +359,7 @@ const translations: Record<string, Record<string, string>> = {
     med_stop_confirm: "Remove «{name}» from schedule? No more reminders will be sent.",
     yes: "Yes", no: "No",
     settings_logout: "🚪 Logout",
+    access_denied: "🚫 Access disabled. Contact the administrator.",
     logout_confirm: "Are you sure you want to logout?",
     logout_done: "✅ Logged out. Telegram and phone stay linked — sign in again anytime.",
     kb_cancel: "❌ Cancel", kb_back: "◀️ Back", kb_history: "📅 History", kb_advice: "💡 Advice",
@@ -525,6 +535,7 @@ const translations: Record<string, Record<string, string>> = {
     med_stop_confirm: "«{name}» кестеден алу? Еске салулар жіберілмейді.",
     yes: "Иә", no: "Жоқ",
     settings_logout: "🚪 Шығу",
+    access_denied: "🚫 Қолжетімділік өшірілген. Әкімшіге хабарласыңыз.",
     logout_confirm: "Шығуға сенімдісіз бе?",
     logout_done: "✅ Шықтыңыз. Telegram мен телефон байланыста — қажет болғанда қайта кіріңіз.",
     kb_cancel: "❌ Болдырмау", kb_back: "◀️ Артқа", kb_history: "📅 Тарих", kb_advice: "💡 Кеңес",
@@ -830,6 +841,10 @@ async function goBack(ctx: Context) {
   if (to === "mslist") return showMealSchedules(ctx);
   if (to === "dslist") return showMedSchedules(ctx);
   if (to === "settings") return showSettings(ctx);
+  if (to === "admin:menu" && st?.profileId) {
+    await showAdminMenu(ctx, st.profileId, getAdminHooks());
+    return;
+  }
   if (to === "advice:pick") {
     await showAdvice(ctx);
     return;
@@ -978,6 +993,14 @@ async function requireAuth(ctx: Context): Promise<{ profileId: string; locale: s
     const locale = st?.locale || profile?.preferredLocale || "ru";
     await showAuthGate(ctx, locale);
     return null;
+  }
+  if (profile.accessEnabled === false) {
+    const admin = await adminCanAccess(profile.id, getAdminHooks());
+    if (!admin) {
+      const l = profile.preferredLocale;
+      await ctx.reply(botT(l, "access_denied"));
+      return null;
+    }
   }
   return { profileId: profile.id, locale: profile.preferredLocale, timezone: profile.timezone };
 }
@@ -1160,6 +1183,21 @@ async function changeProfilePassword(profileId: string, newPassword: string) {
   if (!profile?.userId) throw new Error("no profile");
   const { error } = await supabaseAdmin.auth.admin.updateUserById(profile.userId, { password: newPassword });
   if (error) throw error;
+}
+
+function getAdminHooks(): AdminPanelHooks {
+  return {
+    prisma,
+    supabaseAdmin,
+    setState,
+    getState,
+    replyInline,
+    replyMain,
+    replyCancel,
+    changeProfilePassword,
+    isValidPassword,
+    showSettings,
+  };
 }
 
 async function finishLogin(ctx: Context, chatId: number, userId: string, locale: string, phone?: string) {
@@ -2124,6 +2162,9 @@ async function showSettings(ctx: Context) {
   if (!profile?.phone) rows.push([botT(l, "settings_phone")]);
   rows.push([botT(l, "settings_password")]);
   rows.push([botT(l, "settings_logout")]);
+  if (await adminCanAccess(auth.profileId, getAdminHooks())) {
+    rows.push([adminT.admin_btn]);
+  }
   rows.push([botT(l, "kb_back")]);
   setState(ctx.chat!.id, { step: "settings:menu", profileId: auth.profileId, locale: l, data: { backTo: "main" } });
   await replyKb(ctx, botT(l, "settings_title"), kb(rows));
@@ -2179,6 +2220,15 @@ bot.command("history", showHistory);
 bot.command("advice", showAdvice);
 bot.command("schedules", showSchedules);
 bot.command("settings", showSettings);
+bot.command("admin", async (ctx) => {
+  const auth = await requireAuth(ctx);
+  if (!auth) return;
+  if (!(await adminCanAccess(auth.profileId, getAdminHooks()))) {
+    await ctx.reply(adminT.admin_forbidden);
+    return;
+  }
+  await showAdminMenu(ctx, auth.profileId, getAdminHooks());
+});
 bot.command("register", async (ctx) => {
   const profile = await getProfileByChatId(ctx.chat.id);
   if (profile && !profile.botLoggedOut) {
@@ -2195,9 +2245,13 @@ bot.command("register", async (ctx) => {
 bot.on("callback_query:data", async (ctx) => {
   const data = ctx.callbackQuery.data;
   const chatId = ctx.chat!.id;
-  await ctx.answerCallbackQuery();
 
   try {
+    if (data.startsWith("adm:")) {
+      if (await handleAdminCallback(ctx, data, getAdminHooks())) return;
+    }
+
+    await ctx.answerCallbackQuery();
     // Language on first start
     if (data.startsWith("start_lang:")) {
       const locale = data.split(":")[1];
@@ -3185,6 +3239,14 @@ async function handleScreen(ctx: Context, text: string, st: UserState): Promise<
       await replyKb(ctx, botT(l, "logout_confirm"), yesNoKeyboard(l));
       return true;
     }
+    if (text === adminT.admin_btn) {
+      await showAdminMenu(ctx, st.profileId!, getAdminHooks());
+      return true;
+    }
+  }
+
+  if (st.step?.startsWith("admin:")) {
+    if (await handleAdminText(ctx, text, getAdminHooks())) return true;
   }
 
   if (st.step === "settings:language") {

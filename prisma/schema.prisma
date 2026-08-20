@@ -34,6 +34,10 @@ model Profile {
   phone            String?            @unique
   /** Whether user logged out from bot (keeps telegramChatId for re-login) */
   botLoggedOut     Boolean            @default(false)
+  /** Paid / granted access — when false, app and bot features are blocked */
+  accessEnabled    Boolean            @default(true)
+  /** Admin note (subscription tier, manual override, …) */
+  adminNote        String?
   /** UI / push locale hint (en, ru, …) */
   preferredLocale  String             @default("en")
   createdAt        DateTime           @default(now())

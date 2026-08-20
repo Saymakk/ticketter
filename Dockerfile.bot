@@ -9,6 +9,7 @@ COPY src/bot ./src/bot
 COPY src/lib/auth/phone.ts ./src/lib/auth/phone.ts
 COPY src/lib/auth/password.ts ./src/lib/auth/password.ts
 COPY src/lib/healthy-life/dates.ts ./src/lib/healthy-life/dates.ts
+COPY src/lib/healthy-life/bot-admin.ts ./src/lib/healthy-life/bot-admin.ts
 
 ENV NODE_ENV=production
 CMD ["npx", "tsx", "src/bot/healthy-life-bot.ts"]
