@@ -642,6 +642,60 @@ async function sweepChat(ctx: Context) {
   await Promise.all([...new Set(ids)].map((id) => ctx.api.deleteMessage(chatId, id).catch(() => {})));
 }
 
+function isMessageNotModified(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes("message is not modified") || msg.includes("MESSAGE_NOT_MODIFIED");
+}
+
+/** Update inline message without recreating it when only the keyboard changed. */
+async function editInlineMessage(ctx: Context, text: string, markup: InlineKeyboard) {
+  try {
+    await ctx.editMessageText(text, { reply_markup: markup });
+  } catch (err) {
+    if (isMessageNotModified(err)) {
+      try {
+        await ctx.editMessageReplyMarkup({ reply_markup: markup });
+      } catch (err2) {
+        if (!isMessageNotModified(err2)) throw err2;
+      }
+    } else {
+      throw err;
+    }
+  }
+}
+
+/** Inline panel: edits in place on callback taps; does not replace the main reply keyboard. */
+async function replyInline(ctx: Context, text: string, markup: InlineKeyboard, track = true) {
+  const chatId = ctx.chat?.id;
+  if (!chatId) return;
+
+  const userMsg = ctx.message;
+  const isPhoto = !!userMsg?.photo;
+  const isCmd = !!userMsg?.text?.startsWith("/");
+  if (userMsg?.message_id && !isPhoto && !isCmd) {
+    await ctx.api.deleteMessage(chatId, userMsg.message_id).catch(() => {});
+  }
+
+  const cbMsg = ctx.callbackQuery?.message;
+  if (cbMsg && "message_id" in cbMsg) {
+    try {
+      await editInlineMessage(ctx, text, markup);
+      if (track) rememberMsg(chatId, cbMsg.message_id);
+      await ctx.answerCallbackQuery().catch(() => {});
+      return;
+    } catch {
+      // Panel message gone — fall through to send a fresh one.
+    }
+  }
+
+  const ids = ephemeralMsgs.get(chatId) || [];
+  ephemeralMsgs.delete(chatId);
+  await Promise.all([...new Set(ids)].map((id) => ctx.api.deleteMessage(chatId, id).catch(() => {})));
+
+  const msg = await ctx.reply(text, { reply_markup: markup });
+  if (track) rememberMsg(chatId, msg.message_id);
+}
+
 function kb(rows: string[][]): Keyboard {
   const k = new Keyboard();
   for (const row of rows) {
@@ -1268,7 +1322,12 @@ async function showToday(ctx: Context) {
   const text = botT(l, "today_title") + " (" + today + ")\n"
     + botT(l, "today_calories", { eaten: Math.round(eaten), goal, remaining: Math.max(0, Math.round(goal - eaten)) })
     + "\n\n" + botT(l, "today_pick");
-  await replyKb(ctx, text, todayPickKeyboard(l));
+  const ik = new InlineKeyboard()
+    .text(botT(l, "kb_sec_meals"), "today:sec:meals")
+    .text(botT(l, "kb_sec_meds"), "today:sec:meds").row()
+    .text(botT(l, "kb_sec_workouts"), "today:sec:workouts").row()
+    .text(botT(l, "kb_back"), "today:back:main");
+  await replyInline(ctx, text, ik);
 }
 
 // ─── Inline calendar ──────────────────────────────────────────────────────────
@@ -1402,7 +1461,8 @@ async function sendAdviceRecord(ctx: Context, profileId: string, locale: string,
     locale,
     data: { backTo: "advice:mode", advicePeriod: advice.period },
   });
-  await replyKb(ctx, text, kb([[botT(locale, "kb_back")]]), false);
+  const ik = new InlineKeyboard().text(botT(locale, "kb_back"), "adv:back:mode");
+  await replyInline(ctx, text, ik, false);
 }
 
 async function showAdviceCalendar(ctx: Context, profileId: string, locale: string, period: string) {
@@ -1415,9 +1475,18 @@ async function showAdviceCalendar(ctx: Context, profileId: string, locale: strin
     locale,
     data: { backTo: "advice:mode", advicePeriod: period },
   });
-  await sweepChat(ctx);
   const calKb = buildCalendarKeyboard(year, month, locale, "acal_", await getActiveDays(profileId, year, month));
-  const msg = await ctx.reply(botT(locale, "advice_pick_date"), { reply_markup: calKb });
+  calKb.row().text(botT(locale, "kb_back"), "adv:back:mode");
+  const text = botT(locale, "advice_pick_date");
+  const cbMsg = ctx.callbackQuery?.message;
+  if (cbMsg && "message_id" in cbMsg) {
+    await editInlineMessage(ctx, text, calKb);
+    rememberMsg(ctx.chat!.id, cbMsg.message_id);
+    await ctx.answerCallbackQuery().catch(() => {});
+    return;
+  }
+  await sweepChat(ctx);
+  const msg = await ctx.reply(text, { reply_markup: calKb });
   rememberMsg(ctx.chat!.id, msg.message_id);
 }
 
@@ -1428,11 +1497,11 @@ async function showAdviceMode(ctx: Context, profileId: string, locale: string, p
     locale,
     data: { backTo: "advice:pick", advicePeriod: period },
   });
-  await replyKb(ctx, botT(locale, "advice_mode_prompt"), kb([
-    [botT(locale, "advice_calendar")],
-    [botT(locale, "advice_last")],
-    [botT(locale, "kb_back")],
-  ]));
+  const ik = new InlineKeyboard()
+    .text(botT(locale, "advice_calendar"), "adv:open:calendar").row()
+    .text(botT(locale, "advice_last"), "adv:open:last").row()
+    .text(botT(locale, "kb_back"), "adv:back:pick");
+  await replyInline(ctx, botT(locale, "advice_mode_prompt"), ik);
 }
 
 async function sendRangeSummary(ctx: Context, profileId: string, locale: string, timezone: string, from: string, to: string) {
@@ -1548,8 +1617,7 @@ async function sendTodaySection(ctx: Context, section: "meals" | "meds" | "worko
   if (!auth) return;
   const l = auth.locale;
   const date = todayStr(auth.timezone);
-  const rows: string[][] = [];
-  const editMap: Record<string, { kind: string; id: string }> = {};
+  const ik = new InlineKeyboard();
   let text = botT(l, "today_title") + " (" + date + ")\n";
 
   if (section === "meals") {
@@ -1561,20 +1629,17 @@ async function sendTodaySection(ctx: Context, section: "meals" | "meds" | "worko
     else {
       text += botT(l, "today_meals");
       meals.forEach((m, i) => {
-        const n = i + 1;
-        text += `\n  ${n}. ${botT(l, m.mealType)}: ${m.name} — ${Math.round(m.calories)} ккал`;
+        text += `\n  ${i + 1}. ${botT(l, m.mealType)}: ${m.name} — ${Math.round(m.calories)} ккал`;
         if (m.photoPath) text += " 📷";
         if (m.createdAt.getTime() >= Date.now() - EDIT_WINDOW_MS) {
-          const editLbl = `✏️ ${n}`;
-          const delLbl = `🗑 ${n}`;
-          editMap[editLbl] = { kind: "meal", id: m.id };
-          editMap[delLbl] = { kind: "del-meal", id: m.id };
-          rows.push([editLbl, delLbl]);
+          ik.text(`✏️ ${m.name.slice(0, 12)}`, `edit:meal:${m.id}`)
+            .text(`🗑 ${i + 1}`, `del:meal:${m.id}`).row();
         }
       });
     }
-    setState(ctx.chat!.id, { step: "today:meals", profileId: auth.profileId, locale: l, data: { backTo: "today", editMap, section } });
-    await replyKb(ctx, text, kb([...rows, [botT(l, "kb_back")]]), false);
+    setState(ctx.chat!.id, { step: "today:meals", profileId: auth.profileId, locale: l, data: { backTo: "today", section } });
+    ik.row().text(botT(l, "kb_back"), "today:back:pick");
+    await replyInline(ctx, text, ik, false);
     const photoItems: PhotoButtonItem[] = meals
       .filter((m) => m.photoPath)
       .map((m) => ({ id: m.id, label: m.name, kind: "meal" as const }));
@@ -1588,19 +1653,16 @@ async function sendTodaySection(ctx: Context, section: "meals" | "meds" | "worko
     else {
       text += botT(l, "today_meds");
       intakes.forEach((item, i) => {
-        const n = i + 1;
-        text += `\n  ${n}. ${item.name}${item.dosage ? ` (${item.dosage})` : ""} — ${item.takenTime}`;
+        text += `\n  ${i + 1}. ${item.name}${item.dosage ? ` (${item.dosage})` : ""} — ${item.takenTime}`;
         if (item.createdAt.getTime() >= Date.now() - EDIT_WINDOW_MS) {
-          const editLbl = `✏️ ${n}`;
-          const delLbl = `🗑 ${n}`;
-          editMap[editLbl] = { kind: "med", id: item.id };
-          editMap[delLbl] = { kind: "del-med", id: item.id };
-          rows.push([editLbl, delLbl]);
+          ik.text(`✏️ ${item.name.slice(0, 12)}`, `edit:med:${item.id}`)
+            .text(`🗑 ${i + 1}`, `del:med:${item.id}`).row();
         }
       });
     }
-    setState(ctx.chat!.id, { step: "today:meds", profileId: auth.profileId, locale: l, data: { backTo: "today", editMap, section } });
-    await replyKb(ctx, text, kb([...rows, [botT(l, "kb_back")]]), false);
+    setState(ctx.chat!.id, { step: "today:meds", profileId: auth.profileId, locale: l, data: { backTo: "today", section } });
+    ik.row().text(botT(l, "kb_back"), "today:back:pick");
+    await replyInline(ctx, text, ik, false);
     await sendPhotoButtons(ctx, l, await intakePhotoItems(intakes));
     return;
   }
@@ -1610,19 +1672,16 @@ async function sendTodaySection(ctx: Context, section: "meals" | "meds" | "worko
   else {
     text += botT(l, "today_workouts");
     workouts.forEach((w, i) => {
-      const n = i + 1;
-      text += `\n  ${n}. ${botT(l, w.type)} — ${w.quantity} ${w.unit}`;
+      text += `\n  ${i + 1}. ${botT(l, w.type)} — ${w.quantity} ${w.unit}`;
       if (w.createdAt.getTime() >= Date.now() - EDIT_WINDOW_MS) {
-        const editLbl = `✏️ ${n}`;
-        const delLbl = `🗑 ${n}`;
-        editMap[editLbl] = { kind: "workout", id: w.id };
-        editMap[delLbl] = { kind: "del-workout", id: w.id };
-        rows.push([editLbl, delLbl]);
+        ik.text(`✏️ ${botT(l, w.type).slice(0, 8)}`, `edit:workout:${w.id}`)
+          .text(`🗑 ${i + 1}`, `del:workout:${w.id}`).row();
       }
     });
   }
-  setState(ctx.chat!.id, { step: "today:workouts", profileId: auth.profileId, locale: l, data: { backTo: "today", editMap, section } });
-  await replyKb(ctx, text, kb([...rows, [botT(l, "kb_back")]]), false);
+  setState(ctx.chat!.id, { step: "today:workouts", profileId: auth.profileId, locale: l, data: { backTo: "today", section } });
+  ik.row().text(botT(l, "kb_back"), "today:back:pick");
+  await replyInline(ctx, text, ik, false);
 }
 
 async function sendDaySummary(ctx: Context, profileId: string, locale: string, timezone: string, date: string) {
@@ -1682,6 +1741,7 @@ async function showHistory(ctx: Context) {
   setState(ctx.chat!.id, { step: "history:cal", profileId: auth.profileId, locale: auth.locale, data: { timezone: auth.timezone, backTo: "main" } });
   await sweepChat(ctx);
   const calKb = buildCalendarKeyboard(year, month, auth.locale, "hcal_", await getActiveDays(auth.profileId, year, month));
+  calKb.row().text(botT(auth.locale, "kb_back"), "hcal:back:main");
   const msg = await ctx.reply(botT(auth.locale, "history_pick_start"), { reply_markup: calKb });
   rememberMsg(ctx.chat!.id, msg.message_id);
 }
@@ -1691,10 +1751,12 @@ async function showAdvice(ctx: Context) {
   if (!auth) return;
   const l = auth.locale;
   setState(ctx.chat!.id, { step: "advice:pick", profileId: auth.profileId, locale: l, data: { backTo: "main" } });
-  await replyKb(ctx, botT(l, "advice_prompt"), kb([
-    [botT(l, "advice_day"), botT(l, "advice_week"), botT(l, "advice_month")],
-    [botT(l, "kb_back")],
-  ]));
+  const ik = new InlineKeyboard()
+    .text(botT(l, "advice_day"), "adv:period:day")
+    .text(botT(l, "advice_week"), "adv:period:week")
+    .text(botT(l, "advice_month"), "adv:period:month").row()
+    .text(botT(l, "kb_back"), "adv:back:main");
+  await replyInline(ctx, botT(l, "advice_prompt"), ik);
 }
 
 async function sendAdvicePage(ctx: Context, chatId: number, period: string, offset: number) {
@@ -1718,14 +1780,13 @@ async function sendAdvicePage(ctx: Context, chatId: number, period: string, offs
   if (a.summary) text += `${a.summary}\n\n`;
   text += a.content;
   const total = await prisma.advice.count({ where: { profileId: profile.id, period } });
-  const rows: string[][] = [];
-  const nav: string[] = [];
-  if (offset > 0) nav.push(botT(l, "advice_newer"));
-  if (offset + 1 < total) nav.push(botT(l, "advice_older"));
-  if (nav.length) rows.push(nav);
-  rows.push([botT(l, "kb_back")]);
+  const ik = new InlineKeyboard();
+  if (offset > 0) ik.text(botT(l, "advice_newer"), `adv:page:${period}:${offset - 1}`);
+  if (offset + 1 < total) ik.text(botT(l, "advice_older"), `adv:page:${period}:${offset + 1}`);
+  if (offset > 0 || offset + 1 < total) ik.row();
+  ik.text(botT(l, "kb_back"), "adv:back:mode");
   setState(chatId, { step: "advice:page", profileId: profile.id, locale: l, data: { backTo: "advice:mode", advicePeriod: period, adviceOffset: offset } });
-  await replyKb(ctx, text, kb(rows), false);
+  await replyInline(ctx, text, ik, false);
 }
 
 function parseTimesJson(json: string | null | undefined): string[] {
@@ -2384,6 +2445,83 @@ bot.on("callback_query:data", async (ctx) => {
       return;
     }
 
+    if (data.startsWith("adv:period:")) {
+      const period = data.slice("adv:period:".length);
+      const st = getState(chatId);
+      if (!st?.profileId) return;
+      await showAdviceMode(ctx, st.profileId, st.locale || "ru", period);
+      return;
+    }
+
+    if (data === "adv:back:pick") {
+      await showAdvice(ctx);
+      return;
+    }
+
+    if (data === "adv:back:mode") {
+      const st = getState(chatId);
+      if (!st?.profileId) return;
+      await showAdviceMode(ctx, st.profileId, st.locale || "ru", String(st.data?.advicePeriod || "day"));
+      return;
+    }
+
+    if (data === "adv:back:main") {
+      clearState(chatId);
+      const profile = await getProfileByChatId(chatId);
+      const l = profile?.preferredLocale || "ru";
+      await replyMain(ctx, botT(l, "main_menu"), l);
+      return;
+    }
+
+    if (data === "adv:open:calendar") {
+      const st = getState(chatId);
+      if (!st?.profileId) return;
+      await showAdviceCalendar(ctx, st.profileId, st.locale || "ru", String(st.data?.advicePeriod || "day"));
+      return;
+    }
+
+    if (data === "adv:open:last") {
+      const st = getState(chatId);
+      if (!st?.profileId) return;
+      await sendAdvicePage(ctx, chatId, String(st.data?.advicePeriod || "day"), 0);
+      return;
+    }
+
+    if (data.startsWith("adv:page:")) {
+      const parts = data.slice("adv:page:".length).split(":");
+      const period = parts[0];
+      const offset = parseInt(parts[1] || "0", 10);
+      await sendAdvicePage(ctx, chatId, period, offset);
+      return;
+    }
+
+    if (data.startsWith("today:sec:")) {
+      const section = data.slice("today:sec:".length) as "meals" | "meds" | "workouts";
+      await sendTodaySection(ctx, section);
+      return;
+    }
+
+    if (data === "today:back:pick") {
+      await showToday(ctx);
+      return;
+    }
+
+    if (data === "today:back:main") {
+      clearState(chatId);
+      const profile = await getProfileByChatId(chatId);
+      const l = profile?.preferredLocale || "ru";
+      await replyMain(ctx, botT(l, "main_menu"), l);
+      return;
+    }
+
+    if (data === "hcal:back:main") {
+      clearState(chatId);
+      const profile = await getProfileByChatId(chatId);
+      const l = profile?.preferredLocale || "ru";
+      await replyMain(ctx, botT(l, "main_menu"), l);
+      return;
+    }
+
     if (data.startsWith("photo:")) {
       const [, kind, id] = data.split(":");
       const profile = await getProfileByChatId(chatId);
@@ -2410,11 +2548,9 @@ bot.on("callback_query:data", async (ctx) => {
       if (newMonth0 > 11) { newMonth0 = 0; newYear++; }
       const activeDays = await getActiveDays(st.profileId, newYear, newMonth0);
       const kb = buildCalendarKeyboard(newYear, newMonth0, st.locale!, "acal_", activeDays);
-      try {
-        await ctx.editMessageText(botT(st.locale!, "advice_pick_date"), { reply_markup: kb });
-      } catch {
-        await ctx.reply(botT(st.locale!, "advice_pick_date"), { reply_markup: kb });
-      }
+      kb.row().text(botT(st.locale!, "kb_back"), "adv:back:mode");
+      await editInlineMessage(ctx, botT(st.locale!, "advice_pick_date"), kb);
+      await ctx.answerCallbackQuery().catch(() => {});
       return;
     }
 
@@ -2456,11 +2592,9 @@ bot.on("callback_query:data", async (ctx) => {
       const phase = st.data?.startDate ? "history_pick_end" : "history_pick_start";
       const activeDays = await getActiveDays(st.profileId!, newYear, newMonth0);
       const kb = buildCalendarKeyboard(newYear, newMonth0, st.locale!, "hcal_", activeDays);
-      try {
-        await ctx.editMessageText(botT(st.locale!, phase), { reply_markup: kb });
-      } catch {
-        await ctx.reply(botT(st.locale!, phase), { reply_markup: kb });
-      }
+      kb.row().text(botT(st.locale!, "kb_back"), "hcal:back:main");
+      await editInlineMessage(ctx, botT(st.locale!, phase), kb);
+      await ctx.answerCallbackQuery().catch(() => {});
       return;
     }
 
@@ -2474,11 +2608,9 @@ bot.on("callback_query:data", async (ctx) => {
         st.data!.startDate = pickedDate;
         const [y, m] = pickedDate.split("-").map(Number);
         const kb = buildCalendarKeyboard(y, m - 1, st.locale!, "hcal_");
-        try {
-          await ctx.editMessageText(botT(st.locale!, "history_pick_end"), { reply_markup: kb });
-        } catch {
-          await ctx.reply(botT(st.locale!, "history_pick_end"), { reply_markup: kb });
-        }
+        kb.row().text(botT(st.locale!, "kb_back"), "hcal:back:main");
+        await editInlineMessage(ctx, botT(st.locale!, "history_pick_end"), kb);
+        await ctx.answerCallbackQuery().catch(() => {});
       } else {
         // Second pick — end date
         let from = st.data!.startDate;
@@ -2496,10 +2628,16 @@ bot.on("callback_query:data", async (ctx) => {
       const profile = await getProfileByChatId(chatId);
       if (!profile) return;
       const l = profile.preferredLocale;
+      const st = getState(chatId);
       try {
         if (type === "meal") await prisma.meal.delete({ where: { id } });
         else if (type === "med") await prisma.medicationIntake.delete({ where: { id } });
         else if (type === "workout") await prisma.workout.delete({ where: { id } });
+        if (st?.step?.startsWith("today:") && st.data?.section) {
+          await ctx.answerCallbackQuery({ text: botT(l, "entry_deleted") }).catch(() => {});
+          await sendTodaySection(ctx, st.data.section as "meals" | "meds" | "workouts");
+          return;
+        }
         // Re-render the panel so the remaining entries stay editable
         const panel = await buildRecentPanel(profile.id, l, profile.timezone);
         if (panel) {
@@ -2507,6 +2645,7 @@ bot.on("callback_query:data", async (ctx) => {
         } else {
           await ctx.editMessageText(botT(l, "entry_deleted"));
         }
+        await ctx.answerCallbackQuery().catch(() => {});
       } catch (e) {
         console.error("Delete entry error:", e);
         await ctx.reply(botT(l, "error"));
@@ -2534,7 +2673,10 @@ bot.on("callback_query:data", async (ctx) => {
     }
 
     // noop (calendar headers etc.)
-    if (data === "noop") return;
+    if (data === "noop") {
+      await ctx.answerCallbackQuery().catch(() => {});
+      return;
+    }
 
     // ── Quick "taken" from schedules ──
     if (data.startsWith("taken_meal:")) {
