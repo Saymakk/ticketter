@@ -1,13 +1,16 @@
+import { blockSpanClass, gridClass, type WorkspaceGridColumns } from "@/lib/workspace/layout";
 import type { WorkspaceProjectCard } from "@/lib/workspace/types";
 import WorkspaceProjectCardView from "./project-card";
 
 type Props = {
   projects: WorkspaceProjectCard[];
+  columns?: WorkspaceGridColumns;
   emptyLabel?: string;
 };
 
 export default function WorkspaceProjectGrid({
   projects,
+  columns = 3,
   emptyLabel = "Пока нет проектов",
 }: Props) {
   if (!projects.length) {
@@ -19,9 +22,9 @@ export default function WorkspaceProjectGrid({
   }
 
   return (
-    <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+    <ul className={gridClass(columns)}>
       {projects.map((project) => (
-        <li key={project.id}>
+        <li key={project.id} className={blockSpanClass(project.display_size)}>
           <WorkspaceProjectCardView project={project} />
         </li>
       ))}

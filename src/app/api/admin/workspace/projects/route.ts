@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireWorkspaceAdmin } from "@/lib/workspace/access";
+import {
+  parseAttachments,
+  parseKind,
+  parseSize,
+  parseVariant,
+} from "@/lib/workspace/layout";
 import { createProject, listAllProjects } from "@/lib/workspace/projects";
 
 export async function GET() {
@@ -24,16 +30,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = (await request.json()) as {
-      name?: string;
-      url?: string;
-      thumbnail_url?: string | null;
-      description?: string | null;
-      sort_order?: number;
-      is_visible?: boolean;
-    };
+    const body = (await request.json()) as Record<string, unknown>;
+    const name = typeof body.name === "string" ? body.name : "";
+    const url = typeof body.url === "string" ? body.url : "";
 
-    if (!body.name?.trim() || !body.url?.trim()) {
+    if (!name.trim() || !url.trim()) {
       return NextResponse.json(
         { error: "Название и URL обязательны" },
         { status: 400 }
@@ -42,12 +43,19 @@ export async function POST(request: Request) {
 
     const project = await createProject(
       {
-        name: body.name,
-        url: body.url,
-        thumbnail_url: body.thumbnail_url,
-        description: body.description,
-        sort_order: body.sort_order,
-        is_visible: body.is_visible,
+        name,
+        url,
+        thumbnail_url: typeof body.thumbnail_url === "string" ? body.thumbnail_url : null,
+        description: typeof body.description === "string" ? body.description : null,
+        sort_order: typeof body.sort_order === "number" ? body.sort_order : undefined,
+        is_visible: typeof body.is_visible === "boolean" ? body.is_visible : undefined,
+        kind: parseKind(body.kind),
+        display_size: parseSize(body.display_size),
+        display_variant: parseVariant(body.display_variant),
+        file_name: typeof body.file_name === "string" ? body.file_name : null,
+        file_size: typeof body.file_size === "number" ? body.file_size : null,
+        file_mime: typeof body.file_mime === "string" ? body.file_mime : null,
+        attachments: parseAttachments(body.attachments),
       },
       auth.ctx.user.id
     );

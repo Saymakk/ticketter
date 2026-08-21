@@ -1,19 +1,23 @@
 import { NextResponse } from "next/server";
-import { listVisibleProjects } from "@/lib/workspace/projects";
+import { listVisibleProjects, toPublicCard } from "@/lib/workspace/projects";
+import { defaultPageSettings, getPageSettings } from "@/lib/workspace/page-settings";
 
 /** Public catalog for the Workspace portal */
 export async function GET() {
   try {
-    const projects = await listVisibleProjects();
+    const [projects, settings] = await Promise.all([
+      listVisibleProjects(),
+      getPageSettings().catch(() => defaultPageSettings()),
+    ]);
     return NextResponse.json({
-      projects: projects.map((p) => ({
-        id: p.id,
-        name: p.name,
-        url: p.url,
-        thumbnail_url: p.thumbnail_url,
-        description: p.description,
-        sort_order: p.sort_order,
-      })),
+      settings: {
+        kicker: settings.kicker,
+        title: settings.title,
+        subtitle: settings.subtitle,
+        footer: settings.footer,
+        columns: settings.columns,
+      },
+      projects: projects.map(toPublicCard),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Ошибка загрузки";

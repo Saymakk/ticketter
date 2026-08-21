@@ -1,5 +1,11 @@
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import {
+  parseAttachments,
+  parseKind,
+  parseSize,
+  parseVariant,
+} from "./layout";
+import {
   WORKSPACE_PROJECT_SELECT,
   type WorkspaceProject,
   type WorkspaceProjectInput,
@@ -7,6 +13,49 @@ import {
 
 function admin() {
   return createAdminSupabaseClient();
+}
+
+function mapProject(row: Record<string, unknown>): WorkspaceProject {
+  return {
+    id: String(row.id),
+    name: String(row.name ?? ""),
+    url: String(row.url ?? ""),
+    thumbnail_url: typeof row.thumbnail_url === "string" ? row.thumbnail_url : null,
+    description: typeof row.description === "string" ? row.description : null,
+    sort_order: typeof row.sort_order === "number" ? row.sort_order : 0,
+    is_visible: Boolean(row.is_visible),
+    kind: parseKind(row.kind),
+    display_size: parseSize(row.display_size),
+    display_variant: parseVariant(row.display_variant),
+    file_name: typeof row.file_name === "string" ? row.file_name : null,
+    file_size: typeof row.file_size === "number" ? row.file_size : null,
+    file_mime: typeof row.file_mime === "string" ? row.file_mime : null,
+    attachments: parseAttachments(row.attachments),
+    metadata:
+      row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+        ? (row.metadata as Record<string, unknown>)
+        : {},
+    created_at: String(row.created_at ?? ""),
+    updated_at: String(row.updated_at ?? ""),
+  };
+}
+
+export function toPublicCard(project: WorkspaceProject) {
+  return {
+    id: project.id,
+    name: project.name,
+    url: project.url,
+    thumbnail_url: project.thumbnail_url,
+    description: project.description,
+    sort_order: project.sort_order,
+    kind: project.kind,
+    display_size: project.display_size,
+    display_variant: project.display_variant,
+    file_name: project.file_name,
+    file_size: project.file_size,
+    file_mime: project.file_mime,
+    attachments: project.attachments,
+  };
 }
 
 export async function listVisibleProjects(): Promise<WorkspaceProject[]> {
@@ -18,7 +67,7 @@ export async function listVisibleProjects(): Promise<WorkspaceProject[]> {
     .order("created_at", { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data ?? []) as WorkspaceProject[];
+  return (data ?? []).map((row) => mapProject(row as Record<string, unknown>));
 }
 
 export async function listAllProjects(): Promise<WorkspaceProject[]> {
@@ -29,7 +78,7 @@ export async function listAllProjects(): Promise<WorkspaceProject[]> {
     .order("created_at", { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data ?? []) as WorkspaceProject[];
+  return (data ?? []).map((row) => mapProject(row as Record<string, unknown>));
 }
 
 function normalizeUrl(url: string): string {
@@ -38,6 +87,31 @@ function normalizeUrl(url: string): string {
     return `https://${trimmed}`;
   }
   return trimmed;
+}
+
+function layoutPatch(input: Partial<WorkspaceProjectInput>): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  if (input.kind !== undefined) patch.kind = parseKind(input.kind);
+  if (input.display_size !== undefined) patch.display_size = parseSize(input.display_size);
+  if (input.display_variant !== undefined) {
+    patch.display_variant = parseVariant(input.display_variant);
+  }
+  if (input.file_name !== undefined) {
+    patch.file_name = input.file_name?.trim() || null;
+  }
+  if (input.file_size !== undefined) {
+    patch.file_size =
+      typeof input.file_size === "number" && Number.isFinite(input.file_size)
+        ? Math.round(input.file_size)
+        : null;
+  }
+  if (input.file_mime !== undefined) {
+    patch.file_mime = input.file_mime?.trim() || null;
+  }
+  if (input.attachments !== undefined) {
+    patch.attachments = parseAttachments(input.attachments);
+  }
+  return patch;
 }
 
 export async function createProject(
@@ -72,12 +146,23 @@ export async function createProject(
       metadata: input.metadata ?? {},
       created_by: createdBy,
       updated_at: new Date().toISOString(),
+      ...layoutPatch(input),
+      kind: parseKind(input.kind),
+      display_size: parseSize(input.display_size),
+      display_variant: parseVariant(input.display_variant),
+      file_name: input.file_name?.trim() || null,
+      file_size:
+        typeof input.file_size === "number" && Number.isFinite(input.file_size)
+          ? Math.round(input.file_size)
+          : null,
+      file_mime: input.file_mime?.trim() || null,
+      attachments: parseAttachments(input.attachments),
     })
     .select(WORKSPACE_PROJECT_SELECT)
     .single();
 
   if (error) throw new Error(error.message);
-  return data as WorkspaceProject;
+  return mapProject(data as Record<string, unknown>);
 }
 
 export async function updateProject(
@@ -86,6 +171,7 @@ export async function updateProject(
 ): Promise<WorkspaceProject> {
   const patch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
+    ...layoutPatch(input),
   };
 
   if (input.name !== undefined) {
@@ -122,7 +208,7 @@ export async function updateProject(
     .single();
 
   if (error) throw new Error(error.message);
-  return data as WorkspaceProject;
+  return mapProject(data as Record<string, unknown>);
 }
 
 export async function deleteProject(id: string): Promise<void> {
